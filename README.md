@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/itCarl/DartTool" target="_blank">
-        <img src="https://github.com/itCarl/DartTool/blob/development/assets/dart_tool_logo.svg" width="150">
+        <img src="https://github.com/itCarl/DartTool/blob/development/assets/dart_tool_logo.png" width="200">
     </a>
 </p>
 
