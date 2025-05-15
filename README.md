@@ -23,7 +23,6 @@ More or less useful management software to control a ReflowPlate/HotPlate for re
 ## Screenshots
 
 <p align="center">
-    <img src="https://media.maximilian-mewes.de/project/dwa/readme_dart_image_replace_with_different_one_later.jpeg" width="400">
     <img src="https://github.com/itCarl/DartTool/blob/development/assets/dart_tool_logo_backgrounds.png" width="400">
 </p>
 
