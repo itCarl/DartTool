@@ -1,0 +1,88 @@
+.withIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem;
+    font-size: 1.5rem;
+}
+
+.withIcon > i {
+    font-size: 3rem;
+    margin-right: 1rem;
+}
+
+#io {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+}
+
+#viewGame {
+    position: static;
+}
+
+#infoMsg {
+    background-color: rgba(255, 255, 255, .25);
+    text-align: center;
+    padding: .5rem 0;
+}
+
+#numpad {
+    background-color: rgba(255, 255, 255, .05);
+    padding: .5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
+    gap: .5rem .5rem;
+    grid-template-areas:
+        "one two three four five six seven"
+        "eight nine ten eleven twelve thirteen fourtee"
+        "fifteen sixteen seventeen eighteen nineteen twenty twentyfive"
+        "zero double double tripple tripple back back";
+    text-transform: uppercase;
+}
+
+#numpad > * {
+    background-color: rgba(0, 0, 0, .5);
+    height: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: .35rem;
+}
+
+#numpad > div:hover {
+    color: #000;
+    background-color: rgba(255, 255, 255, .7);
+    cursor: pointer;
+}
+
+.one { grid-area: one; }
+.two { grid-area: two; }
+.three { grid-area: three; }
+.four { grid-area: four; }
+.five { grid-area: five; }
+.six { grid-area: six; }
+.seven { grid-area: seven; }
+.eight { grid-area: eight; }
+.nine { grid-area: nine; }
+.ten { grid-area: ten; }
+.eleven { grid-area: eleven; }
+.twelve { grid-area: twelve; }
+.thirteen { grid-area: thirteen; }
+.fourtee { grid-area: fourtee; }
+.fifteen { grid-area: fifteen; }
+.sixteen { grid-area: sixteen; }
+.seventeen { grid-area: seventeen; }
+.eighteen { grid-area: eighteen; }
+.nineteen { grid-area: nineteen; }
+.twenty { grid-area: twenty; }
+.twentyfive { grid-area: twentyfive; }
+.zero { grid-area: zero; }
+.double { grid-area: double; }
+.tripple { grid-area: tripple; }
+.back { grid-area: back; }
+

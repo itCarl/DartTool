@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <title> Dart-Tool </title>
+    <link rel="shortcut icon" href="/assets/favicon.ico"/>
+
+    <meta name="description" content="A very cool little devices that is used for displaying and tracking a game of darts." />
+
+    <!-- Fonts -->
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <!-- Styles -->
+    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <!-- scripts -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
+    <script src="nav.js"></script>
+
+</head>
+<body>
+    <header>
+        <nav>
+            <button data-ui="#navigation-drawer" class="circle transparent">
+                <i>menu</i>
+            </button>
+            <h6 class="max center-align">New Game</h6>
+            <div>
+                <img src="/assets/favicon.png" width="100px">
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div id="spinner" class="center-align p-4">
+            <progress class="circle"></progress>
+        </div>
+        <div id="viewSetup" style="display: none;">
+            <div class="center-align" style="margin: 2rem 0;">
+                <button class="small-round inverse-primary" id="openPlayerModal" data-ui="#selectPlayerModal">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Add player</span>
+                </button>
+            </div>
+            <form class="center-align">
+                <article>
+                    <ul id="selectedPlayerList" class="list border">
+                        <li>
+                            <div class="max">
+                                <p>no player selected.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </article>
+
+                <hr class="large">
+
+                <div class="field label border">
+                    <input type="text">
+                    <label>Name</label>
+                    <span class="helper">Game name</span>
+                </div>
+                <div class="field middle-align">
+                <nav>
+                    <label class="radio">
+                        <input type="radio" name="radio5_">
+                        <span>201</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="radio5_" checked>
+                        <span>301</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="radio5_">
+                        <span>401</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="radio5_">
+                        <span>601</span>
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="radio5_">
+                        <span>801</span>
+                    </label>
+                </nav>
+                <span class="helper">Choose a Gamemode</span>
+                </div>
+                <button class="responsive margin">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Start Game</span>
+                </button>
+            </form>
+        </div>
+        <div id="viewGame" >
+            <div id="info">
+                <article>
+                        <div class="max">
+                            <h6 class="small">Headline</h6>
+                            <div>Supporting text</div>
+                        </div>
+                        <label>+15 min</label>
+                </article>
+                <article>
+                        <div class="max">
+                            <h6 class="small">Headline</h6>
+                            <div>Supporting text</div>
+                        </div>
+                        <label>+15 min</label>
+                </article>
+            </div>
+            <div id="io">
+                <div id="infoMsg">
+                    Test bla bla
+                </div>
+                <div id="numpad">
+                    <div class="one">1</div>
+                    <div class="two">2</div>
+                    <div class="three">3</div>
+                    <div class="four">4</div>
+                    <div class="five">5</div>
+                    <div class="six">6</div>
+                    <div class="seven">7</div>
+                    <div class="eight">8</div>
+                    <div class="nine">9</div>
+                    <div class="ten">10</div>
+                    <div class="eleven">11</div>
+                    <div class="twelve">12</div>
+                    <div class="thirteen">13</div>
+                    <div class="fourtee">14</div>
+                    <div class="fifteen">15</div>
+                    <div class="sixteen">16</div>
+                    <div class="seventeen">17</div>
+                    <div class="eighteen">18</div>
+                    <div class="nineteen">19</div>
+                    <div class="twenty">20</div>
+                    <div class="twentyfive">25</div>
+                    <div class="zero">0</div>
+                    <div class="double">double</div>
+                    <div class="tripple">tripple</div>
+                    <div class="back">back</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="overlay blur"></div>
+    <dialog id="selectPlayerModal">
+        <h5>Select Players</h5>
+        <ul id="addPlayersList" class="list border small-margin"></ul>
+        <nav class="right-align no-space">
+            <button class="transparent link" data-ui="#selectPlayerModal">
+                Cancel
+            </button>
+            <button class="transparent link" id="confirmSelected" data-ui="#selectPlayerModal">
+                Select
+            </button>
+        </nav>
+    </dialog>
+
+    <div class="overlay"></div>
+    <dialog class="left no-padding" id="navigation-drawer">
+        <nav class="drawer">
+            <header>
+                <nav class="center-align space">
+                    <div class="max" style="margin-top:.5rem;">
+                        <img src="/assets/favicon.png" width="150px">
+                    </div>
+                    <button class="transparent circle large" data-ui="#navigation-drawer">
+                        <i>close</i>
+                    </button>
+                </nav>
+            </header>
+            <a href="/">
+                <i>Menu</i>
+                <span class="max">Menu</span>
+                <b>24</b>
+            </a>
+            <hr>
+            <a href="/game">
+                <i class="fa-brands fa-dart-lang"></i>
+                <span>New Game</span>
+            </a>
+            <a href="/players">
+                <i class="fa-solid fa-users"></i>
+                <span>Players</span>
+            </a>
+            <a href="/settings">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+            <hr>
+            <label>Labels</label>
+        </nav>
+    </dialog>
+    <script src="script.js"></script>
+</body>
+</html>

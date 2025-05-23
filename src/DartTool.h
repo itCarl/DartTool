@@ -3,26 +3,25 @@
 #define DartTool_h
 #define ELEGANTOTA_USE_ASYNC_WEBSERVER 1
 
-#include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
-#include <ESPAsyncWebServer.h>
-// #include <DNSServer.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <AsyncTCP.h>
 #include <ElegantOTA.h>
+#include <DNSServer.h>
 #include <ArduinoJson.h>
-#include <LittleFS.h>
+#include <ESPAsyncWebServer.h>
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+#include <LittleFS.h>
+#include <Preferences.h>
 #include <LiquidCrystal_I2C.h>
 #include <VL53L1X.h>
-#include <Servo.h>
+// #include <Servo.h>
 
 // Custom Libs
 #include "const.h"
 #include "fcn_declare.h"
 #include "config.h"
-
-// web classes
-#include "web/CaptiveRequestHandler.h"
+#include "dart/PlayerManager.h"
 
 #ifndef VERSION_CODE
     #define VERSION_CODE "unkown"
@@ -41,7 +40,7 @@
 #endif
 
 #ifndef CLIENT_PASS
-#define CLIENT_PASS ""
+    #define CLIENT_PASS ""
 #endif
 
 // GLOBAL VARIABLES
@@ -68,19 +67,22 @@ DT_GLOBAL char apSSID[33] _INIT("DartTool");
 
 DT_GLOBAL AsyncWebServer server _INIT_N(((80)));
 DT_GLOBAL AsyncWebSocket ws _INIT_N((("/ws")));
-DT_GLOBAL String escapedMac _INIT("x");
-DT_GLOBAL char cmDNS[33] _INIT(MDNS_NAME);
-DT_GLOBAL bool ap_active _INIT(false);
+DT_GLOBAL DNSServer dnsServer;
 
-// DT_GLOBAL Preferences storage;
+DT_GLOBAL Preferences storage;
+DT_GLOBAL PlayerManager pm;
+
+DT_GLOBAL bool apActive _INIT(false);
+DT_GLOBAL IPAddress apIP _INIT_N(((4, 3, 2, 1)));
+DT_GLOBAL IPAddress subnet _INIT_N(((255, 255, 255, 0)));
 
 DT_GLOBAL LiquidCrystal_I2C LCD _INIT_N(((0x27, 20, 4)));
-
 DT_GLOBAL VL53L1X sensor;
-
-DT_GLOBAL Servo laserServo;
+// DT_GLOBAL Servo laserServo;
 
 DT_GLOBAL unsigned long wsLastLiveTime _INIT(0);
+
+DT_GLOBAL String gmMAC _INIT("");
 
 DT_GLOBAL uint8_t arrowUp[8] _INIT_N(({
     0x04, 0x0E, 0x15, 0x04, 0x04, 0x04, 0x04, 0x04
@@ -90,9 +92,16 @@ DT_GLOBAL uint8_t arrowDown[8] _INIT_N(({
     0x04, 0x04, 0x04, 0x04, 0x04, 0x15, 0x0E, 0x04
 }));
 
+DT_GLOBAL uint8_t dart[8] _INIT_N(({
+    0x04, 0x0E, 0x1F, 0x04, 0x0E, 0x1F, 0x0A, 0x11
+}));
+
+// #define WIFI_CONNECTED (WiFi.status() == WL_CONNECTED)
+#define WIFI_CONNECTED (true)
+
 #ifdef PRINT_DEBUG
-    #define DEBUG_PRINT(x) Serial.printf("%s %s", "[DartTool] ", x)
-    #define DEBUG_PRINTLN(x) Serial.printf("%s %s\n", "[DartTool] ", x) //Serial.println(x)
+    #define DEBUG_PRINT(x) Serial.print(x)
+    #define DEBUG_PRINTLN(x) Serial.println(x)
     #define DEBUG_PRINTF(x...) Serial.printf(x)
 #else
     #define DEBUG_PRINT(x)
@@ -111,7 +120,7 @@ DT_GLOBAL uint8_t arrowDown[8] _INIT_N(({
 class DartTool
 {
     public:
-     DartTool();
+        DartTool();
         static DartTool& instance()
         {
             static DartTool instance;

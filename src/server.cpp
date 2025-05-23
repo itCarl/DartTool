@@ -1,51 +1,111 @@
 #include "DartTool.h"
 
+#include "web/CaptiveRequestHandler.h"
+#include "web/GameMasterMiddleware.h"
+
+using WsCommandHandler = std::function<bool(JsonDocument&)>; //typedef bool (*WsCommandHandler)(JsonDocument& doc);
+struct CommandEntry {
+    const char* cmd;
+    WsCommandHandler handler;
+};
+
+bool handleGetAllPlayer(JsonDocument& doc);
+bool handleAddPlayer(JsonDocument& doc);
+bool handleDeletePlayer(JsonDocument& doc);
+bool handleReset(JsonDocument& doc);
+
+CommandEntry commandTable[] = {
+    { "upt", [](JsonDocument& doc) {
+        return true;
+    }},
+    { "getAllPlayer", handleGetAllPlayer },
+    { "addPlayer", handleAddPlayer },
+    { "deletePlayer", handleDeletePlayer },
+    { "rstCntlr", handleAddPlayer },
+    { nullptr, nullptr }
+};
+
+
+bool CP_FILTER(AsyncWebServerRequest *request)
+{
+    return WiFi.localIP() != request->client()->localIP();
+}
 
 void initServer()
 {
+    //CORS compatiblity
+    DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Origin"), "*");
+    DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Methods"), "*");
+    DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Headers"), "*");
+
     // Websocket
     ws.onEvent(onEvent);
     server.addHandler(&ws);
+    if (apActive) {
+        CaptiveRequestHandler* captiveHandler = new CaptiveRequestHandler();
+        captiveHandler->setFilter(CP_FILTER);
+        server.addHandler(captiveHandler);
+    }
+    // if(apActive) server.addHandler(new CaptiveRequestHandler()).setFilter(CP_FILTER);
+
+    // add a global middleware to the server
+    server.addMiddleware(new GameMasterMiddleware());
 
     // root route
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        // request->send(200, "text/plain", "Hello, world");
-        request->send(LittleFS, "/index.html", "text/html", false, processor);
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // if(captivePortal(request)) return;
+        handleFileRead(request, "/index.html");
+        // request->send(LittleFS, "/index.html", "text/html", request->hasArg(F("download")), processor);
     });
 
-    server.serveStatic("/", LittleFS, "/");
+    server.serveStatic("/", LittleFS, "/"); // /fs
 
-    // style route
-    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/game", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if(handleFileRead(request, "/game.html")) return;
+        request->send(LittleFS, "/game.html", "text/html");
+    });
+
+    server.on("/players", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if(handleFileRead(request, "/players.html")) return;
+        request->send(LittleFS, "/players.html", "text/html");
+    });
+
+    server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/html", "<meta http-equiv='refresh' content='0; url=/' />");
+    });
+
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/style.css", "text/css");
     });
 
-    // script route
-    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/script.js", "text/javascript");
     });
 
-    // not found route
-    server.onNotFound([](AsyncWebServerRequest *request){
-        request->send(404, "text/plain", "Not found");
+    // health / availability check route
+    server.on("/ping", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", "pong");
     });
 
-    escapedMac = WiFi.macAddress();
-    escapedMac.replace(":", "");
-    escapedMac.toLowerCase();
+    server.on("/uptime", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", (String)millis());
+    });
 
-    // Set up mDNS responder:
-    if (strlen(cmDNS) > 0) {
-        MDNS.end();
-        MDNS.begin(cmDNS);
+    server.on("/freeheap", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(200, "text/plain", (String)ESP.getFreeHeap());
+    });
 
-        MDNS.addService("http", "tcp", 80);
-        MDNS.addService("DartTool", "tcp", 80);
-        MDNS.addServiceTxt("DartTool", "tcp", "mac", escapedMac.c_str());
-    }
+    // not found route
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        // if(captivePortal(request)) return;
+
+        request->send(404, "text/plain", "Not found");
+        // request->redirect("/");
+    });
 
     ElegantOTA.begin(&server);
     server.begin();
+    DEBUG_PRINTLN("Web Server started");
 }
 
 void notify()
@@ -62,7 +122,7 @@ void notify()
     ws.textAll(out);
 }
 
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
+void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *data, size_t len)
 {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
@@ -80,21 +140,31 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             return;
         }
 
-        // get command
         const char* cmd = doc["cmd"];
 
-        if (strcmp(cmd, "upt") == 0) {
-            DEBUG_PRINTLN("[WS] Update command received");
+        if (cmd) {
+            DEBUG_PRINT("[WS] Command received: ");
+            DEBUG_PRINTLN(cmd);
 
-            sendResponse = true; // necessary for fast UI updates
+            bool foundCmd = false;
+            for (int i = 0; commandTable[i].cmd != nullptr; ++i) {
+                if (strcmp(cmd, commandTable[i].cmd) == 0) {
+                    sendResponse = commandTable[i].handler(doc);
+                    foundCmd = true;
+                }
+            }
+            if(!foundCmd) {
+                DEBUG_PRINTLN("[WS] Unknown command");
+                doc["msg"] = "Error: Unkown command";
+                sendResponse = true;
+            }
 
-        } else if (strcmp(cmd, "getCfg") == 0) {
-            DEBUG_PRINTLN("[WS] getConfig command received");
+            if(!sendResponse)
+                return;
 
-            sendResponse = true;
-
-        } else if (strcmp(cmd, "rstCntlr") == 0) {
-            DartTool::instance().reset();
+            serializeJson(doc, out);
+            client->text(out);
+            // ws.textAll(out);
         }
 
         if(!sendResponse)
@@ -116,7 +186,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
             DEBUG_PRINTF("WebSocket client #%u disconnected\n", client->id());
             break;
         case WS_EVT_DATA:
-            handleWebSocketMessage(arg, data, len);
+            handleWebSocketMessage(client, arg, data, len);
             break;
         case WS_EVT_PONG:
         case WS_EVT_PING:
@@ -130,13 +200,37 @@ String processor(const String& var)
 {
   // return "no data.";
 
-  if(var == "VERSION") {
-    return String(VERSION);
-  } else if(var == "BUILD_TIME") {
-    return String(BUILD_TIME);
-  }
+    if(var == "VERSION") {
+        return String(VERSION);
+    } else if(var == "BUILD_TIME") {
+        return String(BUILD_TIME);
+    }
 
-  return String();
+    return String();
+}
+
+bool captivePortal(AsyncWebServerRequest *request)
+{
+    if(!apActive) return false;
+
+    // AsyncWebServerResponse *response = request->beginResponse(302);
+    // response->addHeader(F("Location"), F("http://4.3.2.1"));
+    // request->send(response);
+    return true;
+}
+
+bool handleFileRead(AsyncWebServerRequest* request, String path)
+{
+    DEBUG_PRINT(F("WS FileRead: "));
+    DEBUG_PRINTLN(path);
+
+    // if(LittleFS.exists(path) || LittleFS.exists(path + ".gz")) {
+        DEBUG_PRINTLN(F("Exists."));
+        request->send(LittleFS, path, "text/html", request->hasArg(F("download")), processor);
+        // request->send(request->beginResponse(LittleFS, path, "text/html", request->hasArg(F("download")), {}));
+        return true;
+    // }
+    return false;
 }
 
 void cleanupWs()
@@ -145,4 +239,38 @@ void cleanupWs()
         ws.cleanupClients(4);
         wsLastLiveTime = millis();
     }
+}
+
+
+bool handleGetAllPlayer(JsonDocument& doc)
+{
+    JsonArray players = doc["players"].to<JsonArray>();
+    pm.getAllPlayers(players);
+    return true;
+}
+
+bool handleAddPlayer(JsonDocument& doc)
+{
+    const char* name = doc["name"];
+    if (!name && strlen(name) <= 0)
+        return false;
+
+    pm.addOrEditPlayer(name);
+    return true;
+}
+
+bool handleDeletePlayer(JsonDocument& doc)
+{
+    const char* id = doc["id"];
+    if (id && strlen(id) <= 0)
+        return false;
+
+    pm.removePlayer(id);
+    return true;
+}
+
+bool handleReset(JsonDocument& doc)
+{
+    DartTool::instance().reset();
+    return false;
 }

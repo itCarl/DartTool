@@ -37,27 +37,26 @@
     </header>
 
     <main class="container">
-        <div class="center-align p-4">
-            <a href="/game" style="display: block;margin: 1rem 0;">
-                <article id="newGameBtn" class="withIcon">
-                    <i class="fa-brands fa-dart-lang"></i>
-                    Neues Spiel
-                </article>
-            </a>
-            <a href="/players" style="display: block;margin: 1rem 0;">
-                <article class="withIcon">
-                    <i class="fa-solid fa-users"></i>
-                    Spieler
-                </article>
-            </a>
-            <a href="/settings" style="display: block;margin: 1rem 0;">
-                <article class="withIcon">
-                    <i class="fa-solid fa-gear"></i>
-                    Einstellungen
-                </article>
-            </a>
+        <div class="center-align" style="margin: 2rem 0;">
+            <button class="small-round" data-ui="#addPlayerModal">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add player</span>
+            </button>
+        </div>
+        <div id="playersList" class="center-align p-4">
+            <progress class="circle"></progress>
         </div>
     </main>
+
+    <div class="overlay blur"></div>
+    <dialog id="confirmModal">
+        <h5>Confirm Removal</h5>
+        <div>Are you sure you want to remove <strong id="playerToRemoveName"></strong>?</div>
+        <nav class="right-align no-space">
+            <button id="cancelRemove" class="transparent link" data-ui="#confirmModal">Cancel</button>
+            <button id="confirmRemove" class="transparent link" data-ui="#confirmModal">Confirm</button>
+        </nav>
+    </dialog>
 
     <div class="overlay"></div>
     <dialog class="left no-padding" id="navigation-drawer">
@@ -93,6 +92,21 @@
             <hr>
             <label>Labels</label>
         </nav>
+    </dialog>
+
+    <div class="overlay blur"></div>
+    <dialog id="addPlayerModal">
+        <h5>Add New Player</h5>
+        <form id="addPlayerForm">
+            <div class="field label border">
+                <input type="text" id="newPlayerName" required />
+                <label>Name</label>
+            </div>
+            <nav class="right-align no-space">
+                <button type="button" class="transparent link" data-ui="#addPlayerModal">Cancel</button>
+                <button type="submit" class="transparent link" data-ui="#addPlayerModal">Add</button>
+            </nav>
+        </form>
     </dialog>
     <script src="script.js"></script>
 </body>
