@@ -21,10 +21,12 @@
 #include "const.h"
 #include "fcn_declare.h"
 #include "config.h"
+#include "dart/Player.h"
 #include "dart/PlayerManager.h"
+#include "dart/DartGame.h"
 
 #ifndef VERSION_CODE
-    #define VERSION_CODE "unkown"
+    #define VERSION_CODE "unknown"
 #endif
 
 #ifndef VERSION
@@ -32,7 +34,7 @@
 #endif
 
 #ifndef BUILD_TIME
-    #define BUILD_TIME "unkown"
+    #define BUILD_TIME "unknown"
 #endif
 
 #ifndef CLIENT_SSID
@@ -70,7 +72,7 @@ DT_GLOBAL AsyncWebSocket ws _INIT_N((("/ws")));
 DT_GLOBAL DNSServer dnsServer;
 
 DT_GLOBAL Preferences storage;
-DT_GLOBAL PlayerManager pm;
+DT_GLOBAL DartGame game;
 
 DT_GLOBAL bool apActive _INIT(false);
 DT_GLOBAL IPAddress apIP _INIT_N(((4, 3, 2, 1)));

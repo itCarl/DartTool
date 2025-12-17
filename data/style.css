@@ -23,6 +23,48 @@
     position: static;
 }
 
+.playerCard {
+    padding: 0;
+}
+
+.playerCard > div {
+    border-radius: 0;
+}
+
+.playerCard > * {
+    height: 50%;
+}
+
+.playerCard .throwGroup,
+.playerCard .details {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: 50%;
+    flex: 2;
+}
+
+.playerCard .throwGroup div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+}
+
+.playerCard .throwGroup div ~ div {
+    border-left: 1px solid #000;
+}
+
+.playerCard .currentPoints,
+.playerCard .throwGroup,
+.playerCard .details {
+    border-bottom: 1px solid #000;
+}
+
+.playerCard > div > div ~ div {
+    border-left: 1px solid #000;
+}
+
 #infoMsg {
     background-color: rgba(255, 255, 255, .25);
     text-align: center;

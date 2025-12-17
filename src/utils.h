@@ -1,31 +1,19 @@
-#include "DartTool.h"
+#pragma once
+#include <Arduino.h>
 
-#ifndef generateUUID_fcn
-#define generateUUID_fcn
-String generateUUID()
-{
-    uint8_t uuid[16];
-    for (int i = 0; i < 16; i++) {
-        uuid[i] = random(256);
-    }
-
-    // Set version (4) and variant (10xx)
-    uuid[6] = (uuid[6] & 0x0F) | 0x40; // Version 4
-    uuid[8] = (uuid[8] & 0x3F) | 0x80; // Variant 10xx
-
-    char uuidStr[37];
-    sprintf(uuidStr,
-        "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-        uuid[0], uuid[1], uuid[2], uuid[3],
-        uuid[4], uuid[5],
-        uuid[6], uuid[7],
-        uuid[8], uuid[9],
-        uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
+inline String generateUuid() {
+    char buf[37];
+    snprintf(buf, sizeof(buf),
+        "%04x%04x-%04x-%04x-%04x-%04x%04x%04x",
+        random(0, 0xffff), random(0, 0xffff),
+        random(0, 0xffff),
+        (random(0, 0x0fff) | 0x4000), // version 4
+        (random(0, 0x3fff) | 0x8000), // variant 1
+        random(0, 0xffff), random(0, 0xffff), random(0, 0xffff)
     );
-
-    return String(uuidStr);
+    return String(buf);
 }
-#endif
+
 // String getMACFromIP(IPAddress ip)
 // {
 //     struct station_info *stat_info = wifi_softap_get_station_info();

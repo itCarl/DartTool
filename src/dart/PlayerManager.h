@@ -5,100 +5,151 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include "utils.h"
 
 class PlayerManager
 {
-    public:
+    private:
         PlayerManager() {
             //
         };
 
+    protected:
+        std::vector<Player> players;
+
+    public:
         static PlayerManager& instance()
         {
             static PlayerManager inst;
             return inst;
         }
 
+        void init()
+        {
+            PlayerManager::instance().loadPlayers();
+        }
+
         void addOrEditPlayer(const String& name)
         {
-            JsonDocument doc;
-            const char* filename = "/players.json";
+            if (name.isEmpty()) return;
 
-            // Load existing players
-            File file = LittleFS.open(filename, "r");
-            if (file) {
-                deserializeJson(doc, file);
-                file.close();
-            }
-
-            // Check if name exists (case-insensitive)
-            for (JsonObject obj : doc.as<JsonArray>()) {
-                if (obj["name"] == name) {
-                    obj["name"] = name; // Update if exists
-                    save(doc);
+            for (Player& player : players) {
+                if (player.getName().equalsIgnoreCase(name)) {
+                    player.setName(name);
+                    savePlayers();
+                    Serial.printf("[WS] Updated player: %s\n", name.c_str());
                     return;
                 }
             }
 
-            // Add new player
-            JsonObject newPlayer = doc.add<JsonObject>();
-            newPlayer["id"] = generateUuid();
-            newPlayer["name"] = name;
-            save(doc);
-            Serial.printf("[WS] Added player: %s\n", name);
+            Player newPlayer(generateUuid(), name);
+            players.push_back(newPlayer);
+            savePlayers();
+
+            Serial.printf("[WS] Added player: %s\n", name.c_str());
         }
 
         void removePlayer(const String& id)
         {
-            JsonDocument doc;
-            const char* filename = "/players.json";
+            if (id.isEmpty()) return;
 
-            File file = LittleFS.open(filename, "r");
-            if (!file) return;
-            deserializeJson(doc, file);
-            file.close();
+            Player target = getPlayerById(id);
+            if (target.getId().isEmpty()) {
+                Serial.printf("[WS] Player with ID %s not found.\n", id.c_str());
+                return;
+            }
 
-            JsonArray array = doc.as<JsonArray>();
-            for (size_t i = 0; i < array.size(); i++) {
-                if (array[i]["id"] == id) {
-                    array.remove(i);
+            for (size_t i = 0; i < players.size(); ++i) {
+                if (players[i].getId() == target.getId()) {
+                    players.erase(players.begin() + i);
+                    Serial.printf("[WS] Removed player with ID: %s\n", id.c_str());
+                    savePlayers();
                     break;
                 }
             }
+        }
 
-            save(doc);
+        std::vector<Player> getPlayersByIds(const std::vector<String>& ids)
+        {
+            std::vector<Player> selected;
+            for (Player& p : players) {
+                if (std::find(ids.begin(), ids.end(), p.getId()) != ids.end()) {
+                    selected.push_back(p);
+                }
+            }
+            return selected;
+        }
+
+        // Player* getPlayerById(const String& id)
+        // {
+        //     for (Player& player : players) {
+        //         if (player.getId() == id) {
+        //             return &player;
+        //         }
+        //     }
+        //     return nullptr;
+        // }
+
+        Player getPlayerById(const String& id)
+        {
+            for (Player& player : players) {
+                if (player.getId() == id) {
+                    return player;
+                }
+            }
+
+            return Player();
         }
 
         void getAllPlayers(JsonArray& outArray)
         {
-            JsonDocument doc;
+            // JsonDocument doc;
+            // File file = LittleFS.open("/players.json", "r");
+            // if (!file) return;
+
+            // deserializeJson(doc, file);
+            // file.close();
+
+            // for (JsonObject obj : doc.as<JsonArray>()) {
+            //     JsonObject player = outArray.add<JsonObject>();
+            //     player["id"] = obj["id"];
+            //     player["name"] = obj["name"];
+            // }
+            for (Player& player : players) {
+                JsonObject obj = outArray.add<JsonObject>();
+                player.serialize(obj);
+            }
+        }
+
+        void loadPlayers() {
+            players.clear();
             File file = LittleFS.open("/players.json", "r");
             if (!file) return;
 
+            JsonDocument doc;
             deserializeJson(doc, file);
             file.close();
 
             for (JsonObject obj : doc.as<JsonArray>()) {
-                JsonObject player = outArray.add<JsonObject>();
-                player["id"] = obj["id"];
-                player["name"] = obj["name"];
+                players.push_back(Player::deserialize(obj));
             }
         }
 
-    private:
-        String generateUuid() {
-            char buf[37];
-            snprintf(buf, sizeof(buf),
-                "%04x%04x-%04x-%04x-%04x-%04x%04x%04x",
-                random(0, 0xffff), random(0, 0xffff),
-                random(0, 0xffff),
-                (random(0, 0x0fff) | 0x4000), // version 4
-                (random(0, 0x3fff) | 0x8000), // variant 1
-                random(0, 0xffff), random(0, 0xffff), random(0, 0xffff)
-            );
-            return String(buf);
+        void savePlayers() {
+            JsonDocument doc;
+            JsonArray arr = doc.to<JsonArray>();
+
+            for (Player& p : players) {
+                JsonObject obj = arr.add<JsonObject>();
+                p.serialize(obj);
+            }
+
+            File file = LittleFS.open("/players.json", "w");
+            serializeJson(doc, file);
+            file.close();
         }
 
+    private:
         void save(JsonDocument& doc)
         {
             File file = LittleFS.open("/players.json", "w");

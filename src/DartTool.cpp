@@ -37,9 +37,10 @@ void DartTool::setup()
     initServer();
 
     delay(3000);
-    // pm.addOrEditPlayer("Max1");
-    // pm.addOrEditPlayer("Spieler3");
-    // pm.addOrEditPlayer("Player sjfho erhbfwif sdfsf");
+    PlayerManager::instance().init();
+    // PlayerManager::instance().addOrEditPlayer("Max1");
+    // PlayerManager::instance().addOrEditPlayer("Spieler3");
+    // PlayerManager::instance().addOrEditPlayer("Player sjfho erhbfwif sdfsf");
     listDir(LittleFS, "/", 1);
 }
 
@@ -150,7 +151,7 @@ void DartTool::initConnection()
     while (WiFi.waitForConnectResult(1000) != WL_CONNECTED && retries < 5) {
         retries++;
     }
-    delay(1000);
+    delay(3000);
     LCD.clear();
     LCD.home();
 

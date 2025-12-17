@@ -66,52 +66,39 @@
                     <span class="helper">Game name</span>
                 </div>
                 <div class="field middle-align">
-                <nav>
-                    <label class="radio">
-                        <input type="radio" name="radio5_">
-                        <span>201</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="radio5_" checked>
-                        <span>301</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="radio5_">
-                        <span>401</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="radio5_">
-                        <span>601</span>
-                    </label>
-                    <label class="radio">
-                        <input type="radio" name="radio5_">
-                        <span>801</span>
-                    </label>
-                </nav>
-                <span class="helper">Choose a Gamemode</span>
+                    <nav>
+                        <label class="radio">
+                            <input type="radio" name="radio5_">
+                            <span>201</span>
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="radio5_" checked>
+                            <span>301</span>
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="radio5_">
+                            <span>401</span>
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="radio5_">
+                            <span>601</span>
+                        </label>
+                        <label class="radio">
+                            <input type="radio" name="radio5_">
+                            <span>801</span>
+                        </label>
+                    </nav>
+                    <span class="helper">Choose a Gamemode</span>
                 </div>
-                <button class="responsive margin">
+                <button id="startGame" class="responsive margin">
                     <i class="fa-solid fa-play"></i>
                     <span>Start Game</span>
                 </button>
             </form>
         </div>
-        <div id="viewGame" >
-            <div id="info">
-                <article>
-                        <div class="max">
-                            <h6 class="small">Headline</h6>
-                            <div>Supporting text</div>
-                        </div>
-                        <label>+15 min</label>
-                </article>
-                <article>
-                        <div class="max">
-                            <h6 class="small">Headline</h6>
-                            <div>Supporting text</div>
-                        </div>
-                        <label>+15 min</label>
-                </article>
+
+        <div id="viewGame" style="display: none;">
+            <div id="activePlayerList">
             </div>
             <div id="io">
                 <div id="infoMsg">
@@ -194,7 +181,20 @@
                 <span>Settings</span>
             </a>
             <hr>
-            <label>Labels</label>
+            <label>Debug</label>
+            <label>State</label>
+            <div id="gameStateSelector">
+                <nav class="group connected">
+                    <button id="stateUnknown" class="left-round">unkown</button>
+                    <button id="stateCreated" class="no-round">created</button>
+                    <button id="stateRunning"class="right-round">running</button>
+                </nav>
+                <nav class="group connected">
+                    <button id="stateDone" class="left-round">done</button>
+                    <button id="stateAborted" class="no-round">aborted</button>
+                    <button id="stateError" class="right-round">error</button>
+                </nav>
+            </div>
         </nav>
     </dialog>
     <script src="script.js"></script>

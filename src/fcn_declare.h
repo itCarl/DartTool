@@ -34,7 +34,4 @@ void cleanupWs();
 // network
 void printConnectedClients();
 
-// utils
-String generateUUID();
-
 #endif

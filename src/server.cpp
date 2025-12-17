@@ -9,6 +9,8 @@ struct CommandEntry {
     WsCommandHandler handler;
 };
 
+bool handleGetGameStatus(JsonDocument& doc);
+bool handleSelectPlayers(JsonDocument& doc);
 bool handleGetAllPlayer(JsonDocument& doc);
 bool handleAddPlayer(JsonDocument& doc);
 bool handleDeletePlayer(JsonDocument& doc);
@@ -18,6 +20,25 @@ CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
         return true;
     }},
+    { "getGameStatus", handleGetGameStatus },
+    { "setGameStatus", [](JsonDocument& doc) {
+        String newStatus = doc["s"].as<String>();
+        game.setStatus(game.stringToStatus(newStatus));
+
+        return handleGetGameStatus(doc);
+    }},
+    { "startGame", [](JsonDocument& doc) {
+        game.setStatus(DartGameStatus::created);
+        doc["cmd"] = "getGameStatus";
+
+        return handleGetGameStatus(doc);
+    }},
+    { "abortGame", [](JsonDocument& doc) {
+        game.setStatus(DartGameStatus::aborted);
+        doc["cmd"] = "getGameStatus";
+        return true;
+    }},
+    { "selectPlayers", handleSelectPlayers },
     { "getAllPlayer", handleGetAllPlayer },
     { "addPlayer", handleAddPlayer },
     { "deletePlayer", handleDeletePlayer },
@@ -155,7 +176,7 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *da
             }
             if(!foundCmd) {
                 DEBUG_PRINTLN("[WS] Unknown command");
-                doc["msg"] = "Error: Unkown command";
+                doc["msg"] = "Error: unknown command";
                 sendResponse = true;
             }
 
@@ -167,11 +188,11 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *da
             // ws.textAll(out);
         }
 
-        if(!sendResponse)
-            return;
+        // if(!sendResponse)
+        //     return;
 
-        serializeJson(doc, out);
-        ws.textAll(out);
+        // serializeJson(doc, out);
+        // ws.textAll(out);
     }
 }
 
@@ -240,12 +261,44 @@ void cleanupWs()
         wsLastLiveTime = millis();
     }
 }
+bool handleGetGameStatus(JsonDocument& doc)
+{
+    JsonObject resp = doc["game"].to<JsonObject>();
+    resp["status"] = game.getStatusString();
 
+    if(game.getStatus() == DartGameStatus::created || game.getStatus() == DartGameStatus::running)
+    {
+        game.serialize(resp);
+    }
+
+    return true;
+}
+
+bool handleSelectPlayers(JsonDocument& doc)
+{
+    if (!doc["playerIds"].is<JsonArray>()) {
+        doc["msg"] = "Missing or invalid 'playerIds' array.";
+        return true;
+    }
+
+    JsonArray selectedIds = doc["playerIds"].as<JsonArray>();
+    std::vector<Player> selectedPlayers;
+
+    for (String id : selectedIds) {
+        Player player = PlayerManager::instance().getPlayerById(id);
+        selectedPlayers.push_back(player);
+        break;
+    }
+
+    game.setPlayers(selectedPlayers);
+    doc["msg"] = "Players selected successfully.";
+    return true;
+}
 
 bool handleGetAllPlayer(JsonDocument& doc)
 {
     JsonArray players = doc["players"].to<JsonArray>();
-    pm.getAllPlayers(players);
+    PlayerManager::instance().getAllPlayers(players);
     return true;
 }
 
@@ -255,7 +308,7 @@ bool handleAddPlayer(JsonDocument& doc)
     if (!name && strlen(name) <= 0)
         return false;
 
-    pm.addOrEditPlayer(name);
+    PlayerManager::instance().addOrEditPlayer(name);
     return true;
 }
 
@@ -265,7 +318,7 @@ bool handleDeletePlayer(JsonDocument& doc)
     if (id && strlen(id) <= 0)
         return false;
 
-    pm.removePlayer(id);
+    PlayerManager::instance().removePlayer(id);
     return true;
 }
 

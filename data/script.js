@@ -2,17 +2,23 @@ var d = document;
 // var gateway = `ws://${window.location.hostname}/ws`;
 var gateway = `ws://192.168.178.90/ws`;
 var ws;
-var s = t => t/1000;
-var isEmpty = str => !str?.length;
-var byId = id => d.getElementById(id);
-var upt = (id, val) => { if(byId(id).innerHTML.trim() != val) byId(id).innerHTML = val };
-var onClick = (id, cb) => byId(id).addEventListener('click', cb);
+const s = t => t/1000;
+const isEmpty = str => !str?.length;
+const byId = id => d.getElementById(id);
+const upt = (id, val) => { if(byId(id).innerHTML.trim() != val) byId(id).innerHTML = val };
+const onClick = (id, cb) => byId(id).addEventListener('click', cb);
+const hide = (id) => byId(id).style.display = 'none';
+const show = (id) => byId(id).style.display = 'block';
+const isPage = (...paths) => {
+  const current = window.location.pathname.replace(/\/+$/, '');
+  return paths.some(path => current === path.replace(/\/+$/, ''));
+};
 window.addEventListener('load', onLoad);
 
 var selectedPlayerId = null;
 var selectedPlayerList = [];
 var lastPlayerFetch = null;
-var gameState = "unkown";
+var gameState = "unknown";
 
 function onLoad(event)
 {
@@ -32,7 +38,18 @@ function initWebSocket()
 function onOpen(event)
 {
     console.log('Connection opened');
-    getAllPlayers();
+
+    if(isPage('/data/players.html', '/players')) {
+        sendMessage({
+            cmd: "getAllPlayer"
+        });
+    }
+
+    if(isPage('/data/game.html', '/game')) {
+        sendMessage({
+            cmd: "getGameStatus"
+        });
+    }
 }
 
 function onClose(event)
@@ -56,7 +73,7 @@ function onMessage(event)
         let players = data.players;
         lastPlayerFetch = players;
 
-        if(window.location.pathname == '/data/players.html') {
+        if(isPage('/data/players.html', '/players')) {
             const list = byId('playersList');
             list.innerHTML = ''; // Clear existing list
 
@@ -86,7 +103,7 @@ function onMessage(event)
             });
         }
 
-        if(window.location.pathname == '/data/game.html') {
+        if(isPage('/data/game.html', '/game')) {
             const list = byId('addPlayersList');
             list.innerHTML = '';
 
@@ -105,6 +122,26 @@ function onMessage(event)
             });
         }
     }
+
+    if(data.game) {
+        var g = data.game;
+        var state = g.status;
+        d.querySelectorAll('#gameStateSelector button.active').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        byId(`state${state.charAt(0).toUpperCase() + state.slice(1)}`).classList.add('active');
+
+        if(data.cmd === "getGameStatus" || data.cmd === "setGameStatus") {
+            hide('spinner');
+
+            if(state == "unknown") {
+                show('viewSetup');
+            } else if(state == "created" || state == "running") {
+                showGameInfo();
+                populatePlayers(g);
+            }
+        }
+    }
 }
 
 function sendMessage(msg)
@@ -112,10 +149,62 @@ function sendMessage(msg)
     ws.send(JSON.stringify(msg));
 }
 
-function getAllPlayers()
+function showGameInfo()
 {
-    sendMessage({
-        cmd: "getAllPlayer"
+    hide('viewSetup');
+    show('viewGame');
+}
+
+function populatePlayers(data)
+{
+    const list = byId('activePlayerList');
+    list.innerHTML = '';
+    console.log(data);
+    data.players.forEach((player, index) => {
+        const item = document.createElement('article');
+        item.id = player.id;
+        item.classList.add('playerCard');
+        item.innerHTML = `
+            <div class="grid no-space">
+                <div class="s4 center-align">
+                    <h4 class="currentPoints" style="padding:.5rem;"><b>187</b></h4>
+                    <div style="padding:.5rem;">${player.name}</div>
+                </div>
+                <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
+                    <div class="throwGroup">
+                        <div class="s4">
+                            <span class="s4 center-align">0</span>
+                        </div>
+                        <div class="s4">
+                            <span class="s4 center-align">1</span>
+                        </div>
+                        <div class="s4">
+                            <span class="s4 center-align">2</span>
+                        </div>
+                    </div>
+                    <div class="s4 center-align" style="display: flex;flex-direction:column;flex:3;">
+                        <h6>333</h6>
+                    </div>
+                </div>
+                <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
+                    <div class="details" style="flex: 1;">
+                        <div class="s6">
+                            <i class="fa-brands fa-dart-lang"></i>
+                        </div>
+                        <div class="s6">
+                            <span id="numOfThrows">0</span>
+                        </div>
+                    </div>
+                    <div class="s4 center-align" style="flex: 1;">
+                        <div>
+                            &Oslash;
+                            <span class="averagePoints">333</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        list.appendChild(item);
     });
 }
 
@@ -123,11 +212,7 @@ function getAllPlayers()
 
 // d.getElementById('JoinAsGameMasterBtn').style.display = 'none';
 
-    // sendMessage({
-    //     cmd: "getGameStatus"
-    // });
-
-    if(window.location.pathname == '/data/players.html') {
+    if(isPage('/data/players.html', '/players')) {
         onClick('addPlayerForm', e => {
             e.preventDefault();
 
@@ -141,24 +226,31 @@ function getAllPlayers()
                 });
 
                 nameInput.value = '';
-                getAllPlayers(); // Refresh the list
+                sendMessage({
+                    cmd: "getAllPlayer"
+                });
             }
         });
 
         onClick('confirmRemove',() => {
             if (selectedPlayerId) {
                 sendMessage({
-                    cmd: "removePlayer",
+                    cmd: "deletePlayer",
                     id: selectedPlayerId
                 });
                 selectedPlayerId = null;
-                getAllPlayers();
+                sendMessage({
+                    cmd: "getAllPlayer"
+                });
             }
         });
     }
-    if(window.location.pathname == '/game') {
+
+    if(isPage('/data/game.html', '/game')) {
         onClick('openPlayerModal',() => {
-            getAllPlayers();
+            sendMessage({
+                cmd: "getAllPlayer"
+            });
         });
 
         onClick('confirmSelected',() => {
@@ -177,6 +269,29 @@ function getAllPlayers()
                 `;
                 list.appendChild(item);
             });
+
+            sendMessage({
+                cmd: 'selectPlayers',
+                playerIds: selectedPlayerList
+            });
         });
+
+        onClick('startGame', e => {
+            e.preventDefault();
+            sendMessage({
+                cmd: 'startGame'
+            });
+        });
+
+        ['unknown','created','running','done','aborted','error'].forEach(e => {
+            console.log(`state${e.charAt(0).toUpperCase() + e.slice(1)}`);
+            onClick(`state${e.charAt(0).toUpperCase() + e.slice(1)}`, item => {
+                sendMessage({
+                    cmd: 'setGameStatus',
+                    s: e
+                });
+            });
+        });
+
     }
 })();
