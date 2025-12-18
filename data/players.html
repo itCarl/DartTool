@@ -20,7 +20,6 @@
     <!-- scripts -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
-    <script src="nav.js"></script>
 
 </head>
 <body>
@@ -37,7 +36,7 @@
     </header>
 
     <main class="container">
-        <div class="center-align" style="margin: 2rem 0;">
+        <div class="center-align players-header">
             <button class="small-round" data-ui="#addPlayerModal">
                 <i class="fa-solid fa-plus"></i>
                 <span>Add player</span>
@@ -62,8 +61,8 @@
     <dialog class="left no-padding" id="navigation-drawer">
         <nav class="drawer">
             <header>
-                <nav class="center-align space">
-                    <div class="max" style="margin-top:.5rem;">
+                <nav class="center-align space nav-header">
+                    <div class="max">
                         <img src="/assets/favicon.png"  width="150px">
                     </div>
                     <button class="transparent circle large" data-ui="#navigation-drawer">
@@ -108,6 +107,6 @@
             </nav>
         </form>
     </dialog>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

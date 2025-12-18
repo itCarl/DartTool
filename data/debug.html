@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <title> Dart-Tool - Debug </title>
+    <link rel="shortcut icon" href="/assets/favicon.ico"/>
+
+    <meta name="description" content="A very cool little devices that is used for displaying and tracking a game of darts." />
+
+    <!-- Fonts -->
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <!-- Styles -->
+    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <!-- scripts -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
+
+</head>
+<body>
+    <header>
+        <nav>
+            <button data-ui="#navigation-drawer" class="circle transparent">
+                <i>menu</i>
+            </button>
+            <h6 class="max center-align">Dart-Tool Debug</h6>
+            <button class="circle transparent">
+                <img class="responsive" src="/assets/favicon.png">
+            </button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Servo Control Section -->
+        <article class="m-3">
+            <header>
+                <h5>Servo Funktionen</h5>
+            </header>
+
+            <!-- Servo Position Control -->
+            <div class="p-3">
+                <h6>Servo Position</h6>
+                <p class="small text-secondary">Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
+
+                <div class="field small-round no-margin">
+                    <input type="range" id="servoSlider" min="0" max="180" value="90" step="1">
+                    <label for="servoSlider">Position (0-180°)</label>
+                </div>
+
+                <div class="p-2">
+                    <button class="small" id="setServoBtn">
+                        <i>check</i>
+                        <span>Position setzen</span>
+                    </button>
+                </div>
+
+                <p class="small" id="servoSliderValue">Wert: 90°</p>
+            </div>
+
+            <hr>
+
+            <!-- Preset Positions -->
+            <div class="p-3">
+                <h6>Vordefinierte Positionen</h6>
+                <div class="grid">
+                    <button class="small outline" id="servo0">
+                        <i>radio_button_checked</i>
+                        <span>0°</span>
+                    </button>
+                    <button class="small outline" id="servo45">
+                        <i>radio_button_checked</i>
+                        <span>45°</span>
+                    </button>
+                    <button class="small outline" id="servo90">
+                        <i>radio_button_checked</i>
+                        <span>90°</span>
+                    </button>
+                    <button class="small outline" id="servo135">
+                        <i>radio_button_checked</i>
+                        <span>135°</span>
+                    </button>
+                    <button class="small outline" id="servo180">
+                        <i>radio_button_checked</i>
+                        <span>180°</span>
+                    </button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Test Sequences -->
+            <div class="p-3">
+                <h6>Test Sequenzen</h6>
+                <div class="grid">
+                    <button class="small" id="testSeq1">
+                        <i>play_arrow</i>
+                        <span>Sequenz 1</span>
+                    </button>
+                    <button class="small" id="testSeq2">
+                        <i>play_arrow</i>
+                        <span>Sequenz 2</span>
+                    </button>
+                    <button class="small" id="testSeq3">
+                        <i>play_arrow</i>
+                        <span>Sequenz 3</span>
+                    </button>
+                </div>
+                <p class="small text-secondary p-2">Sequenz 1: 0° → 180° → 0°</p>
+                <p class="small text-secondary p-2">Sequenz 2: Langsame Bewegung 0° → 180°</p>
+                <p class="small text-secondary p-2">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
+            </div>
+
+            <hr>
+
+            <!-- Init Sequence -->
+            <div class="p-3">
+                <h6>Initialisierung</h6>
+                <button class="small" id="initServo">
+                    <i>restart_alt</i>
+                    <span>Servo initialisieren</span>
+                </button>
+                <p class="small text-secondary p-2">Führt die Standard-Initialisierungssequenz aus</p>
+            </div>
+
+            <hr>
+
+            <!-- Status Display -->
+            <div class="p-3">
+                <h6>Status</h6>
+                <div id="statusDisplay" class="p-2" style="background-color: rgba(0,0,0,0.05); border-radius: 8px;">
+                    <p class="small">Warten auf Befehle...</p>
+                </div>
+            </div>
+
+        </article>
+    </main>
+
+    <div class="overlay"></div>
+    <dialog class="left no-padding" id="navigation-drawer">
+        <nav class="drawer">
+            <header>
+                <nav class="center-align space nav-header">
+                    <div class="max">
+                        <img src="/assets/favicon.png"  width="150px">
+                    </div>
+                    <button class="transparent circle large" data-ui="#navigation-drawer">
+                        <i>close</i>
+                    </button>
+                </nav>
+            </header>
+            <a href="/">
+                <i>home</i>
+                <span class="max">Menu</span>
+            </a>
+            <hr>
+            <a href="/game">
+                <i class="fa-brands fa-dart-lang"></i>
+                <span>New Game</span>
+            </a>
+            <a href="/players">
+                <i class="fa-solid fa-users"></i>
+                <span>Players</span>
+            </a>
+            <a href="/settings">
+                <i class="fa-solid fa-gear"></i>
+                <span>Settings</span>
+            </a>
+            <a href="/debug">
+                <i class="fa-solid fa-bug"></i>
+                <span>Debug</span>
+            </a>
+            <hr>
+        </nav>
+    </dialog>
+    <script src="app.js"></script>
+</body>
+</html>

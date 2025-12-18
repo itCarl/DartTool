@@ -20,7 +20,6 @@
     <!-- scripts -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
-    <script src="nav.js"></script>
 
 </head>
 <body>
@@ -38,22 +37,28 @@
 
     <main class="container">
         <div class="center-align p-4">
-            <a href="/game" style="display: block;margin: 1rem 0;">
+            <a href="/game" class="home-link">
                 <article id="newGameBtn" class="withIcon">
                     <i class="fa-brands fa-dart-lang"></i>
                     Neues Spiel
                 </article>
             </a>
-            <a href="/players" style="display: block;margin: 1rem 0;">
+            <a href="/players" class="home-link">
                 <article class="withIcon">
                     <i class="fa-solid fa-users"></i>
                     Spieler
                 </article>
             </a>
-            <a href="/settings" style="display: block;margin: 1rem 0;">
+            <a href="/settings" class="home-link">
                 <article class="withIcon">
                     <i class="fa-solid fa-gear"></i>
                     Einstellungen
+                </article>
+            </a>
+            <a href="/debug" class="home-link">
+                <article class="withIcon">
+                    <i class="fa-solid fa-bug"></i>
+                    Debug
                 </article>
             </a>
         </div>
@@ -63,8 +68,8 @@
     <dialog class="left no-padding" id="navigation-drawer">
         <nav class="drawer">
             <header>
-                <nav class="center-align space">
-                    <div class="max" style="margin-top:.5rem;">
+                <nav class="center-align space nav-header">
+                    <div class="max">
                         <img src="/assets/favicon.png"  width="150px">
                     </div>
                     <button class="transparent circle large" data-ui="#navigation-drawer">
@@ -73,9 +78,8 @@
                 </nav>
             </header>
             <a href="/">
-                <i>Menu</i>
+                <i>home</i>
                 <span class="max">Menu</span>
-                <b>24</b>
             </a>
             <hr>
             <a href="/game">
@@ -90,10 +94,13 @@
                 <i class="fa-solid fa-gear"></i>
                 <span>Settings</span>
             </a>
+            <a href="/debug">
+                <i class="fa-solid fa-bug"></i>
+                <span>Debug</span>
+            </a>
             <hr>
-            <label>Labels</label>
         </nav>
     </dialog>
-    <script src="script.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>

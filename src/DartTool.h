@@ -15,7 +15,7 @@
 #include <Preferences.h>
 #include <LiquidCrystal_I2C.h>
 #include <VL53L1X.h>
-// #include <Servo.h>
+#include <ESP32Servo.h>
 
 // Custom Libs
 #include "const.h"
@@ -80,7 +80,7 @@ DT_GLOBAL IPAddress subnet _INIT_N(((255, 255, 255, 0)));
 
 DT_GLOBAL LiquidCrystal_I2C LCD _INIT_N(((0x27, 20, 4)));
 DT_GLOBAL VL53L1X sensor;
-// DT_GLOBAL Servo laserServo;
+DT_GLOBAL Servo laserServo;
 
 DT_GLOBAL unsigned long wsLastLiveTime _INIT(0);
 

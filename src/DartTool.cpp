@@ -134,7 +134,15 @@ void DartTool::initDistanceSensor()
 void DartTool::initServo()
 {
     // laserServo.attach(2, 1100, 2050, 0);
-    // laserServo.attach(2);
+    laserServo.attach(2);
+    laserServo.write(0);
+    delay(2000);
+    laserServo.write(90);
+    delay(2000);
+    laserServo.write(180);
+    delay(3000);
+    laserServo.write(90);
+    delay(1000);
 }
 
 void DartTool::initConnection()

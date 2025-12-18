@@ -128,3 +128,79 @@
 .tripple { grid-area: tripple; }
 .back { grid-area: back; }
 
+/* DartTool Styles - Combined */
+
+/* ==================== Common Styles ==================== */
+
+main {
+    padding: 1rem;
+}
+
+.space {
+    margin: 1rem 0;
+}
+
+.nav-header .max {
+    margin-top: 0.5rem;
+}
+
+/* ==================== Settings Page Styles ==================== */
+
+#displayModeSettings {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    display: block;
+}
+
+#dataSyncSection {
+    display: none;
+}
+
+#statusMessage {
+    display: none;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+#dataSyncStatus {
+    margin-top: 1rem;
+    display: none;
+    padding: 1rem;
+    border-radius: 8px;
+    background-color: #2196F3;
+    color: white;
+}
+
+#syncNowBtn {
+    display: none;
+}
+
+/* ==================== Game Page Styles ==================== */
+
+#viewSetup {
+    display: none;
+}
+
+#viewSetup > .center-align {
+    margin: 2rem 0;
+}
+
+#viewGame {
+    display: none;
+}
+
+/* ==================== Players Page Styles ==================== */
+
+.players-header {
+    margin: 2rem 0;
+}
+
+/* ==================== Index Page Styles ==================== */
+
+.home-link {
+    display: block;
+    margin: 1rem 0;
+}

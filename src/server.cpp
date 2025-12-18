@@ -15,6 +15,9 @@ bool handleGetAllPlayer(JsonDocument& doc);
 bool handleAddPlayer(JsonDocument& doc);
 bool handleDeletePlayer(JsonDocument& doc);
 bool handleReset(JsonDocument& doc);
+bool handleSetServo(JsonDocument& doc);
+bool handleServoSequence(JsonDocument& doc);
+bool handleInitServo(JsonDocument& doc);
 
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
@@ -43,6 +46,9 @@ CommandEntry commandTable[] = {
     { "addPlayer", handleAddPlayer },
     { "deletePlayer", handleDeletePlayer },
     { "rstCntlr", handleAddPlayer },
+    { "setServo", handleSetServo },
+    { "servoSequence", handleServoSequence },
+    { "initServo", handleInitServo },
     { nullptr, nullptr }
 };
 
@@ -89,6 +95,286 @@ void initServer()
     server.on("/players", HTTP_GET, [](AsyncWebServerRequest *request) {
         if(handleFileRead(request, "/players.html")) return;
         request->send(LittleFS, "/players.html", "text/html");
+    });
+
+    server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if(handleFileRead(request, "/settings.html")) return;
+        request->send(LittleFS, "/settings.html", "text/html");
+    });
+
+    server.on("/debug", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if(handleFileRead(request, "/debug.html")) return;
+        request->send(LittleFS, "/debug.html", "text/html");
+    });
+
+    server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+        char ssid[33], password[65], hostname[33];
+        getWifiSettings(ssid, password, hostname);
+
+        JsonDocument doc;
+        doc["ssid"] = ssid;
+        doc["password"] = password;
+        doc["hostname"] = hostname;
+        doc["version"] = VERSION;
+        doc["buildTime"] = BUILD_TIME;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/settings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* ssid = doc["ssid"].as<const char*>();
+            const char* password = doc["password"].as<const char*>();
+            const char* hostname = doc["hostname"].as<const char*>();
+
+            if (!ssid || strlen(ssid) == 0) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"SSID is required\"}");
+                return;
+            }
+
+            // Save settings
+            saveWifiSettings(ssid, password ? password : "", hostname ? hostname : "DartTool");
+
+            // Update global variables
+            strncpy(clientSSID, ssid, 32);
+            clientSSID[32] = '\0';
+            strncpy(clientPass, password ? password : "", 64);
+            clientPass[64] = '\0';
+
+            if (hostname && strlen(hostname) > 0) {
+                strncpy(apSSID, hostname, 32);
+                apSSID[32] = '\0';
+            }
+
+            DEBUG_PRINTLN("[API] WiFi settings updated, reconnecting...");
+
+            // Reconnect WiFi with new settings
+            WiFi.disconnect(true); // Disconnect and turn off WiFi
+            delay(1000);
+            WiFi.mode(WIFI_STA);
+            WiFi.setHostname(apSSID);
+            WiFi.begin(clientSSID, clientPass);
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "Settings saved successfully";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
+    });
+
+    server.on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest *request) {
+        request->send(200, "application/json", "{\"success\": true, \"message\": \"Device rebooting...\"}");
+        delay(500);
+        ESP.restart();
+    });
+
+    // Data Sync API Endpoints
+    server.on("/api/datasync/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        doc["endpoint"] = "";  // Will be retrieved from storage
+        doc["enabled"] = false;  // Will be retrieved from storage
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/datasync/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* endpoint = doc["url"].as<const char*>();
+            bool enabled = doc["enabled"].as<bool>();
+
+            // TODO: Save to persistent storage
+            DEBUG_PRINTLN("[API] Data Sync config updated");
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "Data Sync config saved";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
+    });
+
+    server.on("/api/datasync/sync", HTTP_POST, [](AsyncWebServerRequest *request) {
+        // TODO: Process queue and send to external endpoint
+        JsonDocument doc;
+        doc["success"] = true;
+        doc["count"] = 0;  // Number of synced items
+        doc["message"] = "Sync completed";
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/datasync/queue", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // TODO: Return current queue items
+        JsonDocument doc;
+        JsonArray queue = doc["queue"].to<JsonArray>();
+        // queue items will be populated here
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/datasync/add", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            // TODO: Add dart throw to queue
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            // Add to internal queue
+            DEBUG_PRINTLN("[API] Dart throw added to queue");
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "Dart throw added to queue";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
+    });
+
+    // Operation Mode API Endpoints
+    server.on("/api/mode/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        doc["mode"] = "display";  // Will be retrieved from storage
+        doc["gameEndpoint"] = "";  // Will be retrieved from storage
+        doc["refreshInterval"] = 5;  // Will be retrieved from storage
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/mode/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* mode = doc["mode"].as<const char*>();
+            const char* gameEndpoint = doc["serverApiUrl"].as<const char*>();
+            int refreshInterval = doc["refreshInterval"].as<int>();
+
+            if (!mode || strlen(mode) == 0) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Mode is required\"}");
+                return;
+            }
+
+            // TODO: Save to persistent storage
+            // TODO: If mode is display, start polling mechanism for external API
+            DEBUG_PRINTLN("[API] Display mode updated");
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "Display mode saved";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
+    });
+
+    server.on("/api/mode/poll", HTTP_GET, [](AsyncWebServerRequest *request) {
+        // TODO: Poll external API for game data when in display mode
+        // TODO: Return game state from external endpoint
+        JsonDocument doc;
+        doc["status"] = "unknown";
+        // Game data will be populated here from external API
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    // External Host API Endpoints
+    server.on("/api/external/config", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        doc["host"] = "";  // Will be retrieved from storage
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/external/config", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* host = doc["host"].as<const char*>();
+
+            if (!host || strlen(host) == 0) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Host is required\"}");
+                return;
+            }
+
+            // TODO: Save to persistent storage
+            DEBUG_PRINTLN("[API] External host updated");
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "External host saved";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
     });
 
     server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -326,4 +612,91 @@ bool handleReset(JsonDocument& doc)
 {
     DartTool::instance().reset();
     return false;
+}
+
+bool handleSetServo(JsonDocument& doc)
+{
+    int position = doc["pos"].as<int>();
+
+    if (position < 0 || position > 180) {
+        doc["msg"] = "Invalid position: must be 0-180";
+        doc["cmd"] = "servoResponse";
+        return true;
+    }
+
+    laserServo.write(position);
+
+    doc["cmd"] = "servoResponse";
+    doc["pos"] = position;
+    doc["msg"] = "Servo position set";
+
+    DEBUG_PRINTF("[Servo] Position set to: %d°\n", position);
+    return true;
+}
+
+bool handleServoSequence(JsonDocument& doc)
+{
+    int sequence = doc["seq"].as<int>();
+
+    switch(sequence) {
+        case 1:
+            // Sequence 1: 0° → 180° → 0°
+            laserServo.write(0);
+            delay(500);
+            laserServo.write(180);
+            delay(500);
+            laserServo.write(0);
+            break;
+
+        case 2:
+            // Sequence 2: Slow movement 0° → 180°
+            for (int pos = 0; pos <= 180; pos += 5) {
+                laserServo.write(pos);
+                delay(30);
+            }
+            break;
+
+        case 3:
+            // Sequence 3: Fast oscillation 45° ↔ 135°
+            for (int i = 0; i < 10; i++) {
+                laserServo.write(45);
+                delay(100);
+                laserServo.write(135);
+                delay(100);
+            }
+            laserServo.write(90);
+            break;
+
+        default:
+            doc["msg"] = "Unknown sequence number";
+            doc["cmd"] = "servoResponse";
+            return true;
+    }
+
+    doc["cmd"] = "servoResponse";
+    doc["seq"] = sequence;
+    doc["msg"] = "Sequence executed";
+
+    DEBUG_PRINTF("[Servo] Sequence %d executed\n", sequence);
+    return true;
+}
+
+bool handleInitServo(JsonDocument& doc)
+{
+    // Execute the standard init sequence
+    laserServo.write(0);
+    delay(2000);
+    laserServo.write(90);
+    delay(2000);
+    laserServo.write(180);
+    delay(3000);
+    laserServo.write(90);
+    delay(1000);
+
+    doc["cmd"] = "servoResponse";
+    doc["pos"] = 90;
+    doc["msg"] = "Servo initialized";
+
+    DEBUG_PRINTLN("[Servo] Initialization sequence completed");
+    return true;
 }

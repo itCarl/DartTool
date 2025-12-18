@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <title>Einstellungen - Dart-Tool</title>
+    <link rel="shortcut icon" href="/assets/favicon.ico"/>
+
+    <meta name="description" content="Settings for Dart-Tool device." />
+
+    <!-- Fonts -->
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <!-- Styles -->
+    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <!-- scripts -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
+    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <button data-ui="#navigation-drawer" class="circle transparent">
+                <i>menu</i>
+            </button>
+            <h6 class="max center-align">Einstellungen</h6>
+            <button class="circle transparent">
+                <img class="responsive" src="/assets/favicon.png">
+            </button>
+        </nav>
+    </header>
+
+    <dialog id="navigation-drawer">
+        <header>
+            <h5>Menü</h5>
+        </header>
+
+        <nav class="middle-align">
+            <a href="/">
+                <i>home</i>
+                <span>Start</span>
+            </a>
+            <a href="/game">
+                <i>sports_esports</i>
+                <span>Spiel</span>
+            </a>
+            <a href="/players">
+                <i>group</i>
+                <span>Spieler</span>
+            </a>
+            <a href="/settings">
+                <i>settings</i>
+                <span>Einstellungen</span>
+            </a>
+        </nav>
+    </dialog>
+
+    <main class="container p-4">
+        <article>
+            <header>
+                <h6>Externe Verbindung</h6>
+                <p>Konfigurieren Sie die Verbindung zu externen Servern</p>
+            </header>
+
+            <div class="field outline">
+                <input type="url" id="externalHost" name="externalHost" placeholder=" ">
+                <label for="externalHost">Externer Host</label>
+            </div>
+
+            <div class="space"></div>
+            <button id="saveExternalHostBtn" class="outline">
+                <i>save</i>
+                <span>Host speichern</span>
+            </button>
+        </article>
+
+        <article>
+            <header>
+                <h6>Anzeigemodus</h6>
+                <p>Wählen Sie, wie die Anzeige arbeitet</p>
+            </header>
+
+            <div class="field middle-align">
+                <nav class="group connected">
+                    <label class="button outline">
+                        <input type="radio" name="operationMode" value="scoreboard" id="modeScoreboard">
+                        <span>Scoreboard (Standalone)</span>
+                    </label>
+                    <label class="button outline">
+                        <input type="radio" name="operationMode" value="display" id="modeDisplay">
+                        <span>Remote-Anzeige</span>
+                    </label>
+                </nav>
+            </div>
+
+            <div id="displayModeSettings">
+                <h6>Remote-Anzeige Einstellungen</h6>
+
+                <div class="field outline">
+                    <input type="text" id="gameEndpoint" name="gameEndpoint" placeholder=" ">
+                    <label for="gameEndpoint">Game Endpoint</label>
+                </div>
+
+                <div class="field outline">
+                    <input type="number" id="refreshInterval" name="refreshInterval" min="1" max="60" placeholder=" " value="5">
+                    <label for="refreshInterval">Aktualisierungsintervall (Sekunden)</label>
+                </div>
+            </div>
+
+            <div class="space"></div>
+            <button id="saveModeSettingsBtn" class="outline">
+                <i>save</i>
+                <span>Anzeigemodus speichern</span>
+            </button>
+        </article>
+
+        <article>
+            <header>
+                <h6>WiFi Einstellungen</h6>
+                <p>Konfigurieren Sie die WiFi-Verbindung des Geräts</p>
+            </header>
+
+            <form id="wifiSettingsForm">
+                <div class="field outline">
+                    <input type="text" id="ssid" name="ssid" required placeholder=" ">
+                    <label for="ssid">SSID (Netzwerkname)</label>
+                </div>
+
+                <div class="field outline">
+                    <input type="password" id="password" name="password" placeholder=" ">
+                    <label for="password">Passwort</label>
+                </div>
+
+                <div class="field outline">
+                    <input type="text" id="hostname" name="hostname" placeholder=" ">
+                    <label for="hostname">Hostname</label>
+                </div>
+
+                <div class="space"></div>
+
+                <div class="space"></div>
+                <button type="submit" class="fill">
+                    <i>save</i>
+                    <span>Speichern</span>
+                </button>
+            </form>
+
+            <div id="statusMessage" class="space">
+                <span id="statusText"></span>
+            </div>
+        </article>
+
+        <article id="dataSyncSection">
+            <header>
+                <h6>Daten Synchronisation</h6>
+                <p>Konfigurieren Sie die externe Daten-Sync Schnittstelle</p>
+            </header>
+
+            <div class="field outline">
+                <input type="text" id="syncEndpoint" name="syncEndpoint" placeholder=" ">
+                <label for="syncEndpoint">Sync Endpoint</label>
+            </div>
+
+            <div class="field middle-align">
+                <label class="switch">
+                    <input type="checkbox" id="dataSyncToggle">
+                    <span></span>
+                </label>
+                <label for="dataSyncToggle">Daten Synchronisation aktivieren</label>
+            </div>
+
+            <div id="dataSyncStatus">
+                <p><strong>Queue Status:</strong></p>
+                <p id="queueInfo">Warteschlange leer</p>
+            </div>
+
+            <div class="space"></div>
+            <button id="syncNowBtn" class="fill">
+                <i>cloud_upload</i>
+                <span>Jetzt synchronisieren</span>
+            </button>
+
+            <div class="space"></div>
+            <button id="saveSyncSettingsBtn" class="outline">
+                <i>save</i>
+                <span>Sync-Einstellungen speichern</span>
+            </button>
+        </article>
+
+        <article>
+            <header>
+                <h6>System Informationen</h6>
+            </header>
+
+            <div class="row">
+                <div class="col s6">
+                    <strong>Firmware Version:</strong>
+                    <p id="version">Lädt...</p>
+                </div>
+                <div class="col s6">
+                    <strong>Build Zeit:</strong>
+                    <p id="buildTime">Lädt...</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col s6">
+                    <strong>Free Heap:</strong>
+                    <p id="freeHeap">Lädt...</p>
+                </div>
+                <div class="col s6">
+                    <strong>Uptime:</strong>
+                    <p id="uptime">Lädt...</p>
+                </div>
+            </div>
+
+            <div class="space"></div>
+            <button id="rebootBtn" class="outline">
+                <i>power_settings_new</i>
+                <span>Neu starten</span>
+            </button>
+        </article>
+    </main>
+
+    <footer></footer>
+</body>
+</html>
