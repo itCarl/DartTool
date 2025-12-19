@@ -111,6 +111,13 @@ function onMessage(event) {
         return;
     }
 
+    // Handle laser responses (Debug page)
+    if (data.cmd === 'laserResponse') {
+        updateStatus(data.msg, 'success');
+        updateLaserStatus(data.state);
+        return;
+    }
+
     // Handle players list
     if(data.players) {
         let players = data.players;
@@ -870,56 +877,92 @@ async function saveExternalHostSettings() {
 // DEBUG PAGE - SERVO FUNCTIONS
 // ============================================================================
 
-function sendServoCommand(position) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        updateStatus('Nicht verbunden', 'error');
-        return false;
-    }
-
-    const cmd = {
+// Servo command definitions
+const ServoCommands = {
+    SET_POSITION: {
         cmd: 'setServo',
-        pos: parseInt(position)
-    };
-
-    ws.send(JSON.stringify(cmd));
-    updateStatus(`Sende Befehl: Position ${position}°...`, 'info');
-    return true;
-}
-
-function sendSequenceCommand(sequence) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-        updateStatus('Nicht verbunden', 'error');
-        return false;
-    }
-
-    const cmd = {
+        buildParams: (position) => ({ pos: parseInt(position) }),
+        getMessage: (position) => `Sende Befehl: Position ${position}°...`
+    },
+    SET_BY_DISTANCE: {
+        cmd: 'setServoByDistance',
+        buildParams: (distance, height) => ({
+            dis: parseInt(distance),
+            height: parseInt(height)
+        }),
+        getMessage: (distance, height) => `Berechne Winkel für Höhe ${height} cm und Distanz ${distance} cm...`
+    },
+    SEQUENCE: {
         cmd: 'servoSequence',
-        seq: sequence
-    };
+        buildParams: (sequence) => ({ seq: sequence }),
+        getMessage: (sequence) => `Starte Sequenz ${sequence}...`
+    },
+    INIT: {
+        cmd: 'initServo',
+        buildParams: () => ({}),
+        getMessage: () => 'Initialisiere Servo...'
+    }
+};
 
-    ws.send(JSON.stringify(cmd));
-    updateStatus(`Starte Sequenz ${sequence}...`, 'info');
-    return true;
-}
+// Laser command definitions
+const LaserCommands = {
+    ON: {
+        cmd: 'laserControl',
+        buildParams: () => ({ action: 'on' }),
+        getMessage: () => 'Laser wird eingeschaltet...'
+    },
+    OFF: {
+        cmd: 'laserControl',
+        buildParams: () => ({ action: 'off' }),
+        getMessage: () => 'Laser wird ausgeschaltet...'
+    },
+    TOGGLE: {
+        cmd: 'laserControl',
+        buildParams: () => ({ action: 'toggle' }),
+        getMessage: () => 'Laser Status wird umgeschaltet...'
+    }
+};
 
-function sendInitCommand() {
+function sendServoCommand(commandConfig, ...args) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         updateStatus('Nicht verbunden', 'error');
         return false;
     }
 
     const cmd = {
-        cmd: 'initServo'
+        cmd: commandConfig.cmd,
+        ...commandConfig.buildParams(...args)
     };
 
     ws.send(JSON.stringify(cmd));
-    updateStatus('Initialisiere Servo...', 'info');
+    updateStatus(commandConfig.getMessage(...args), 'info');
+    return true;
+}
+
+function sendLaserCommand(commandConfig) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        updateStatus('Nicht verbunden', 'error');
+        return false;
+    }
+
+    const cmd = {
+        cmd: commandConfig.cmd,
+        ...commandConfig.buildParams()
+    };
+
+    ws.send(JSON.stringify(cmd));
+    updateStatus(commandConfig.getMessage(), 'info');
     return true;
 }
 
 function updateCurrentPosition(pos) {
     const el = byId('currentServoPos');
     if (el) el.textContent = pos + '°';
+}
+
+function updateLaserStatus(state) {
+    const el = byId('laserStatus');
+    if (el) el.textContent = state ? 'EIN' : 'AUS';
 }
 
 function updateStatus(message, type = 'info') {
@@ -950,6 +993,9 @@ function initDebugPage() {
     const servoSlider = byId('servoSlider');
     const servoSliderValue = byId('servoSliderValue');
     const setServoBtn = byId('setServoBtn');
+    const servoHeightValue = byId('height');
+    const servoDistanceValue = byId('distance');
+    const setDistanceBtn = byId('setDistance');
 
     if (servoSlider) {
         servoSlider.addEventListener('input', (e) => {
@@ -962,7 +1008,15 @@ function initDebugPage() {
     if (setServoBtn) {
         setServoBtn.addEventListener('click', () => {
             const position = servoSlider?.value;
-            if (position) sendServoCommand(position);
+            if (position) sendServoCommand(ServoCommands.SET_POSITION, position);
+        });
+    }
+
+    if (setDistanceBtn) {
+        setDistanceBtn.addEventListener('click', () => {
+            const distance = servoDistanceValue?.value;
+            const height = servoHeightValue?.value;
+            if (distance && height) sendServoCommand(ServoCommands.SET_BY_DISTANCE, distance, height);
         });
     }
 
@@ -974,7 +1028,7 @@ function initDebugPage() {
                 if (servoSlider) servoSlider.value = pos;
                 if (servoSliderValue) servoSliderValue.textContent = `Wert: ${pos}°`;
                 updateCurrentPosition(pos);
-                sendServoCommand(pos);
+                sendServoCommand(ServoCommands.SET_POSITION, pos);
             });
         }
     });
@@ -983,12 +1037,24 @@ function initDebugPage() {
     const testSeq2 = byId('testSeq2');
     const testSeq3 = byId('testSeq3');
 
-    if (testSeq1) testSeq1.addEventListener('click', () => sendSequenceCommand(1));
-    if (testSeq2) testSeq2.addEventListener('click', () => sendSequenceCommand(2));
-    if (testSeq3) testSeq3.addEventListener('click', () => sendSequenceCommand(3));
+    if (testSeq1) testSeq1.addEventListener('click', () => sendServoCommand(ServoCommands.SEQUENCE, 1));
+    if (testSeq2) testSeq2.addEventListener('click', () => sendServoCommand(ServoCommands.SEQUENCE, 2));
+    if (testSeq3) testSeq3.addEventListener('click', () => sendServoCommand(ServoCommands.SEQUENCE, 3));
 
     const initServo = byId('initServo');
     if (initServo) {
-        initServo.addEventListener('click', () => sendInitCommand());
+        initServo.addEventListener('click', () => sendServoCommand(ServoCommands.INIT));
+    }
+
+    // Laser control buttons
+    const laserOnBtn = byId('laserOn');
+    const laserOffBtn = byId('laserOff');
+
+    if (laserOnBtn) {
+        laserOnBtn.addEventListener('click', () => sendLaserCommand(LaserCommands.ON));
+    }
+
+    if (laserOffBtn) {
+        laserOffBtn.addEventListener('click', () => sendLaserCommand(LaserCommands.OFF));
     }
 }

@@ -18,6 +18,8 @@ bool handleReset(JsonDocument& doc);
 bool handleSetServo(JsonDocument& doc);
 bool handleServoSequence(JsonDocument& doc);
 bool handleInitServo(JsonDocument& doc);
+bool handleSetServoByDistance(JsonDocument& doc);
+bool handleLaserControl(JsonDocument& doc);
 
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
@@ -49,7 +51,9 @@ CommandEntry commandTable[] = {
     { "setServo", handleSetServo },
     { "servoSequence", handleServoSequence },
     { "initServo", handleInitServo },
-    { nullptr, nullptr }
+    { "setServoByDistance", handleSetServoByDistance },
+    { "laserControl", handleLaserControl },
+    // { nullptr, nullptr }
 };
 
 
@@ -723,5 +727,65 @@ bool handleInitServo(JsonDocument& doc)
     doc["pos"] = 90;
     doc["msg"] = "Servo initialized";
 
+    return true;
+}
+
+bool handleSetServoByDistance(JsonDocument& doc)
+{
+    double distance = doc["dis"].as<double>();
+    double height = doc["height"].as<double>();
+
+    // Use default height if not provided (assuming some default mounting height)
+    if (height == 0) {
+        height = 100.0; // Default height in cm, adjust as needed
+    }
+
+    // Calculate angle based on height and distance
+    int theta = servoAngleByDistance(height, distance);
+    int servoPos = round(theta + 40.5);
+
+    if (!servoIsValidPosition(servoPos)) {
+        doc["msg"] = "Calculated angle out of range (0-180)";
+        doc["cmd"] = "servoResponse";
+        doc["theta"] = theta;
+        doc["pos"] = servoPos;
+        return true;
+    }
+
+    servoSetPosition(servoPos);
+
+    doc["cmd"] = "servoResponse";
+    doc["theta"] = theta;
+    doc["pos"] = servoPos;
+    doc["distance"] = distance;
+    doc["height"] = height;
+    doc["msg"] = "Servo position set by distance";
+
+    return true;
+}
+
+bool handleLaserControl(JsonDocument& doc)
+{
+    String action = doc["action"].as<String>();
+
+    if (action == "on") {
+        laserOn();
+        doc["state"] = true;
+        doc["msg"] = "Laser ON";
+    } else if (action == "off") {
+        laserOff();
+        doc["state"] = false;
+        doc["msg"] = "Laser OFF";
+    } else if (action == "toggle") {
+        laserToggle();
+        doc["state"] = laserGetState();
+        doc["msg"] = laserGetState() ? "Laser ON" : "Laser OFF";
+    } else {
+        doc["msg"] = "Invalid action. Use 'on', 'off', or 'toggle'";
+        doc["state"] = laserGetState();
+        return true;
+    }
+
+    doc["cmd"] = "laserResponse";
     return true;
 }

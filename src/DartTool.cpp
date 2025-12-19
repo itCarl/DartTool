@@ -33,6 +33,11 @@ void DartTool::setup()
     LCD.print(".");
     delay(500);
 
+    laserInit();
+
+    LCD.print(".");
+    delay(500);
+
     initConnection();
     initServer();
 

@@ -42,10 +42,18 @@ void servoSetPosition(int position);
 void servoMoveToPosition(int position, uint16_t delayMs);
 int servoGetPosition();
 bool servoIsValidPosition(int position);
-void servoSequence1();      // 0° → 180° → 0°
-void servoSequence2();      // Slow movement 0° → 180°
-void servoSequence3();      // Fast oscillation 45° ↔ 135°
-void servoInitSequence();   // Standard init sequence
+void servoSequence1();
+void servoSequence2();
+void servoSequence3();
+void servoInitSequence();
 void servoShutdown();
+int servoAngleByDistance(double height, double distance);
+
+// laser
+void laserInit();
+void laserOn();
+void laserOff();
+void laserToggle();
+bool laserGetState();
 
 #endif

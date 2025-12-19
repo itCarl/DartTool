@@ -35,108 +35,154 @@
         </nav>
     </header>
 
-    <main class="container">
-        <!-- Servo Control Section -->
-        <article class="m-3">
+    <main class="container p-4">
+        <!-- Distance to Ground -->
+        <article style="margin-bottom: 1rem;">
             <header>
-                <h5>Servo Funktionen</h5>
+                <h6>Distance to ground</h6>
             </header>
 
-            <!-- Servo Position Control -->
-            <div class="p-3">
+            <div class="grid">
+                <div class="field label border small-round s6">
+                    <input type="number" id="height" min="0" max="500" value="100" step="1">
+                    <label for="height">Höhe (cm)</label>
+                </div>
+                <div class="field label border small-round s6">
+                    <input type="number" id="distance" min="0" max="500" value="100" step="1">
+                    <label for="distance">Distanz (cm)</label>
+                </div>
+            </div>
+
+            <div class="space"></div>
+            <button class="outline" id="setDistance">
+                <i>check</i>
+                <span>Distanz setzen</span>
+            </button>
+        </article>
+
+        <!-- Servo Position Control -->
+        <article style="margin-bottom: 1rem;">
+            <header>
                 <h6>Servo Position</h6>
-                <p class="small text-secondary">Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
+                <p>Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
+            </header>
 
-                <div class="field small-round no-margin">
-                    <input type="range" id="servoSlider" min="0" max="180" value="90" step="1">
-                    <label for="servoSlider">Position (0-180°)</label>
-                </div>
-
-                <div class="p-2">
-                    <button class="small" id="setServoBtn">
-                        <i>check</i>
-                        <span>Position setzen</span>
-                    </button>
-                </div>
-
-                <p class="small" id="servoSliderValue">Wert: 90°</p>
+            <div class="field small-round">
+                <input type="range" id="servoSlider" min="0" max="180" value="90" step="1">
+                <label for="servoSlider">Position (0-180°)</label>
             </div>
 
-            <hr>
+            <p class="small" id="servoSliderValue">Wert: 90°</p>
 
-            <!-- Preset Positions -->
-            <div class="p-3">
+            <div class="space"></div>
+            <button class="outline" id="setServoBtn">
+                <i>check</i>
+                <span>Position setzen</span>
+            </button>
+        </article>
+
+        <!-- Preset Positions -->
+        <article style="margin-bottom: 1rem;">
+            <header>
                 <h6>Vordefinierte Positionen</h6>
-                <div class="grid">
-                    <button class="small outline s2" id="servo0">
-                        <i>radio_button_checked</i>
-                        <span>0°</span>
-                    </button>
-                    <button class="small outline s2" id="servo45">
-                        <i>radio_button_checked</i>
-                        <span>45°</span>
-                    </button>
-                    <button class="small outline s2" id="servo90">
-                        <i>radio_button_checked</i>
-                        <span>90°</span>
-                    </button>
-                    <button class="small outline s2" id="servo135">
-                        <i>radio_button_checked</i>
-                        <span>135°</span>
-                    </button>
-                    <button class="small outline s2" id="servo180">
-                        <i>radio_button_checked</i>
-                        <span>180°</span>
-                    </button>
-                </div>
-            </div>
+            </header>
 
-            <hr>
-
-            <!-- Test Sequences -->
-            <div class="p-3">
-                <h6>Test Sequenzen</h6>
-                <div class="grid">
-                    <button class="small s4" id="testSeq1">
-                        <i>play_arrow</i>
-                        <span>Sequenz 1</span>
-                    </button>
-                    <button class="small s4" id="testSeq2">
-                        <i>play_arrow</i>
-                        <span>Sequenz 2</span>
-                    </button>
-                    <button class="small s4" id="testSeq3">
-                        <i>play_arrow</i>
-                        <span>Sequenz 3</span>
-                    </button>
-                </div>
-                <p class="small text-secondary p-2">Sequenz 1: 0° → 180° → 0°</p>
-                <p class="small text-secondary p-2">Sequenz 2: Langsame Bewegung 0° → 180°</p>
-                <p class="small text-secondary p-2">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
-            </div>
-
-            <hr>
-
-            <!-- Init Sequence -->
-            <div class="p-3">
-                <h6>Initialisierung</h6>
-                <button class="small" id="initServo">
-                    <i>restart_alt</i>
-                    <span>Servo initialisieren</span>
+            <div class="grid">
+                <button class="small outline s2" id="servo0">
+                    <i>radio_button_checked</i>
+                    <span>0°</span>
                 </button>
-                <p class="small text-secondary p-2">Führt die Standard-Initialisierungssequenz aus</p>
+                <button class="small outline s2" id="servo45">
+                    <i>radio_button_checked</i>
+                    <span>45°</span>
+                </button>
+                <button class="small outline s2" id="servo90">
+                    <i>radio_button_checked</i>
+                    <span>90°</span>
+                </button>
+                <button class="small outline s2" id="servo135">
+                    <i>radio_button_checked</i>
+                    <span>135°</span>
+                </button>
+                <button class="small outline s2" id="servo180">
+                    <i>radio_button_checked</i>
+                    <span>180°</span>
+                </button>
+            </div>
+        </article>
+
+        <!-- Test Sequences -->
+        <article style="margin-bottom: 1rem;">
+            <header>
+                <h6>Test Sequenzen</h6>
+            </header>
+
+            <div class="grid">
+                <button class="small s4" id="testSeq1">
+                    <i>play_arrow</i>
+                    <span>Sequenz 1</span>
+                </button>
+                <button class="small s4" id="testSeq2">
+                    <i>play_arrow</i>
+                    <span>Sequenz 2</span>
+                </button>
+                <button class="small s4" id="testSeq3">
+                    <i>play_arrow</i>
+                    <span>Sequenz 3</span>
+                </button>
             </div>
 
-            <hr>
+            <div class="space"></div>
+            <p class="small text-secondary">Sequenz 1: 0° → 180° → 0°</p>
+            <p class="small text-secondary">Sequenz 2: Langsame Bewegung 0° → 180°</p>
+            <p class="small text-secondary">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
+        </article>
 
-            <!-- Status Display -->
-            <div class="p-3">
+        <!-- Init Sequence -->
+        <article style="margin-bottom: 1rem;">
+            <header>
+                <h6>Initialisierung</h6>
+            </header>
+
+            <button class="outline" id="initServo">
+                <i>restart_alt</i>
+                <span>Servo initialisieren</span>
+            </button>
+
+            <div class="space"></div>
+            <p class="small text-secondary">Führt die Standard-Initialisierungssequenz aus</p>
+        </article>
+
+        <!-- Laser Control -->
+        <article style="margin-bottom: 1rem;">
+            <header>
+                <h6>Laser Kontrolle</h6>
+            </header>
+
+            <div class="grid">
+                <button class="small s6" id="laserOn">
+                    <i>lightbulb</i>
+                    <span>Laser EIN</span>
+                </button>
+                <button class="small outline s6" id="laserOff">
+                    <i>lightbulb_outline</i>
+                    <span>Laser AUS</span>
+                </button>
+            </div>
+
+            <div class="space"></div>
+            <p class="small text-secondary">Status: <strong id="laserStatus">AUS</strong></p>
+        </article>
+
+        <!-- Status Display -->
+        <article style="margin-bottom: 1rem;">
+            <header>
                 <h6>Status</h6>
-                <div id="statusDisplay" class="p-2" style="background-color: rgba(0,0,0,0.05); border-radius: 8px;">
-                    <p class="small">Warten auf Befehle...</p>
-                </div>
-            </div>
+            </header>
 
+            <div id="statusDisplay" class="p-2" style="background-color: rgba(0,0,0,0.05); border-radius: 8px;">
+                <p class="small">Warten auf Befehle...</p>
+            </div>
         </article>
     </main>
 

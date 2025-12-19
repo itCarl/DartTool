@@ -14,6 +14,11 @@ inline String generateUuid() {
     return String(buf);
 }
 
+inline int calculateAngleByHeightAndTargetDistance(double height, double distance)
+{
+    return atan2(distance, height) * RAD_TO_DEG;
+}
+
 // String getMACFromIP(IPAddress ip)
 // {
 //     struct station_info *stat_info = wifi_softap_get_station_info();

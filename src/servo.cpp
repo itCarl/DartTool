@@ -1,16 +1,8 @@
 #include "DartTool.h"
 
-// Global servo instance
 static int servoCurrentPos = SERVO_HOME_POS;
 static bool servoInitialized = false;
 
-// ============================================================================
-// SERVO UTILITY FUNCTIONS
-// ============================================================================
-
-/**
- * Initialize servo motor
- */
 void servoInit() {
     if (servoInitialized) return;
 
@@ -22,9 +14,6 @@ void servoInit() {
     DEBUG_PRINTLN("[Servo] Initialized");
 }
 
-/**
- * Set servo to specific position (0-180°)
- */
 void servoSetPosition(int position) {
     if (!servoInitialized) {
         DEBUG_PRINTLN("[Servo] Not initialized");
@@ -41,9 +30,6 @@ void servoSetPosition(int position) {
     DEBUG_PRINTF("[Servo] Position set to: %d°\n", position);
 }
 
-/**
- * Move to position with optional delay
- */
 void servoMoveToPosition(int position, uint16_t delayMs) {
     servoSetPosition(position);
     if (delayMs > 0) {
@@ -51,27 +37,19 @@ void servoMoveToPosition(int position, uint16_t delayMs) {
     }
 }
 
-/**
- * Get current servo position
- */
 int servoGetPosition() {
     return servoCurrentPos;
 }
 
-/**
- * Check if position is valid
- */
 bool servoIsValidPosition(int position) {
     return position >= SERVO_MIN_POS && position <= SERVO_MAX_POS;
 }
 
-// ============================================================================
-// SERVO SEQUENCES
-// ============================================================================
+int servoAngleByDistance(double height, double distance) {
+    int baseAngle = calculateAngleByHeightAndTargetDistance(height, distance);
+    return baseAngle;
+}
 
-/**
- * Sequence 1: 0° → 180° → 0°
- */
 void servoSequence1() {
     if (!servoInitialized) return;
 
@@ -82,9 +60,6 @@ void servoSequence1() {
     servoMoveToPosition(SERVO_HOME_POS, 0);
 }
 
-/**
- * Sequence 2: Slow movement 0° → 180°
- */
 void servoSequence2() {
     if (!servoInitialized) return;
 
@@ -96,9 +71,6 @@ void servoSequence2() {
     servoMoveToPosition(SERVO_HOME_POS, 0);
 }
 
-/**
- * Sequence 3: Fast oscillation 45° ↔ 135°
- */
 void servoSequence3() {
     if (!servoInitialized) return;
 
@@ -112,9 +84,6 @@ void servoSequence3() {
     servoMoveToPosition(SERVO_HOME_POS, 0);
 }
 
-/**
- * Init Sequence: Standard initialization
- */
 void servoInitSequence() {
     if (!servoInitialized) return;
 
@@ -125,9 +94,6 @@ void servoInitSequence() {
     servoMoveToPosition(90, 1000);
 }
 
-/**
- * Shutdown servo
- */
 void servoShutdown() {
     if (servoInitialized) {
         laserServo.detach();

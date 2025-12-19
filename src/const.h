@@ -23,4 +23,9 @@
 #define SERVO_MAX_POS 180
 #define SERVO_HOME_POS 90
 
+/*
+ * Laser
+ */
+#define LASER_PIN 4
+
 #endif
