@@ -377,6 +377,57 @@ void initServer()
         }
     });
 
+    // ============================================================================
+    // COMMAND API ENDPOINT (WebSocket Fallback)
+    // ============================================================================
+    // This endpoint provides a REST API fallback when WebSocket is unavailable
+    // Accepts same JSON commands as WebSocket messages
+    server.on("/api/command", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] Command JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* cmd = doc["cmd"];
+
+            if (!cmd) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Missing 'cmd' field\"}");
+                return;
+            }
+
+            DEBUG_PRINT("[API] Command received: ");
+            DEBUG_PRINTLN(cmd);
+
+            // Process command through same command table as WebSocket
+            bool foundCmd = false;
+            for (int i = 0; commandTable[i].cmd != nullptr; ++i) {
+                if (strcmp(cmd, commandTable[i].cmd) == 0) {
+                    if (commandTable[i].handler(doc)) {
+                        String response;
+                        serializeJson(doc, response);
+                        request->send(200, "application/json", response);
+                    } else {
+                        request->send(200, "application/json", "{\"success\": true}");
+                    }
+                    foundCmd = true;
+                    break;
+                }
+            }
+
+            if (!foundCmd) {
+                DEBUG_PRINTLN("[API] Unknown command");
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Unknown command\"}");
+            }
+        }
+    });
+
     server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(200, "text/html", "<meta http-equiv='refresh' content='0; url=/' />");
     });
@@ -387,6 +438,10 @@ void initServer()
 
     server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/script.js", "text/javascript");
+    });
+
+    server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(LittleFS, "/app.js", "text/javascript");
     });
 
     // health / availability check route
@@ -618,19 +673,18 @@ bool handleSetServo(JsonDocument& doc)
 {
     int position = doc["pos"].as<int>();
 
-    if (position < 0 || position > 180) {
+    if (!servoIsValidPosition(position)) {
         doc["msg"] = "Invalid position: must be 0-180";
         doc["cmd"] = "servoResponse";
         return true;
     }
 
-    laserServo.write(position);
+    servoSetPosition(position);
 
     doc["cmd"] = "servoResponse";
     doc["pos"] = position;
     doc["msg"] = "Servo position set";
 
-    DEBUG_PRINTF("[Servo] Position set to: %d°\n", position);
     return true;
 }
 
@@ -640,33 +694,14 @@ bool handleServoSequence(JsonDocument& doc)
 
     switch(sequence) {
         case 1:
-            // Sequence 1: 0° → 180° → 0°
-            laserServo.write(0);
-            delay(500);
-            laserServo.write(180);
-            delay(500);
-            laserServo.write(0);
+            servoSequence1();
             break;
-
         case 2:
-            // Sequence 2: Slow movement 0° → 180°
-            for (int pos = 0; pos <= 180; pos += 5) {
-                laserServo.write(pos);
-                delay(30);
-            }
+            servoSequence2();
             break;
-
         case 3:
-            // Sequence 3: Fast oscillation 45° ↔ 135°
-            for (int i = 0; i < 10; i++) {
-                laserServo.write(45);
-                delay(100);
-                laserServo.write(135);
-                delay(100);
-            }
-            laserServo.write(90);
+            servoSequence3();
             break;
-
         default:
             doc["msg"] = "Unknown sequence number";
             doc["cmd"] = "servoResponse";
@@ -677,26 +712,16 @@ bool handleServoSequence(JsonDocument& doc)
     doc["seq"] = sequence;
     doc["msg"] = "Sequence executed";
 
-    DEBUG_PRINTF("[Servo] Sequence %d executed\n", sequence);
     return true;
 }
 
 bool handleInitServo(JsonDocument& doc)
 {
-    // Execute the standard init sequence
-    laserServo.write(0);
-    delay(2000);
-    laserServo.write(90);
-    delay(2000);
-    laserServo.write(180);
-    delay(3000);
-    laserServo.write(90);
-    delay(1000);
+    servoInitSequence();
 
     doc["cmd"] = "servoResponse";
     doc["pos"] = 90;
     doc["msg"] = "Servo initialized";
 
-    DEBUG_PRINTLN("[Servo] Initialization sequence completed");
     return true;
 }

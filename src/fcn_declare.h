@@ -36,4 +36,16 @@ void cleanupWs();
 // network
 void printConnectedClients();
 
+// servo
+void servoInit();
+void servoSetPosition(int position);
+void servoMoveToPosition(int position, uint16_t delayMs);
+int servoGetPosition();
+bool servoIsValidPosition(int position);
+void servoSequence1();      // 0° → 180° → 0°
+void servoSequence2();      // Slow movement 0° → 180°
+void servoSequence3();      // Fast oscillation 45° ↔ 135°
+void servoInitSequence();   // Standard init sequence
+void servoShutdown();
+
 #endif

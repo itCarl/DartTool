@@ -48,7 +48,7 @@ function onLoad(event) {
 function initWebSocket() {
     console.log('Trying to open a WebSocket connection...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
+    ws = new WebSocket(host + '/ws');
     ws.onopen = onOpen;
     ws.onclose = onClose;
     ws.onerror = onError;
@@ -92,8 +92,17 @@ function onError(event) {
 }
 
 function onMessage(event) {
-    let data = JSON.parse(event.data);
-    console.log('path: '+ window.location.pathname);
+    let data;
+    try {
+        if(event.data == 'connected')
+            return;
+        data = JSON.parse(event.data);
+        console.log('path: '+ window.location.pathname);
+    } catch (error) {
+        console.error('JSON Parse Error:', error);
+        console.error('Received data:', event.data);
+        return;
+    }
 
     // Handle servo responses (Debug page)
     if (data.cmd === 'servoResponse') {
