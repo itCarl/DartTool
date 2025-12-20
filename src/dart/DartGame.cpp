@@ -91,3 +91,90 @@ void DartGame::serialize(JsonObject& obj)
         player["points"] = points - player["points"].as<uint16_t>();
     }
 }
+
+void DartGame::deserialize(const JsonObject& obj)
+{
+    // Deserialize basic game properties
+    // Handle both game_id (external format) and id (internal format)
+    if (obj.containsKey("game_id")) {
+        id = obj["game_id"].as<String>();
+    } else if (obj.containsKey("id")) {
+        id = obj["id"].as<String>();
+    }
+
+    if (obj.containsKey("status")) {
+        String statusStr = obj["status"].as<String>();
+        status = stringToStatus(statusStr);
+    }
+
+    // Handle both throwCounter and maxThrows
+    if (obj.containsKey("throwCounter")) {
+        throwCounter = obj["throwCounter"].as<uint8_t>();
+    } else if (obj.containsKey("maxThrows")) {
+        throwCounter = obj["maxThrows"].as<uint8_t>();
+    }
+
+    if (obj.containsKey("points")) {
+        points = obj["points"].as<uint16_t>();
+    }
+
+    if (obj.containsKey("turn")) {
+        turn = obj["turn"].as<uint8_t>();
+    }
+
+    // Deserialize players
+    if (obj.containsKey("players")) {
+        JsonArray jsonPlayers = obj["players"].as<JsonArray>();
+        players.clear();
+
+        int activePlayerId = -1;
+        if (obj.containsKey("active_player_id")) {
+            activePlayerId = obj["active_player_id"].as<int>();
+        }
+
+        for (JsonObject playerObj : jsonPlayers) {
+            Player player;
+
+            // Handle integer or string IDs
+            if (playerObj.containsKey("id")) {
+                if (playerObj["id"].is<int>()) {
+                    player.setId(String(playerObj["id"].as<int>()));
+                } else {
+                    player.setId(playerObj["id"].as<String>());
+                }
+            }
+
+            if (playerObj.containsKey("name")) {
+                player.setName(playerObj["name"].as<String>());
+            }
+
+            // Handle both score (external) and points (internal)
+            if (playerObj.containsKey("score")) {
+                // External format: score is current points
+                // We need to calculate remaining points: target - score
+                uint16_t score = playerObj["score"].as<uint16_t>();
+                // Note: Player points represent total scored, not remaining
+                // This might need adjustment based on your display logic
+            } else if (playerObj.containsKey("points")) {
+                // Internal format: already handled by deserialize
+            }
+
+            players.push_back(player);
+
+            // Set current player index based on active_player_id
+            if (activePlayerId >= 0 && playerObj["id"].as<int>() == activePlayerId) {
+                currentPlayerIndex = players.size() - 1;
+            }
+        }
+    }
+
+    // Fallback: handle currentPlayerId or currentPlayerIndex
+            if (players[i].getId() == currentPlayerId) {
+                currentPlayerIndex = i;
+                break;
+            }
+        }
+    } else if (obj.containsKey("currentPlayerIndex")) {
+        currentPlayerIndex = obj["currentPlayerIndex"].as<uint8_t>();
+    }
+}

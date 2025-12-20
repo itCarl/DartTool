@@ -41,22 +41,37 @@ window.addEventListener('load', onLoad);
 // WEBSOCKET FUNCTIONS
 // ============================================================================
 
+let reconnectAttempts = 0;
+const maxReconnectDelay = 30000; // 30 seconds max
+
 function onLoad(event) {
     initWebSocket();
 }
 
 function initWebSocket() {
+    // Close existing connection if any
+    if (ws && ws.readyState !== WebSocket.CLOSED) {
+        ws.close();
+    }
+
     console.log('Trying to open a WebSocket connection...');
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(host + '/ws');
-    ws.onopen = onOpen;
-    ws.onclose = onClose;
-    ws.onerror = onError;
-    ws.onmessage = onMessage;
+
+    try {
+        ws = new WebSocket(host + '/ws');
+        ws.onopen = onOpen;
+        ws.onclose = onClose;
+        ws.onerror = onError;
+        ws.onmessage = onMessage;
+    } catch (error) {
+        console.error('WebSocket initialization error:', error);
+        scheduleReconnect();
+    }
 }
 
 function onOpen(event) {
     console.log('Connection opened');
+    reconnectAttempts = 0; // Reset reconnect counter on successful connection
 
     if(isPage('/data/players.html', '/players')) {
         sendMessage({
@@ -76,19 +91,27 @@ function onOpen(event) {
 }
 
 function onClose(event) {
-    console.warn('Connection closed');
+    console.warn('Connection closed', event);
     if(isPage('/data/debug.html', '/debug')) {
-        updateStatus('Verbindung getrennt', 'error');
+        updateStatus('Verbindung getrennt - Reconnect...', 'error');
     }
-    setTimeout(initWebSocket, 5000);
+    scheduleReconnect();
 }
 
 function onError(event) {
-    console.log('Connection Error');
-    console.log(event);
+    console.error('WebSocket error:', event);
     if(isPage('/data/debug.html', '/debug')) {
-        updateStatus('Fehler bei WebSocket-Verbindung', 'error');
+        updateStatus('WebSocket-Fehler - Reconnect...', 'error');
     }
+    // Don't call scheduleReconnect here, onClose will be called after error
+}
+
+function scheduleReconnect() {
+    reconnectAttempts++;
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), maxReconnectDelay);
+    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
+    setTimeout(initWebSocket, delay);
 }
 
 function onMessage(event) {

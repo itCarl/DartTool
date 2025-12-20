@@ -5,6 +5,7 @@
 
 #include <WiFi.h>
 #include <WiFiClient.h>
+#include <HTTPClient.h>
 #include <AsyncTCP.h>
 #include <ElegantOTA.h>
 #include <DNSServer.h>
@@ -86,6 +87,27 @@ DT_GLOBAL unsigned long wsLastLiveTime _INIT(0);
 
 DT_GLOBAL String gmMAC _INIT("");
 
+// External game state polling
+#ifdef EXTERNAL_SERVICE_HOST
+    DT_GLOBAL String externalServiceHost _INIT(EXTERNAL_SERVICE_HOST);
+#else
+    DT_GLOBAL String externalServiceHost _INIT("");
+#endif
+
+#ifdef EXTERNAL_SERVICE_INTERVAL
+    DT_GLOBAL unsigned long pollInterval _INIT(EXTERNAL_SERVICE_INTERVAL);
+#else
+    DT_GLOBAL unsigned long pollInterval _INIT(5000);
+#endif
+
+#ifdef EXTERNAL_SERVICE_ENABLED
+    DT_GLOBAL bool externalPollingEnabled _INIT(EXTERNAL_SERVICE_ENABLED);
+#else
+    DT_GLOBAL bool externalPollingEnabled _INIT(false);
+#endif
+
+DT_GLOBAL unsigned long lastPollTime _INIT(0);
+
 DT_GLOBAL uint8_t arrowUp[8] _INIT_N(({
     0x04, 0x0E, 0x15, 0x04, 0x04, 0x04, 0x04, 0x04
 }));
@@ -139,6 +161,7 @@ class DartTool
         void initServo();
         void initConnection();
         void initAP();
+        void pollExternalGameState();
 };
 
 #endif

@@ -26,6 +26,6 @@
 /*
  * Laser
  */
-#define LASER_PIN 4
+#define LASER_PIN 26
 
 #endif

@@ -38,6 +38,7 @@ class DartGame
         DartGameStatus stringToStatus(String status);
 
         void serialize(JsonObject& obj);
+        void deserialize(const JsonObject& obj);
 
 };
 

@@ -338,10 +338,12 @@ void initServer()
         request->send(200, "application/json", response);
     });
 
-    // External Host API Endpoints
+    // External Service API Endpoints
     server.on("/api/external/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        doc["host"] = "";  // Will be retrieved from storage
+        doc["host"] = externalServiceHost;
+        doc["interval"] = pollInterval;
+        doc["enabled"] = externalPollingEnabled;
 
         String response;
         serializeJson(doc, response);
@@ -361,19 +363,37 @@ void initServer()
                 return;
             }
 
-            const char* host = doc["host"].as<const char*>();
+            // Update external service host
+            if (doc.containsKey("host")) {
+                externalServiceHost = doc["host"].as<String>();
+                DEBUG_PRINT("[API] External service host: ");
+                DEBUG_PRINTLN(externalServiceHost);
+            }
 
-            if (!host || strlen(host) == 0) {
-                request->send(400, "application/json", "{\"success\": false, \"message\": \"Host is required\"}");
-                return;
+            // Update polling interval (in milliseconds)
+            if (doc.containsKey("interval")) {
+                pollInterval = doc["interval"].as<unsigned long>();
+                DEBUG_PRINT("[API] Poll interval: ");
+                DEBUG_PRINT(pollInterval);
+                DEBUG_PRINTLN("ms");
+            }
+
+            // Update polling enabled status
+            if (doc.containsKey("enabled")) {
+                externalPollingEnabled = doc["enabled"].as<bool>();
+                DEBUG_PRINT("[API] External polling enabled: ");
+                DEBUG_PRINTLN(externalPollingEnabled ? "true" : "false");
+
+                // Reset poll timer when enabling/disabling
+                lastPollTime = millis();
             }
 
             // TODO: Save to persistent storage
-            DEBUG_PRINTLN("[API] External host updated");
+            DEBUG_PRINTLN("[API] External polling config updated");
 
             JsonDocument respDoc;
             respDoc["success"] = true;
-            respDoc["message"] = "External host saved";
+            respDoc["message"] = "External polling configuration saved";
 
             String response;
             serializeJson(respDoc, response);

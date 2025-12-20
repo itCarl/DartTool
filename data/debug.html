@@ -35,6 +35,27 @@
         </nav>
     </header>
 
+    <!-- Laser Control -->
+    <article style="margin-bottom: 1rem;">
+        <header>
+            <h6>Laser Kontrolle</h6>
+        </header>
+
+        <div class="grid">
+            <button class="small s6" id="laserOn">
+                <i>lightbulb</i>
+                <span>Laser EIN</span>
+            </button>
+            <button class="small outline s6" id="laserOff">
+                <i>lightbulb_outline</i>
+                <span>Laser AUS</span>
+            </button>
+        </div>
+
+        <div class="space"></div>
+        <p class="small text-secondary">Status: <strong id="laserStatus">AUS</strong></p>
+    </article>
+
     <main class="container p-4">
         <!-- Distance to Ground -->
         <article style="margin-bottom: 1rem;">
@@ -151,27 +172,6 @@
 
             <div class="space"></div>
             <p class="small text-secondary">Führt die Standard-Initialisierungssequenz aus</p>
-        </article>
-
-        <!-- Laser Control -->
-        <article style="margin-bottom: 1rem;">
-            <header>
-                <h6>Laser Kontrolle</h6>
-            </header>
-
-            <div class="grid">
-                <button class="small s6" id="laserOn">
-                    <i>lightbulb</i>
-                    <span>Laser EIN</span>
-                </button>
-                <button class="small outline s6" id="laserOff">
-                    <i>lightbulb_outline</i>
-                    <span>Laser AUS</span>
-                </button>
-            </div>
-
-            <div class="space"></div>
-            <p class="small text-secondary">Status: <strong id="laserStatus">AUS</strong></p>
         </article>
 
         <!-- Status Display -->

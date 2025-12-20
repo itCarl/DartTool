@@ -57,6 +57,9 @@ void DartTool::loop()
     ElegantOTA.loop();
     cleanupWs();
 
+    // Poll external service for game state updates
+    pollExternalGameState();
+
     // printConnectedClients();
 
 
@@ -139,7 +142,7 @@ void DartTool::initDistanceSensor()
 void DartTool::initServo()
 {
     servoInit();
-    servoInitSequence();
+    // servoInitSequence();
 }
 
 void DartTool::initConnection()
