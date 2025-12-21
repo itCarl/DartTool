@@ -39,12 +39,36 @@
         <div id="spinner" class="center-align p-4">
             <progress class="circle"></progress>
         </div>
-        <div id="viewSetup">
+
+        <!-- Player Management Section -->
+        <div id="viewPlayerManagement">
             <div class="center-align players-header">
-                <button class="small-round inverse-primary" id="openPlayerModal" data-ui="#selectPlayerModal">
+                <button class="small-round" data-ui="#addPlayerModal" aria-label="Add new player">
                     <i class="fa-solid fa-plus"></i>
                     <span>Add player</span>
                 </button>
+            </div>
+
+            <div id="playersListContainer" class="players-list-container">
+                <div id="playersList" class="center-align p-4" role="list" aria-label="Players list">
+                    <progress class="circle" aria-label="Loading players"></progress>
+                </div>
+                <div id="playersError" class="center-align p-4" style="display: none;" role="alert">
+                    <p class="error-message">Failed to load players. Please try again.</p>
+                    <button class="small-round" onclick="window.location.reload()">
+                        <i class="fa-solid fa-refresh"></i>
+                        <span>Retry</span>
+                    </button>
+                </div>
+                <div id="playersEmpty" class="center-align p-4" style="display: none;">
+                    <p class="empty-message">No players yet. Add your first player to get started!</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewSetup">
+            <div class="center-align players-header">
+                <p class="helper">Tap a player in the list above to add or remove them.</p>
             </div>
             <form class="center-align">
                 <article>
@@ -100,8 +124,8 @@
             <div id="activePlayerList">
             </div>
             <div id="io">
-                <div id="infoMsg">
-                    Test bla bla
+                <div id="infoMsg" style="padding: 1rem; background-color: #f5f5f5; border-radius: 4px; margin-bottom: 1rem; font-weight: bold; text-align: center;">
+                    Loading game...
                 </div>
                 <div id="numpad">
                     <div class="one">1</div>
@@ -130,21 +154,39 @@
                     <div class="tripple">tripple</div>
                     <div class="back">back</div>
                 </div>
+                <div class="mt-1 text-center">
+                        <button id="abortGameBtn" class="outline btn-wide">
+                        <i class="fa-solid fa-stop"></i>
+                        <span>Abort Game</span>
+                    </button>
+                </div>
             </div>
         </div>
     </main>
 
     <div class="overlay blur"></div>
-    <dialog id="selectPlayerModal">
-        <h5>Select Players</h5>
-        <ul id="addPlayersList" class="list border small-margin"></ul>
+    <dialog id="addPlayerModal" aria-labelledby="addPlayerModalTitle">
+        <h5 id="addPlayerModalTitle">Add New Player</h5>
+        <form id="addPlayerForm">
+            <div class="field label border">
+                <input type="text" id="newPlayerName" required minlength="1" maxlength="50" aria-label="Player name" />
+                <label>Name</label>
+                <span class="helper">Enter player name (1-50 characters)</span>
+            </div>
+            <nav class="right-align no-space">
+                <button type="button" class="transparent link" data-ui="#addPlayerModal">Cancel</button>
+                <button type="submit" class="transparent link">Add</button>
+            </nav>
+        </form>
+    </dialog>
+
+    <div class="overlay blur"></div>
+    <dialog id="confirmModal" aria-labelledby="confirmModalTitle">
+        <h5 id="confirmModalTitle">Confirm Removal</h5>
+        <div>Are you sure you want to remove <strong id="playerToRemoveName"></strong>?</div>
         <nav class="right-align no-space">
-            <button class="transparent link" data-ui="#selectPlayerModal">
-                Cancel
-            </button>
-            <button class="transparent link" id="confirmSelected" data-ui="#selectPlayerModal">
-                Select
-            </button>
+            <button id="cancelRemove" class="transparent link" data-ui="#confirmModal">Cancel</button>
+            <button id="confirmRemove" class="transparent link" data-ui="#confirmModal">Confirm</button>
         </nav>
     </dialog>
 
@@ -161,20 +203,6 @@
                     </button>
                 </nav>
             </header>
-            <a href="/">
-                <i>Menu</i>
-                <span class="max">Menu</span>
-                <b>24</b>
-            </a>
-            <hr>
-            <a href="/game">
-                <i class="fa-brands fa-dart-lang"></i>
-                <span>New Game</span>
-            </a>
-            <a href="/players">
-                <i class="fa-solid fa-users"></i>
-                <span>Players</span>
-            </a>
             <a href="/settings">
                 <i class="fa-solid fa-gear"></i>
                 <span>Settings</span>
@@ -185,7 +213,7 @@
             <div id="gameStateSelector">
                 <nav class="group connected">
                     <button id="stateUnknown" class="left-round">unkown</button>
-                    <button id="stateCreated" class="no-round">created</button>
+                    <button id="stateInitialised" class="no-round">initialised</button>
                     <button id="stateRunning"class="right-round">running</button>
                 </nav>
                 <nav class="group connected">

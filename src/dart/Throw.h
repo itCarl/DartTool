@@ -20,16 +20,16 @@ class Throw
             //
         }
 
-        uint8_t getPoints()
+        uint8_t getPoints() const
         {
             return this->value * this->field;
         }
 
-        uint8_t getValue();
-        uint8_t getField();
-        String getRing();
-        float getX();
-        float getY();
+        uint8_t getValue() const;
+        uint8_t getField() const;
+        String getRing() const;
+        float getX() const;
+        float getY() const;
 
         void setValue(uint8_t value)
         {

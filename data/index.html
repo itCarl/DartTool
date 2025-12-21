@@ -25,13 +25,7 @@
 <body>
     <header>
         <nav>
-            <button data-ui="#navigation-drawer" class="circle transparent">
-                <i>menu</i>
-            </button>
             <h6 class="max center-align">Dart-Tool</h6>
-            <button class="circle transparent">
-                <img class="responsive" src="/assets/favicon.png">
-            </button>
         </nav>
     </header>
 
@@ -39,68 +33,25 @@
         <div class="center-align p-4">
             <a href="/game" class="home-link">
                 <article id="newGameBtn" class="withIcon">
-                    <i class="fa-brands fa-dart-lang"></i>
-                    Neues Spiel
-                </article>
-            </a>
-            <a href="/players" class="home-link">
-                <article class="withIcon">
-                    <i class="fa-solid fa-users"></i>
-                    Spieler
+                    <i class="fa-brands fa-dart-lang" aria-hidden="true"></i>
+                    <span>Neues Spiel</span>
                 </article>
             </a>
             <a href="/settings" class="home-link">
                 <article class="withIcon">
-                    <i class="fa-solid fa-gear"></i>
-                    Einstellungen
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                    <span>Einstellungen</span>
                 </article>
             </a>
             <a href="/debug" class="home-link">
                 <article class="withIcon">
-                    <i class="fa-solid fa-bug"></i>
-                    Debug
+                    <i class="fa-solid fa-bug" aria-hidden="true"></i>
+                    <span>Debug</span>
                 </article>
             </a>
         </div>
     </main>
 
-    <div class="overlay"></div>
-    <dialog class="left no-padding" id="navigation-drawer">
-        <nav class="drawer">
-            <header>
-                <nav class="center-align space nav-header">
-                    <div class="max">
-                        <img src="/assets/favicon.png"  width="150px">
-                    </div>
-                    <button class="transparent circle large" data-ui="#navigation-drawer">
-                        <i>close</i>
-                    </button>
-                </nav>
-            </header>
-            <a href="/">
-                <i>home</i>
-                <span class="max">Menu</span>
-            </a>
-            <hr>
-            <a href="/game">
-                <i class="fa-brands fa-dart-lang"></i>
-                <span>New Game</span>
-            </a>
-            <a href="/players">
-                <i class="fa-solid fa-users"></i>
-                <span>Players</span>
-            </a>
-            <a href="/settings">
-                <i class="fa-solid fa-gear"></i>
-                <span>Settings</span>
-            </a>
-            <a href="/debug">
-                <i class="fa-solid fa-bug"></i>
-                <span>Debug</span>
-            </a>
-            <hr>
-        </nav>
-    </dialog>
     <script src="app.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 enum class DartGameStatus
 {
     unknown,
-    created,
+    initialised,
     running,
     done,
     aborted,

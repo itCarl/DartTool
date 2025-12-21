@@ -29,10 +29,23 @@ class PlayerManager
             PlayerManager::instance().loadPlayers();
         }
 
-        void addOrEditPlayer(const String& name)
+        void addOrEditPlayer(const String& name, const String& id = "")
         {
             if (name.isEmpty()) return;
 
+            // If ID is provided, check if player with that ID exists
+            if (!id.isEmpty()) {
+                for (Player& player : players) {
+                    if (player.getId() == id) {
+                        player.setName(name);
+                        savePlayers();
+                        Serial.printf("[WS] Updated player: %s (ID: %s)\n", name.c_str(), id.c_str());
+                        return;
+                    }
+                }
+            }
+
+            // Check if player with same name already exists (for backward compatibility)
             for (Player& player : players) {
                 if (player.getName().equalsIgnoreCase(name)) {
                     player.setName(name);
@@ -42,11 +55,13 @@ class PlayerManager
                 }
             }
 
-            Player newPlayer(generateUuid(), name);
+            // Create new player with provided ID or generate new one
+            String playerId = !id.isEmpty() ? id : generateUuid();
+            Player newPlayer(playerId, name);
             players.push_back(newPlayer);
             savePlayers();
 
-            Serial.printf("[WS] Added player: %s\n", name.c_str());
+            Serial.printf("[WS] Added player: %s (ID: %s)\n", name.c_str(), playerId.c_str());
         }
 
         void removePlayer(const String& id)
@@ -103,18 +118,6 @@ class PlayerManager
 
         void getAllPlayers(JsonArray& outArray)
         {
-            // JsonDocument doc;
-            // File file = LittleFS.open("/players.json", "r");
-            // if (!file) return;
-
-            // deserializeJson(doc, file);
-            // file.close();
-
-            // for (JsonObject obj : doc.as<JsonArray>()) {
-            //     JsonObject player = outArray.add<JsonObject>();
-            //     player["id"] = obj["id"];
-            //     player["name"] = obj["name"];
-            // }
             for (Player& player : players) {
                 JsonObject obj = outArray.add<JsonObject>();
                 player.serialize(obj);

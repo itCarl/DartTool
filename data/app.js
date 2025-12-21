@@ -74,12 +74,17 @@ function onOpen(event) {
     reconnectAttempts = 0; // Reset reconnect counter on successful connection
 
     if(isPage('/data/players.html', '/players')) {
+        // Request local players (backend handles external service sync)
         sendMessage({
             cmd: "getAllPlayer"
         });
     }
 
     if(isPage('/data/game.html', '/game')) {
+        // Request local players (backend handles external service sync)
+        sendMessage({
+            cmd: "getAllPlayer"
+        });
         sendMessage({
             cmd: "getGameStatus"
         });
@@ -141,77 +146,69 @@ function onMessage(event) {
         return;
     }
 
+    // Handle external player fetch responses
+    if (data.cmd === 'fetchExternalPlayers') {
+        if (data.status === 'success') {
+            console.log('External players fetched and cached successfully:', data.msg);
+        } else {
+            console.warn('Failed to fetch external players:', data.msg);
+        }
+        // Continue to handle players list if present
+    }
+
     // Handle players list
     if(data.players) {
         let players = data.players;
         lastPlayerFetch = players;
 
-        if(isPage('/data/players.html', '/players')) {
-            const list = byId('playersList');
-            list.innerHTML = '';
-
-            players.forEach((player, index) => {
-                const article = document.createElement('article');
-                article.innerHTML = `
-                <ul class="list no-space border">
-                    <li id=${player.id}>
-                        <i class="fa-solid fa-user"></i>
-                        <div class='max'>${player.name}</div>
-                        <div class="player-buttons">
-                            <button class="secondary remove-btn" data-ui="#confirmModal" data-id="${player.id}" data-name="${player.name}">Remove</button>
-                        </div>
-                    </li>
-                </ul>
-                `;
-                list.appendChild(article);
-            });
-
-            document.querySelectorAll('.remove-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const id = e.target.dataset.id;
-                    const name = e.target.dataset.name;
-                    selectedPlayerId = id;
-                    byId('playerToRemoveName').textContent = name;
-                });
-            });
+        if(isPage('/data/players.html', '/players', '/data/game.html', '/game')) {
+            renderPlayersList(players);
         }
 
         if(isPage('/data/game.html', '/game')) {
             const list = byId('addPlayersList');
-            list.innerHTML = '';
+            if (list) {
+                list.innerHTML = '';
 
-            players.filter(player => !selectedPlayerList.includes(player.id)).forEach((player, index) => {
-                const item = document.createElement('li');
-                item.id = player.id;
-                item.innerHTML = `
-                    <label class="checkbox">
-                        <input type="checkbox" name="selectedPlayers" value="${player.id}">
-                        <span></span>
-                    </label>
-                    <i class="fa-solid fa-user"></i>
-                    <div class='max'>${player.name}</div>
-                `;
-                list.appendChild(item);
-            });
+                players.filter(player => !selectedPlayerList.includes(player.id)).forEach((player, index) => {
+                    const item = document.createElement('li');
+                    item.id = player.id;
+                    item.innerHTML = `
+                        <label class="checkbox">
+                            <input type="checkbox" name="selectedPlayers" value="${player.id}">
+                            <span></span>
+                        </label>
+                        <i class="fa-solid fa-user"></i>
+                        <div class='max'>${player.name}</div>
+                    `;
+                    list.appendChild(item);
+                });
+            }
         }
     }
 
     // Handle game status
     if(data.game) {
         var g = data.game;
-        var state = g.status;
+        var state = g?.status || 'unknown';
         d.querySelectorAll('#gameStateSelector button.active')?.forEach(btn => {
             btn.classList.remove('active');
         });
         byId(`state${state.charAt(0).toUpperCase() + state.slice(1)}`)?.classList.add('active');
 
-        if(data.cmd === "getGameStatus" || data.cmd === "setGameStatus") {
-            hide('spinner');
+        hide('spinner');
 
-            if(state == "unknown") {
-                show('viewSetup');
-            } else if(state == "created" || state == "running") {
-                showGameInfo();
+        if(state == "unknown" || state == "initialised" || state == "aborted") {
+            show('viewSetup');
+            show('viewPlayerManagement');
+            if (state == "aborted") {
+                showStatus('Game aborted - Ready for new game', 'info');
+            }
+        } else if(state == "running" || state == "done") {
+            hide('viewPlayerManagement');
+            showGameInfo();
+            updateGameInfo(g);
+            if (g && g.players) {
                 populatePlayers(g);
             }
         }
@@ -225,12 +222,245 @@ function sendMessage(msg) {
 }
 
 // ============================================================================
+// PLAYER RENDERING HELPERS
+// ============================================================================
+
+function renderPlayersList(players) {
+    const list = byId('playersList');
+    if (!list) return;
+    const isGamePage = isPage('/data/game.html', '/game');
+
+    list.innerHTML = '';
+
+    if (!players || players.length === 0) {
+        // Show empty state
+        hide('playersList');
+        show('playersEmpty');
+        return;
+    }
+
+    if (isGamePage) {
+        const availableIds = players.map(p => p.id);
+        selectedPlayerList = selectedPlayerList.filter(id => availableIds.includes(id));
+    }
+
+    // Show players list, hide empty state
+    show('playersList');
+    hide('playersEmpty');
+    hide('playersError');
+
+    players.forEach((player) => {
+        const article = document.createElement('article');
+        const isSelected = selectedPlayerList.includes(player.id);
+        article.innerHTML = `
+        <ul class="list no-space border">
+            <li id="${player.id}" role="listitem" class="${isSelected ? 'selected-player' : ''}" aria-pressed="${isSelected}">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                <div class='max'>
+                    <div>${escapeHtml(player.name)}</div>
+                    <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
+                </div>
+                ${isGamePage ? `<div class="player-select-indicator" aria-hidden="true">
+                    <i class="fa-solid fa-check"></i>
+                </div>` : ''}
+                <div class="player-buttons">
+                    <button class="secondary remove-btn"
+                            data-ui="#confirmModal"
+                            data-id="${player.id}"
+                            data-name="${escapeHtml(player.name)}"
+                            aria-label="Remove ${escapeHtml(player.name)}">
+                        Remove
+                    </button>
+                </div>
+            </li>
+        </ul>
+        `;
+        list.appendChild(article);
+
+        if (isGamePage) {
+            const row = article.querySelector('li');
+            if (row) {
+                row.classList.add('selectable-player');
+                row.addEventListener('click', e => {
+                    if (e.target.closest('.player-buttons')) return;
+                    togglePlayerSelection(player.id);
+                });
+            }
+        }
+    });
+
+    // Add event listeners to remove buttons
+    document.querySelectorAll('.remove-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = e.currentTarget.dataset.id;
+            const name = e.currentTarget.dataset.name;
+            selectedPlayerId = id;
+            byId('playerToRemoveName').textContent = name;
+        });
+    });
+
+    if (isGamePage) {
+        updateSelectablePlayersUI();
+        updateSelectedPlayersUI();
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showPlayersError() {
+    hide('playersList');
+    hide('playersEmpty');
+    show('playersError');
+}
+
+function updateSelectedPlayersUI() {
+    const list = byId('selectedPlayerList');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    if (!selectedPlayerList.length || !lastPlayerFetch) {
+        const emptyItem = document.createElement('li');
+        emptyItem.innerHTML = `
+            <div class="max">
+                <p>no player selected.</p>
+            </div>
+        `;
+        list.appendChild(emptyItem);
+        return;
+    }
+
+    lastPlayerFetch
+        .filter(player => selectedPlayerList.includes(player.id))
+        .forEach(player => {
+            const item = document.createElement('li');
+            item.id = player.id;
+            item.innerHTML = `
+                <i class="fa-solid fa-user"></i>
+                <div class='max'>${player.name}</div>
+            `;
+            list.appendChild(item);
+        });
+}
+
+function updateSelectablePlayersUI() {
+    if (!isPage('/data/game.html', '/game')) return;
+    const rows = d.querySelectorAll('#playersList li[role="listitem"]');
+    rows.forEach(row => {
+        const isSelected = selectedPlayerList.includes(row.id);
+        row.classList.toggle('selected-player', isSelected);
+        row.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
+}
+
+function togglePlayerSelection(playerId) {
+    if (!lastPlayerFetch) return;
+    const exists = lastPlayerFetch.some(p => p.id === playerId);
+    if (!exists) return;
+
+    if (selectedPlayerList.includes(playerId)) {
+        selectedPlayerList = selectedPlayerList.filter(id => id !== playerId);
+    } else {
+        selectedPlayerList = [...selectedPlayerList, playerId];
+    }
+
+    updateSelectablePlayersUI();
+    updateSelectedPlayersUI();
+
+    sendMessage({
+        cmd: 'selectPlayers',
+        playerIds: selectedPlayerList
+    });
+}
+
+function handleExternalPlayers(externalPlayers) {
+    // Transform external player format to match our internal format
+    const transformedPlayers = externalPlayers.map(p => ({
+        id: p.id || p.player_id || generateLocalId(),
+        name: p.name || p.player_name || 'Unknown'
+    }));
+
+    // Update lastPlayerFetch for consistency
+    lastPlayerFetch = transformedPlayers;
+
+    // Update the players list on the page
+    if (isPage('/data/players.html', '/players', '/data/game.html', '/game')) {
+        renderPlayersList(transformedPlayers);
+    }
+
+    // Also update for game page if needed
+    if (isPage('/data/game.html', '/game')) {
+        const list = byId('addPlayersList');
+        if (list) {
+            list.innerHTML = '';
+
+            transformedPlayers.filter(player => !selectedPlayerList.includes(player.id)).forEach((player) => {
+                const item = document.createElement('li');
+                item.id = player.id;
+                item.innerHTML = `
+                    <label class="checkbox">
+                        <input type="checkbox" name="selectedPlayers" value="${player.id}">
+                        <span></span>
+                    </label>
+                    <i class="fa-solid fa-user"></i>
+                    <div class='max'>${player.name}</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        updateSelectablePlayersUI();
+        updateSelectedPlayersUI();
+    }
+}
+
+function generateLocalId() {
+    // Generate a simple ID if none provided
+    return 'ext_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// ============================================================================
 // GAME FUNCTIONS
 // ============================================================================
 
 function showGameInfo() {
     hide('viewSetup');
     show('viewGame');
+}
+
+function updateGameInfo(gameData) {
+    const infoMsg = byId('infoMsg');
+    if (!infoMsg || !gameData) return;
+
+    const status = gameData.status || 'unknown';
+    const currentPlayer = gameData.players?.find(p => p.id === gameData.currentPlayerId);
+    const playerName = currentPlayer?.name || 'Unknown';
+    const points = gameData.points || 301;
+
+    let statusText = '';
+    switch(status) {
+        case 'initialised':
+            statusText = `Game Ready - ${points} Points`;
+            break;
+        case 'running':
+            statusText = `${playerName}'s Turn - ${points} Points Remaining`;
+            break;
+        case 'done':
+            statusText = `Game Over - Winner: ${playerName}`;
+            break;
+        case 'aborted':
+            statusText = 'Game Aborted';
+            break;
+        default:
+            statusText = 'Game Status: ' + status;
+    }
+
+    infoMsg.textContent = statusText;
 }
 
 function populatePlayers(data) {
@@ -243,26 +473,34 @@ function populatePlayers(data) {
         const item = document.createElement('article');
         item.id = player.id;
         item.classList.add('playerCard');
+
+        // Calculate remaining points and statistics
+        const remainingPoints = player.points !== undefined ? player.points : 0;
+        const totalThrows = player.throwCounter !== undefined ? player.throwCounter : 0;
+        const roundThrow = totalThrows % 3; // Current throw in round (0, 1, or 2)
+        const averagePoints = totalThrows > 0 ? Math.round(remainingPoints / totalThrows) : 0;
+        const isCurrentPlayer = data.currentPlayerId === player.id;
+
         item.innerHTML = `
-            <div class="grid no-space">
+            <div class="grid no-space" style="${isCurrentPlayer ? 'border: 3px solid gold;' : ''}">
                 <div class="s4 center-align">
-                    <h4 class="currentPoints" style="padding:.5rem;"><b>187</b></h4>
+                    <h4 class="currentPoints" style="padding:.5rem;"><b>${remainingPoints}</b></h4>
                     <div style="padding:.5rem;">${player.name}</div>
                 </div>
                 <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
                     <div class="throwGroup">
-                        <div class="s4">
+                        <div class="s4" style="opacity: ${roundThrow > 0 ? '1' : '0.3'};">
                             <span class="s4 center-align">0</span>
                         </div>
-                        <div class="s4">
+                        <div class="s4" style="opacity: ${roundThrow > 1 ? '1' : '0.3'};">
                             <span class="s4 center-align">1</span>
                         </div>
-                        <div class="s4">
+                        <div class="s4" style="opacity: ${roundThrow > 2 ? '1' : '0.3'};">
                             <span class="s4 center-align">2</span>
                         </div>
                     </div>
                     <div class="s4 center-align" style="display: flex;flex-direction:column;flex:3;">
-                        <h6>333</h6>
+                        <h6>${totalThrows}</h6>
                     </div>
                 </div>
                 <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
@@ -271,13 +509,13 @@ function populatePlayers(data) {
                             <i class="fa-brands fa-dart-lang"></i>
                         </div>
                         <div class="s6">
-                            <span id="numOfThrows">0</span>
+                            <span class="numOfThrows">${totalThrows}</span>
                         </div>
                     </div>
                     <div class="s4 center-align" style="flex: 1;">
                         <div>
                             &Oslash;
-                            <span class="averagePoints">333</span>
+                            <span class="averagePoints">${averagePoints}</span>
                         </div>
                     </div>
                 </div>
@@ -301,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if(isPage('/data/game.html', '/game')) {
+        initPlayersPage();
         initGamePage();
     }
 
@@ -334,22 +573,31 @@ function setupNavigation() {
 function initPlayersPage() {
     const addPlayerForm = byId('addPlayerForm');
     if (addPlayerForm) {
-        addPlayerForm.addEventListener('click', e => {
+        addPlayerForm.addEventListener('submit', e => {
             e.preventDefault();
 
             const nameInput = document.getElementById('newPlayerName');
-            const name = nameInput.value.trim();
+            const name = nameInput?.value.trim();
 
             if (!isEmpty(name)) {
+                // Send add player command
                 sendMessage({
                     cmd: "addPlayer",
                     name: name
                 });
 
+                // Clear input
                 nameInput.value = '';
+
+                // Request updated player list
                 sendMessage({
                     cmd: "getAllPlayer"
                 });
+
+                // Show success feedback
+                console.log(`Player "${name}" added successfully`);
+            } else {
+                console.error('Player name is required');
             }
         });
     }
@@ -376,52 +624,86 @@ function initPlayersPage() {
 // ============================================================================
 
 function initGamePage() {
-    const openPlayerModal = byId('openPlayerModal');
-    if (openPlayerModal) {
-        openPlayerModal.addEventListener('click', () => {
-            sendMessage({
-                cmd: "getAllPlayer"
-            });
-        });
-    }
-
-    const confirmSelected = byId('confirmSelected');
-    if (confirmSelected) {
-        confirmSelected.addEventListener('click', () => {
-            const checked = document.querySelectorAll('input[type="checkbox"][name="selectedPlayers"]:checked');
-            const values = Array.from(checked).map(cb => cb.value);
-            selectedPlayerList = values;
-            const list = byId('selectedPlayerList');
-            list.innerHTML = '';
-
-            lastPlayerFetch.filter(player => selectedPlayerList.includes(player.id)).forEach((player, index) => {
-                const item = document.createElement('li');
-                item.id = player.id;
-                item.innerHTML = `
-                    <i class="fa-solid fa-user"></i>
-                    <div class='max'>${player.name}</div>
-                `;
-                list.appendChild(item);
-            });
-
-            sendMessage({
-                cmd: 'selectPlayers',
-                playerIds: selectedPlayerList
-            });
-        });
-    }
+    updateSelectedPlayersUI();
 
     const startGame = byId('startGame');
     if (startGame) {
         startGame.addEventListener('click', e => {
             e.preventDefault();
+
+            // Validate players are selected
+            if (!selectedPlayerList || selectedPlayerList.length === 0) {
+                showStatus('Bitte wählen Sie mindestens einen Spieler aus', 'error');
+                return;
+            }
+
+            // Get game name
+            const gameNameInput = document.querySelector('input[type="text"]');
+            const gameName = gameNameInput?.value.trim() || 'Game';
+
+            // Get selected game mode
+            const selectedMode = document.querySelector('input[name="radio5_"]:checked');
+            const gameMode = selectedMode?.value || '301';
+
             sendMessage({
-                cmd: 'startGame'
+                cmd: 'startGame',
+                name: gameName,
+                mode: gameMode,
+                playerIds: selectedPlayerList
             });
         });
     }
 
-    ['unknown','created','running','done','aborted','error'].forEach(e => {
+    // Setup numpad input handlers for dart score entry
+    const numpad = byId('numpad');
+    if (numpad) {
+        const numberDivs = numpad.querySelectorAll('div');
+        numberDivs.forEach(div => {
+            div.addEventListener('click', () => {
+                const value = div.textContent.trim();
+
+                if (value === 'back') {
+                    // Handle backspace
+                    sendMessage({
+                        cmd: 'dartUndo'
+                    });
+                } else if (value === 'double' || value === 'tripple') {
+                    // Handle multiplier
+                    const multiplier = value === 'double' ? 2 : 3;
+                    sendMessage({
+                        cmd: 'setDartMultiplier',
+                        multiplier: multiplier
+                    });
+                } else if (value !== '') {
+                    // Handle number input
+                    const score = parseInt(value);
+                    sendMessage({
+                        cmd: 'dartThrow',
+                        score: score
+                    });
+                }
+            });
+        });
+    }
+
+    // Abort/Restart game button
+    const abortGameBtn = byId('abortGameBtn');
+    if (abortGameBtn) {
+        abortGameBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to abort this game? Progress will be lost.')) {
+                sendMessage({
+                    cmd: 'abortGame'
+                });
+                // Reset game state
+                selectedPlayerList = [];
+                updateSelectablePlayersUI();
+                updateSelectedPlayersUI();
+                // Display will update when game status response is received
+            }
+        });
+    }
+
+    ['unknown','initialised','running','done','aborted','error'].forEach(e => {
         const btn = byId(`state${e.charAt(0).toUpperCase() + e.slice(1)}`);
         if (btn) {
             btn.addEventListener('click', item => {
@@ -645,6 +927,28 @@ async function rebootDevice() {
 // DATA SYNC FUNCTIONS
 // ============================================================================
 
+async function loadDataSyncSettings() {
+    try {
+        const response = await fetch(`${host}/api/datasync/config`);
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        const endpointEl = byId('syncEndpoint');
+        const toggleEl = byId('dataSyncToggle');
+
+        if (endpointEl) endpointEl.value = data.endpoint || '';
+        if (toggleEl) toggleEl.checked = !!data.enabled;
+
+        updateDataSyncUI();
+        updateQueueStatus();
+    } catch (error) {
+        console.error('Error loading data sync settings:', error);
+    }
+}
+
 function updateDataSyncUI() {
     const toggle = byId('dataSyncToggle')?.checked;
     const statusDiv = byId('dataSyncStatus');
@@ -854,6 +1158,15 @@ async function loadExternalHostSettings() {
         const externalHostEl = byId('externalHost');
         if (externalHostEl) externalHostEl.value = externalHost;
 
+        const tokenEl = byId('externalToken');
+        // Do not prefill token for security; show placeholder if token exists
+        if (tokenEl) {
+            tokenEl.value = '';
+            if (data.hasToken) {
+                tokenEl.placeholder = '•••••• (gespeichert)';
+            }
+        }
+
     } catch (error) {
         console.error('Error loading external host settings:', error);
     }
@@ -861,6 +1174,7 @@ async function loadExternalHostSettings() {
 
 async function saveExternalHostSettings() {
     const host_value = byId('externalHost')?.value?.trim();
+    const token_value = byId('externalToken')?.value?.trim();
 
     if (!host_value) {
         showStatus('Externer Host ist erforderlich', 'error');
@@ -873,9 +1187,7 @@ async function saveExternalHostSettings() {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                host: host_value
-            })
+            body: JSON.stringify(Object.assign({ host: host_value }, (token_value ? { token: token_value } : {})))
         });
 
         if (!response.ok) {

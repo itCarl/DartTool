@@ -20,6 +20,9 @@ bool handleServoSequence(JsonDocument& doc);
 bool handleInitServo(JsonDocument& doc);
 bool handleSetServoByDistance(JsonDocument& doc);
 bool handleLaserControl(JsonDocument& doc);
+bool handleDartThrow(JsonDocument& doc);
+bool handleDartUndo(JsonDocument& doc);
+bool handleFetchExternalPlayers(JsonDocument& doc);
 
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
@@ -33,7 +36,29 @@ CommandEntry commandTable[] = {
         return handleGetGameStatus(doc);
     }},
     { "startGame", [](JsonDocument& doc) {
-        game.setStatus(DartGameStatus::created);
+        // Extract game configuration from frontend
+        const char* gameName = doc["name"].as<const char*>();
+        const char* gameMode = doc["mode"].as<const char*>();
+
+        // Set game points based on mode
+        uint16_t points = 301;  // Default
+        if (gameMode) {
+            String modeStr(gameMode);
+            if (modeStr == "201") points = 201;
+            else if (modeStr == "301") points = 301;
+            else if (modeStr == "401") points = 401;
+            else if (modeStr == "601") points = 601;
+            else if (modeStr == "801") points = 801;
+        }
+
+        DEBUG_PRINT("[Game] Starting game: ");
+        DEBUG_PRINT(gameName ? gameName : "Unnamed Game");
+        DEBUG_PRINT(" Mode: ");
+        DEBUG_PRINTLN(points);
+
+        // TODO: Store game configuration (name, points) in game object
+        // For now, we just set the status to running
+        game.setStatus(DartGameStatus::running);
         doc["cmd"] = "getGameStatus";
 
         return handleGetGameStatus(doc);
@@ -47,13 +72,16 @@ CommandEntry commandTable[] = {
     { "getAllPlayer", handleGetAllPlayer },
     { "addPlayer", handleAddPlayer },
     { "deletePlayer", handleDeletePlayer },
+    { "fetchExternalPlayers", handleFetchExternalPlayers },
     { "rstCntlr", handleAddPlayer },
+    { "dartThrow", handleDartThrow },
+    { "dartUndo", handleDartUndo },
     { "setServo", handleSetServo },
     { "servoSequence", handleServoSequence },
     { "initServo", handleInitServo },
     { "setServoByDistance", handleSetServoByDistance },
     { "laserControl", handleLaserControl },
-    // { nullptr, nullptr }
+    { nullptr, nullptr }
 };
 
 
@@ -341,9 +369,10 @@ void initServer()
     // External Service API Endpoints
     server.on("/api/external/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        doc["host"] = externalServiceHost;
-        doc["interval"] = pollInterval;
-        doc["enabled"] = externalPollingEnabled;
+        doc["host"] = ExternalService::instance().getHost();
+        doc["interval"] = ExternalService::instance().getPollInterval();
+        doc["enabled"] = ExternalService::instance().isEnabled();
+        doc["hasToken"] = ExternalService::instance().hasApiToken();
 
         String response;
         serializeJson(doc, response);
@@ -363,33 +392,53 @@ void initServer()
                 return;
             }
 
+            // Update API token (optional)
+            if (doc["token"].is<String>()) {
+                String token = doc["token"].as<String>();
+                ExternalService::instance().setApiToken(token);
+                DEBUG_PRINTLN("[API] External service token updated");
+            }
+
             // Update external service host
-            if (doc.containsKey("host")) {
-                externalServiceHost = doc["host"].as<String>();
+            if (doc["host"].is<String>()) {
+                String host = doc["host"].as<String>();
+                ExternalService::instance().setHost(host);
                 DEBUG_PRINT("[API] External service host: ");
-                DEBUG_PRINTLN(externalServiceHost);
+                DEBUG_PRINTLN(host);
             }
 
             // Update polling interval (in milliseconds)
-            if (doc.containsKey("interval")) {
-                pollInterval = doc["interval"].as<unsigned long>();
+            if (doc["interval"].is<unsigned long>()) {
+                unsigned long interval = doc["interval"].as<unsigned long>();
+                ExternalService::instance().setPollInterval(interval);
                 DEBUG_PRINT("[API] Poll interval: ");
-                DEBUG_PRINT(pollInterval);
+                DEBUG_PRINT(interval);
                 DEBUG_PRINTLN("ms");
             }
 
             // Update polling enabled status
-            if (doc.containsKey("enabled")) {
-                externalPollingEnabled = doc["enabled"].as<bool>();
+            if (doc["enabled"].is<bool>()) {
+                bool enabled = doc["enabled"].as<bool>();
+                ExternalService::instance().setEnabled(enabled);
                 DEBUG_PRINT("[API] External polling enabled: ");
-                DEBUG_PRINTLN(externalPollingEnabled ? "true" : "false");
+                DEBUG_PRINTLN(enabled ? "true" : "false");
 
                 // Reset poll timer when enabling/disabling
-                lastPollTime = millis();
+                ExternalService::instance().resetPollTimer();
             }
 
-            // TODO: Save to persistent storage
-            DEBUG_PRINTLN("[API] External polling config updated");
+            // Persist configuration
+            String curHost = ExternalService::instance().getHost();
+            unsigned long curInterval = ExternalService::instance().getPollInterval();
+            bool curEnabled = ExternalService::instance().isEnabled();
+            // We cannot read back the token value; persist last provided token if any, else keep existing by passing nullptr
+            const char* tokenPtr = nullptr;
+            if (doc["token"].is<String>()) {
+                tokenPtr = doc["token"].as<const char*>(); // may be empty string to clear
+            }
+            saveExternalServiceConfig(curHost.c_str(), tokenPtr, curEnabled, curInterval);
+
+            DEBUG_PRINTLN("[API] External polling config updated and saved");
 
             JsonDocument respDoc;
             respDoc["success"] = true;
@@ -408,9 +457,9 @@ void initServer()
     // Accepts same JSON commands as WebSocket messages
     server.on("/api/command", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         if (index == 0) {
-            data[len] = '\0';
+            // Do not write past provided buffer; parse with explicit length
             JsonDocument doc;
-            DeserializationError error = deserializeJson(doc, data);
+            DeserializationError error = deserializeJson(doc, data, len);
 
             if (error) {
                 DEBUG_PRINT("[API] Command JSON parsing error: ");
@@ -512,12 +561,11 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *da
 {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-        data[len] = '\0';
         DEBUG_PRINTLN("[WS] Message incoming.");
 
         JsonDocument doc;
         String out;
-        DeserializationError error = deserializeJson(doc, data);
+        DeserializationError error = deserializeJson(doc, data, len);
         bool sendResponse = false;
 
         if (error) {
@@ -631,7 +679,7 @@ bool handleGetGameStatus(JsonDocument& doc)
     JsonObject resp = doc["game"].to<JsonObject>();
     resp["status"] = game.getStatusString();
 
-    if(game.getStatus() == DartGameStatus::created || game.getStatus() == DartGameStatus::running)
+    if(game.getStatus() == DartGameStatus::running)
     {
         game.serialize(resp);
     }
@@ -647,12 +695,19 @@ bool handleSelectPlayers(JsonDocument& doc)
     }
 
     JsonArray selectedIds = doc["playerIds"].as<JsonArray>();
-    std::vector<Player> selectedPlayers;
+    std::vector<String> idList;
 
+    // Convert JsonArray to vector<String>
     for (String id : selectedIds) {
-        Player player = PlayerManager::instance().getPlayerById(id);
-        selectedPlayers.push_back(player);
-        break;
+        idList.push_back(id);
+    }
+
+    // Get all players with the selected IDs
+    std::vector<Player> selectedPlayers = PlayerManager::instance().getPlayersByIds(idList);
+
+    if (selectedPlayers.empty()) {
+        doc["msg"] = "No valid players found with provided IDs.";
+        return true;
     }
 
     game.setPlayers(selectedPlayers);
@@ -670,20 +725,26 @@ bool handleGetAllPlayer(JsonDocument& doc)
 bool handleAddPlayer(JsonDocument& doc)
 {
     const char* name = doc["name"];
-    if (!name && strlen(name) <= 0)
+    if (!name || strlen(name) <= 0)
         return false;
 
-    PlayerManager::instance().addOrEditPlayer(name);
+    // Optional: accept ID from client (for external service sync)
+    const char* id = doc["id"];
+    String playerId = (id && strlen(id) > 0) ? String(id) : "";
+
+    PlayerManager::instance().addOrEditPlayer(name, playerId);
+    doc["msg"] = "Player added successfully";
     return true;
 }
 
 bool handleDeletePlayer(JsonDocument& doc)
 {
     const char* id = doc["id"];
-    if (id && strlen(id) <= 0)
+    if (!id || strlen(id) <= 0)
         return false;
 
     PlayerManager::instance().removePlayer(id);
+    doc["msg"] = "Player deleted successfully";
     return true;
 }
 
@@ -809,3 +870,59 @@ bool handleLaserControl(JsonDocument& doc)
     doc["cmd"] = "laserResponse";
     return true;
 }
+bool handleDartThrow(JsonDocument& doc)
+{
+    // Validate score input
+    int score = doc["score"].as<int>();
+
+    // Delegate all game logic to DartGame
+    DartThrowResult result = game.processDartThrow(score);
+
+    // Prepare response from game result
+    doc["msg"] = result.message;
+    doc["cmd"] = "dartThrowResponse";
+    doc["success"] = result.success;
+
+    if (result.success) {
+        doc["score"] = result.score;
+        doc["pointsRemaining"] = result.pointsRemaining;
+        doc["playerName"] = result.playerName;
+        doc["playerId"] = result.playerId;
+
+        if (result.hasWon) {
+            doc["winner"] = result.winner;
+            doc["winnerId"] = result.winnerId;
+        }
+    }
+
+    // Return updated game status
+    return handleGetGameStatus(doc);
+}
+
+bool handleDartUndo(JsonDocument& doc)
+{
+    // TODO: Implement dart undo logic
+    // This will revert the last dart throw for current player
+
+    doc["msg"] = "Last dart throw undone";
+    doc["cmd"] = "dartUndoResponse";
+    return true;
+}
+
+bool handleFetchExternalPlayers(JsonDocument& doc)
+{
+    // Call the external player fetch function via ExternalService
+    bool success = ExternalService::instance().fetchPlayers();
+
+    if (success) {
+        doc["msg"] = "Players fetched from external service";
+        doc["status"] = "success";
+        // Return the updated player list
+        return handleGetAllPlayer(doc);
+    } else {
+        doc["msg"] = "Failed to fetch players from external service";
+        doc["status"] = "error";
+        return false;
+    }
+}
+

@@ -25,6 +25,7 @@
 #include "dart/Player.h"
 #include "dart/PlayerManager.h"
 #include "dart/DartGame.h"
+#include "external/ExternalService.h"
 
 #ifndef VERSION_CODE
     #define VERSION_CODE "unknown"
@@ -91,7 +92,12 @@ DT_GLOBAL String gmMAC _INIT("");
 #ifdef EXTERNAL_SERVICE_HOST
     DT_GLOBAL String externalServiceHost _INIT(EXTERNAL_SERVICE_HOST);
 #else
-    DT_GLOBAL String externalServiceHost _INIT("");
+    DT_GLOBAL String externalServiceHost _INIT("http://localhost:8000");
+#endif
+#ifdef EXTERNAL_SERVICE_TOKEN
+    DT_GLOBAL String externalServiceToken _INIT(EXTERNAL_SERVICE_TOKEN);
+#else
+    DT_GLOBAL String externalServiceToken _INIT("");
 #endif
 
 #ifdef EXTERNAL_SERVICE_INTERVAL
@@ -107,6 +113,10 @@ DT_GLOBAL String gmMAC _INIT("");
 #endif
 
 DT_GLOBAL unsigned long lastPollTime _INIT(0);
+
+// Track initial poll for full game state sync
+DT_GLOBAL bool firstPollCompleted _INIT(false);
+DT_GLOBAL DartGameStatus lastSyncedGameStatus _INIT(DartGameStatus::unknown);
 
 DT_GLOBAL uint8_t arrowUp[8] _INIT_N(({
     0x04, 0x0E, 0x15, 0x04, 0x04, 0x04, 0x04, 0x04
@@ -161,7 +171,6 @@ class DartTool
         void initServo();
         void initConnection();
         void initAP();
-        void pollExternalGameState();
 };
 
 #endif

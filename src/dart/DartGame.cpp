@@ -11,6 +11,16 @@ DartGame::DartGame()
     id = generateUuid();
 }
 
+String DartGame::listPlayers()
+{
+    String result = "";
+    for (size_t i = 0; i < players.size(); i++) {
+        if (i > 0) result += ", ";
+        result += players[i].getName();
+    }
+    return result;
+}
+
 DartGameStatus DartGame::getStatus()
 {
     return this->status;
@@ -18,15 +28,7 @@ DartGameStatus DartGame::getStatus()
 
 void DartGame::setStatus(DartGameStatus newStatus)
 {
-    if(DartGameStatus::created == newStatus) {
-        // this->currentPlayer = &this->players.front();
-        currentPlayerIndex = 0;
-        DEBUG_PRINTLN("[DT] Game created");
-
-        // display.setPlayerIndicator(this->currentPlayer->getColor());
-        // display.setPoints((this->points - this->currentPlayer->getPoints()));
-        // display.setThrowIndicator(3);
-    } else if(DartGameStatus::aborted == newStatus || DartGameStatus::done == newStatus ) {
+    if(DartGameStatus::aborted == newStatus || DartGameStatus::done == newStatus ) {
         // this->reset();
     }
     DEBUG_PRINT("[DT] Status Change: ");
@@ -34,6 +36,19 @@ void DartGame::setStatus(DartGameStatus newStatus)
     DEBUG_PRINT(" -> ");
     this->status = newStatus;
     DEBUG_PRINTLN(this->getStatusString());
+}
+
+void DartGame::reset()
+{
+    id = generateUuid();
+    status = DartGameStatus::unknown;
+    players.clear();
+    currentPlayerIndex = 0;
+    throwCounter = 0;
+    winCount = 0;
+    points = 501;  // Default X01 starting points
+    turn = 0;
+    DEBUG_PRINTLN("[DT] Game reset");
 }
 
 void DartGame::setPlayers(std::vector<Player>& selectedPlayers)
@@ -44,6 +59,15 @@ void DartGame::setPlayers(std::vector<Player>& selectedPlayers)
 
 Player& DartGame::getCurrentPlayer()
 {
+    if (players.empty()) {
+        DEBUG_PRINTLN("[DT] Error: No players in game");
+        // Return a reference to a static default player (not ideal, but necessary for returning a reference)
+        static Player defaultPlayer;
+        return defaultPlayer;
+    }
+    if (currentPlayerIndex >= players.size()) {
+        currentPlayerIndex = 0;  // Reset to first player if index is out of bounds
+    }
     return players[currentPlayerIndex];
 }
 
@@ -51,12 +75,19 @@ void DartGame::nextPlayer()
 {
     if (players.size() <= 1) return;
     currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
+    throwCounter = 0;  // Reset throw counter for new player
+    turn++;  // Increment turn when cycling through all players
+}
+
+bool DartGame::isPlayerTurnComplete()
+{
+    return throwCounter >= THROWS_PER_TURN;
 }
 
 String DartGame::getStatusString()
 {
     switch(this->getStatus()) {
-        case DartGameStatus::created:   return "created"; break;
+        case DartGameStatus::initialised: return "initialised"; break;
         case DartGameStatus::running:   return "running"; break;
         case DartGameStatus::done:      return "done"; break;
         case DartGameStatus::aborted:   return "aborted"; break;
@@ -68,7 +99,7 @@ String DartGame::getStatusString()
 
 DartGameStatus DartGame::stringToStatus(String statusString)
 {
-    if (statusString == "created")        return DartGameStatus::created;
+    if (statusString == "initialised")    return DartGameStatus::initialised;
     else if (statusString == "running")   return DartGameStatus::running;
     else if (statusString == "done")      return DartGameStatus::done;
     else if (statusString == "aborted")   return DartGameStatus::aborted;
@@ -80,15 +111,24 @@ DartGameStatus DartGame::stringToStatus(String statusString)
 void DartGame::serialize(JsonObject& obj)
 {
     obj["id"] = id;
-    obj["currentPlayerId"] = getCurrentPlayer().getId();
+    obj["status"] = getStatusString();
+    obj["currentPlayerIndex"] = currentPlayerIndex;
+
+    if (!players.empty()) {
+        obj["currentPlayerId"] = getCurrentPlayer().getId();
+    }
+
     obj["throwCounter"] = throwCounter;
+    obj["winCount"] = winCount;
     obj["points"] = points;
+    obj["turn"] = turn;
 
     JsonArray jsonPlayers = obj["players"].to<JsonArray>();
     for(Player& p : players) {
         JsonObject player = jsonPlayers.add<JsonObject>();
         p.serialize(player);
-        player["points"] = points - player["points"].as<uint16_t>();
+        // Store remaining points (not accumulated points)
+        player["remainingPoints"] = points - p.getPoints();
     }
 }
 
@@ -96,85 +136,535 @@ void DartGame::deserialize(const JsonObject& obj)
 {
     // Deserialize basic game properties
     // Handle both game_id (external format) and id (internal format)
-    if (obj.containsKey("game_id")) {
+    if (obj["game_id"].is<String>()) {
         id = obj["game_id"].as<String>();
-    } else if (obj.containsKey("id")) {
+    } else if (obj["id"].is<String>()) {
         id = obj["id"].as<String>();
     }
 
-    if (obj.containsKey("status")) {
+    if (obj["status"].is<String>()) {
         String statusStr = obj["status"].as<String>();
         status = stringToStatus(statusStr);
     }
 
     // Handle both throwCounter and maxThrows
-    if (obj.containsKey("throwCounter")) {
+    if (obj["throwCounter"].is<uint8_t>()) {
         throwCounter = obj["throwCounter"].as<uint8_t>();
-    } else if (obj.containsKey("maxThrows")) {
+    } else if (obj["maxThrows"].is<uint8_t>()) {
         throwCounter = obj["maxThrows"].as<uint8_t>();
     }
 
-    if (obj.containsKey("points")) {
+    if (obj["points"].is<uint16_t>()) {
         points = obj["points"].as<uint16_t>();
     }
 
-    if (obj.containsKey("turn")) {
+    if (obj["turn"].is<uint8_t>()) {
         turn = obj["turn"].as<uint8_t>();
     }
 
+    // Track active player identifiers that might come in different formats
+    int activePlayerIdInt = -1;
+    String activePlayerIdStr;
+    if (obj["active_player_id"].is<int>() || obj["active_player_id"].is<String>()) {
+        if (obj["active_player_id"].is<int>()) {
+            activePlayerIdInt = obj["active_player_id"].as<int>();
+        } else {
+            activePlayerIdStr = obj["active_player_id"].as<String>();
+        }
+    }
+    if (obj["currentPlayerId"].is<String>()) {
+        activePlayerIdStr = obj["currentPlayerId"].as<String>();
+    }
+
     // Deserialize players
-    if (obj.containsKey("players")) {
+    if (obj["players"].is<JsonArray>()) {
         JsonArray jsonPlayers = obj["players"].as<JsonArray>();
         players.clear();
 
-        int activePlayerId = -1;
-        if (obj.containsKey("active_player_id")) {
-            activePlayerId = obj["active_player_id"].as<int>();
-        }
-
+        uint8_t idx = 0;
         for (JsonObject playerObj : jsonPlayers) {
             Player player;
 
             // Handle integer or string IDs
-            if (playerObj.containsKey("id")) {
+            String pid;
+            if (playerObj["id"].is<int>() || playerObj["id"].is<String>()) {
                 if (playerObj["id"].is<int>()) {
-                    player.setId(String(playerObj["id"].as<int>()));
+                    pid = String(playerObj["id"].as<int>());
                 } else {
-                    player.setId(playerObj["id"].as<String>());
+                    pid = playerObj["id"].as<String>();
                 }
+                player.setId(pid);
             }
 
-            if (playerObj.containsKey("name")) {
+            if (playerObj["name"].is<String>()) {
                 player.setName(playerObj["name"].as<String>());
             }
 
             // Handle both score (external) and points (internal)
-            if (playerObj.containsKey("score")) {
-                // External format: score is current points
-                // We need to calculate remaining points: target - score
+            if (playerObj["points"].is<uint16_t>()) {
+                player.setPoints(playerObj["points"].as<uint16_t>());
+            } else if (playerObj["score"].is<uint16_t>()) {
                 uint16_t score = playerObj["score"].as<uint16_t>();
-                // Note: Player points represent total scored, not remaining
-                // This might need adjustment based on your display logic
-            } else if (playerObj.containsKey("points")) {
-                // Internal format: already handled by deserialize
+                // Assuming Player::points stores accumulated score
+                player.setPoints(score);
             }
 
             players.push_back(player);
 
-            // Set current player index based on active_player_id
-            if (activePlayerId >= 0 && playerObj["id"].as<int>() == activePlayerId) {
-                currentPlayerIndex = players.size() - 1;
+            // Set current player index based on active identifiers if available
+            if (!pid.isEmpty()) {
+                if (activePlayerIdInt >= 0 && pid == String(activePlayerIdInt)) {
+                    currentPlayerIndex = idx;
+                } else if (activePlayerIdStr.length() && pid == activePlayerIdStr) {
+                    currentPlayerIndex = idx;
+                }
             }
+            idx++;
         }
     }
 
-    // Fallback: handle currentPlayerId or currentPlayerIndex
-            if (players[i].getId() == currentPlayerId) {
+    // Fallbacks for current player selection
+    if (obj["currentPlayerIndex"].is<uint8_t>()) {
+        currentPlayerIndex = obj["currentPlayerIndex"].as<uint8_t>();
+    } else if (activePlayerIdStr.length() && !players.empty()) {
+        for (uint8_t i = 0; i < players.size(); i++) {
+            if (players[i].getId() == activePlayerIdStr) {
                 currentPlayerIndex = i;
                 break;
             }
         }
-    } else if (obj.containsKey("currentPlayerIndex")) {
-        currentPlayerIndex = obj["currentPlayerIndex"].as<uint8_t>();
+    } else if (activePlayerIdInt >= 0 && !players.empty()) {
+        for (uint8_t i = 0; i < players.size(); i++) {
+            if (players[i].getId() == String(activePlayerIdInt)) {
+                currentPlayerIndex = i;
+                break;
+            }
+        }
     }
+}
+/**
+ * Deserialize only relevant game state updates based on current game status
+ * - During game "running" state: Only update points and throws, skip player roster
+ * - During other states: Update status and throw counter, skip player details
+ * This optimizes network traffic and prevents unnecessary updates
+ */
+void DartGame::deserializePartial(const JsonObject& obj)
+{
+    // Always update game status if present
+    if (obj["status"].is<String>()) {
+        String statusStr = obj["status"].as<String>();
+        status = stringToStatus(statusStr);
+    }
+
+    // During running state, only update game progress (points, throws, current player)
+    if (status == DartGameStatus::running) {
+        // Update throw counter if present
+        if (obj["throwCounter"].is<uint8_t>()) {
+            throwCounter = obj["throwCounter"].as<uint8_t>();
+        } else if (obj["maxThrows"].is<uint8_t>()) {
+            throwCounter = obj["maxThrows"].as<uint8_t>();
+        }
+
+        // Update points if present
+        if (obj["points"].is<uint16_t>()) {
+            points = obj["points"].as<uint16_t>();
+        }
+
+        // Update current player index if present
+        if (obj["active_player_id"].is<int>()) {
+            int activePlayerId = obj["active_player_id"].as<int>();
+            for (uint8_t i = 0; i < players.size(); i++) {
+                if (players[i].getId() == String(activePlayerId)) {
+                    currentPlayerIndex = i;
+                    break;
+                }
+            }
+        } else if (obj["currentPlayerIndex"].is<uint8_t>()) {
+            currentPlayerIndex = obj["currentPlayerIndex"].as<uint8_t>();
+        }
+
+        // Update turn counter if present
+        if (obj["turn"].is<uint8_t>()) {
+            turn = obj["turn"].as<uint8_t>();
+        }
+
+        // Update individual player scores only (not entire roster)
+        if (obj["players"].is<JsonArray>()) {
+            JsonArray jsonPlayers = obj["players"].as<JsonArray>();
+            for (JsonObject playerObj : jsonPlayers) {
+                String playerId;
+                if (playerObj["id"].is<int>() || playerObj["id"].is<String>()) {
+                    if (playerObj["id"].is<int>()) {
+                        playerId = String(playerObj["id"].as<int>());
+                    } else {
+                        playerId = playerObj["id"].as<String>();
+                    }
+                }
+
+                // Find and update only the score/points for existing player
+                for (Player& p : players) {
+                    if (p.getId() == playerId) {
+                        if (playerObj["score"].is<uint16_t>()) {
+                            // Score update - recalculate remaining points
+                            uint16_t score = playerObj["score"].as<uint16_t>();
+                            // Note: Adjust based on how you track player points
+                        } else if (playerObj["points"].is<uint16_t>()) {
+                            uint16_t playerPoints = playerObj["points"].as<uint16_t>();
+                            p.setPoints(playerPoints);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        // For non-running states, update status and turn info
+        if (obj["turn"].is<uint8_t>()) {
+            turn = obj["turn"].as<uint8_t>();
+        }
+
+        // Only deserialize players and other data on state transitions (created, done, aborted)
+        if (status != DartGameStatus::running && obj["players"].is<JsonArray>()) {
+            deserialize(obj);  // Full deserialize for state changes
+        }
+    }
+}
+
+/**
+ * Add a throw to the current player
+ * X01 Logic: Each player gets exactly 3 throws per turn
+ * @param dartThrow The throw to add
+ * @return true if successful, false if player has already thrown 3 times
+ */
+bool DartGame::addThrowToCurrentPlayer(const Throw& dartThrow)
+{
+    if (players.empty()) {
+        DEBUG_PRINTLN("[DT] Error: Cannot add throw - no players in game");
+        return false;
+    }
+
+    // Check if player already has 3 throws in this turn
+    if (isPlayerTurnComplete()) {
+        DEBUG_PRINT("[DT] Error: ");
+        DEBUG_PRINT(getCurrentPlayer().getName());
+        DEBUG_PRINTLN(" has already thrown 3 times this turn");
+        return false;
+    }
+
+    getCurrentPlayer().addThrow(dartThrow);
+    throwCounter++;
+    DEBUG_PRINT("[DT] Throw added to ");
+    DEBUG_PRINT(getCurrentPlayer().getName());
+    DEBUG_PRINT(" (");
+    DEBUG_PRINT(throwCounter);
+    DEBUG_PRINTLN("/3)");
+    return true;
+}
+
+/**
+ * Add a throw to a specific player by ID
+ * X01 Logic: Each player gets exactly 3 throws per turn
+ * @param playerId The ID of the player
+ * @param dartThrow The throw to add
+ * @return true if player found and throw added, false otherwise
+ */
+bool DartGame::addThrowToPlayer(const String& playerId, const Throw& dartThrow)
+{
+    if (playerId.isEmpty()) {
+        DEBUG_PRINTLN("[DT] Error: Player ID is empty");
+        return false;
+    }
+
+    for (Player& p : players) {
+        if (p.getId() == playerId) {
+            // Check if this is the current player and if they already have 3 throws
+            if (p.getId() == getCurrentPlayer().getId() && isPlayerTurnComplete()) {
+                DEBUG_PRINT("[DT] Error: ");
+                DEBUG_PRINT(p.getName());
+                DEBUG_PRINTLN(" has already thrown 3 times this turn");
+                return false;
+            }
+
+            p.addThrow(dartThrow);
+            if (p.getId() == getCurrentPlayer().getId()) {
+                throwCounter++;
+            }
+            DEBUG_PRINT("[DT] Throw added to ");
+            DEBUG_PRINT(p.getName());
+            DEBUG_PRINT(" (Total throws: ");
+            DEBUG_PRINT(p.getThrowCount());
+            DEBUG_PRINTLN(")");
+            return true;
+        }
+    }
+
+    DEBUG_PRINT("[DT] Error: Player with ID ");
+    DEBUG_PRINT(playerId);
+    DEBUG_PRINTLN(" not found");
+    return false;
+}
+
+/**
+ * Get throws of the current player
+ * @return vector of throws for current player
+ */
+std::vector<Throw> DartGame::getCurrentPlayerThrows()
+{
+    if (players.empty()) {
+        return std::vector<Throw>();
+    }
+    return getCurrentPlayer().getThrows();
+}
+
+/**
+ * Get throws of a specific player
+ * @param playerId The ID of the player
+ * @return vector of throws for the player, or empty vector if not found
+ */
+std::vector<Throw> DartGame::getPlayerThrows(const String& playerId)
+{
+    for (const Player& p : players) {
+        if (p.getId() == playerId) {
+            return p.getThrows();
+        }
+    }
+
+    DEBUG_PRINT("[DT] Error: Player with ID ");
+    DEBUG_PRINT(playerId);
+    DEBUG_PRINTLN(" not found");
+    return std::vector<Throw>();
+}
+
+/**
+ * Undo the last throw for the current player
+ * @return true if throw was removed, false if no throws to undo
+ */
+bool DartGame::undoLastThrow()
+{
+    if (players.empty()) {
+        DEBUG_PRINTLN("[DT] Error: Cannot undo - no players in game");
+        return false;
+    }
+
+    Player& currentPlayer = getCurrentPlayer();
+    if (currentPlayer.getThrowCount() == 0) {
+        DEBUG_PRINT("[DT] No throws to undo for ");
+        DEBUG_PRINTLN(currentPlayer.getName());
+        return false;
+    }
+
+    currentPlayer.getThrows().pop_back();
+    if (throwCounter > 0) throwCounter--;
+    DEBUG_PRINT("[DT] Last throw undone for ");
+    DEBUG_PRINT(currentPlayer.getName());
+    DEBUG_PRINT(" (Remaining: ");
+    DEBUG_PRINT(throwCounter);
+    DEBUG_PRINTLN("/3)");
+    return true;
+}
+
+/**
+ * Undo the last throw for a specific player
+ * @param playerId The ID of the player
+ * @return true if throw was removed, false if player not found or no throws to undo
+ */
+bool DartGame::undoLastThrowForPlayer(const String& playerId)
+{
+    if (playerId.isEmpty()) {
+        DEBUG_PRINTLN("[DT] Error: Player ID is empty");
+        return false;
+    }
+
+    for (Player& p : players) {
+        if (p.getId() == playerId) {
+            if (p.getThrowCount() == 0) {
+                DEBUG_PRINT("[DT] No throws to undo for ");
+                DEBUG_PRINTLN(p.getName());
+                return false;
+            }
+
+            p.getThrows().pop_back();
+            if (p.getId() == getCurrentPlayer().getId() && throwCounter > 0) {
+                throwCounter--;
+            }
+            DEBUG_PRINT("[DT] Last throw undone for ");
+            DEBUG_PRINT(p.getName());
+            DEBUG_PRINT(" (Remaining throws: ");
+            DEBUG_PRINT(p.getThrowCount());
+            DEBUG_PRINTLN(")");
+            return true;
+        }
+    }
+
+    DEBUG_PRINT("[DT] Error: Player with ID ");
+    DEBUG_PRINT(playerId);
+    DEBUG_PRINTLN(" not found");
+    return false;
+}
+
+/**
+ * Get remaining points for current player
+ * @return remaining points needed to reach target
+ */
+uint16_t DartGame::getCurrentPlayerRemainingPoints()
+{
+    if (players.empty()) {
+        return points;
+    }
+
+    uint16_t currentScore = getCurrentPlayer().getPoints();
+    return (currentScore >= points) ? 0 : (points - currentScore);
+}
+
+/**
+ * Get remaining points for a specific player
+ * @param playerId The ID of the player
+ * @return remaining points needed to reach target, or 0 if player not found
+ */
+uint16_t DartGame::getPlayerRemainingPoints(const String& playerId)
+{
+    for (const Player& p : players) {
+        if (p.getId() == playerId) {
+            uint16_t currentScore = p.getPoints();
+            return (currentScore >= points) ? 0 : (points - currentScore);
+        }
+    }
+
+    DEBUG_PRINT("[DT] Error: Player with ID ");
+    DEBUG_PRINT(playerId);
+    DEBUG_PRINTLN(" not found");
+    return 0;
+}
+
+/**
+ * Process a dart throw with X01 game logic
+ * - Each player gets exactly 3 throws per turn
+ * - Points are subtracted from starting score
+ * - Player must finish on a double (value * field multiplier)
+ * - Bust (going below 0) ends turn without adding points
+ * @param score The dart score (0-50 in single ring, higher with multipliers)
+ * @return DartThrowResult containing success status and game state details
+ */
+DartThrowResult DartGame::processDartThrow(int score)
+{
+    DartThrowResult result;
+    result.score = score;
+    result.hasWon = false;
+    result.winner = "";
+    result.winnerId = "";
+
+    // Validate game is running
+    if (status != DartGameStatus::running) {
+        result.success = false;
+        result.message = "Game is not in running state";
+        return result;
+    }
+
+    // Validate score input (0-50)
+    if (score < 0 || score > 50) {
+        result.success = false;
+        result.message = "Invalid score: must be 0-50";
+        return result;
+    }
+
+    // Validate we have players
+    if (players.empty()) {
+        result.success = false;
+        result.message = "No players in game";
+        return result;
+    }
+
+    // Check if current player's turn is already complete
+    if (isPlayerTurnComplete()) {
+        result.success = false;
+        result.message = "Player turn is complete (3 throws already made)";
+        return result;
+    }
+
+    // Get current player info
+    Player& currentPlayer = getCurrentPlayer();
+    uint16_t currentScore = currentPlayer.getPoints();
+    result.playerName = currentPlayer.getName();
+    result.playerId = currentPlayer.getId();
+
+    // X01 Logic: Check if throw would bust (exceed starting points)
+    if (currentScore + score > points) {
+        result.success = false;
+        result.message = "Dart throw would exceed target - BUST";
+        result.pointsRemaining = points - currentScore;
+
+        // Still count this as a throw in the turn, but don't add points
+        throwCounter++;
+
+        // If player has completed 3 throws, advance to next player
+        if (isPlayerTurnComplete()) {
+            nextPlayer();
+            DEBUG_PRINT("[Game] ");
+            DEBUG_PRINT(currentPlayer.getName());
+            DEBUG_PRINTLN(" turn complete (turn ended with bust)");
+        }
+
+        return result;
+    }
+
+    // Create and add throw
+    Throw dartThrow;
+    dartThrow.setValue(score);
+    dartThrow.setField(1);  // Default: single ring (no multiplier)
+    currentPlayer.addThrow(dartThrow);
+    throwCounter++;
+
+    // Calculate remaining points after throw
+    uint16_t newScore = currentPlayer.getPoints();
+    result.pointsRemaining = points - newScore;
+
+    // X01 Win Condition: Exactly reach target points
+    if (newScore == points) {
+        // In standard X01, must finish on a double
+        // For now, allow any finish. Uncomment below to enforce double-out rule:
+        // if (dartThrow.getField() < 2) {
+        //     result.success = false;
+        //     result.message = "Must finish on a double - BUST";
+        //     currentPlayer.getThrows().pop_back();  // Remove invalid finishing throw
+        //     return result;
+        // }
+
+        currentPlayer.setWinPos(1);  // Mark as winner
+        status = DartGameStatus::done;
+        result.hasWon = true;
+        result.winner = currentPlayer.getName();
+        result.winnerId = currentPlayer.getId();
+        result.message = "Game Won! " + currentPlayer.getName() + " reached exactly " + String(points) + " points!";
+
+        winCount++;
+        DEBUG_PRINT("[Game] Player ");
+        DEBUG_PRINT(result.winner);
+        DEBUG_PRINT(" won the game with ");
+        DEBUG_PRINT(turn);
+        DEBUG_PRINTLN(" turn(s)!");
+
+        result.success = true;
+        return result;
+    }
+
+    // Check if this throw completes the player's turn (3 throws)
+    if (isPlayerTurnComplete()) {
+        nextPlayer();
+        result.message = "Dart throw recorded - Turn complete, advancing to next player";
+        DEBUG_PRINT("[Game] ");
+        DEBUG_PRINT(currentPlayer.getName());
+        DEBUG_PRINT(" turn complete. Scores: ");
+        for (size_t i = 0; i < players.size(); i++) {
+            DEBUG_PRINT(players[i].getName());
+            DEBUG_PRINT("=");
+            DEBUG_PRINT(points - players[i].getPoints());
+            if (i < players.size() - 1) DEBUG_PRINT(", ");
+        }
+        DEBUG_PRINTLN();
+    } else {
+        result.message = "Dart throw recorded (" + String(throwCounter) + "/3)";
+    }
+
+    result.success = true;
+    return result;
 }

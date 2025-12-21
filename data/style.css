@@ -1,15 +1,119 @@
+:root {
+    --app-primary: #4caf50;
+    --primary: var(--app-primary);
+    --on-primary: #ffffff;
+
+    /* Static theme palette (light) */
+    --primary-container: #def6e5;
+    --on-primary-container: #0c2f17;
+    --secondary: #4f6354;
+    --on-secondary: #ffffff;
+    --secondary-container: #d2e8d6;
+    --on-secondary-container: #0d1f13;
+    --tertiary: #3a6472;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #c0e9fa;
+    --on-tertiary-container: #001f29;
+    --error: #ba1a1a;
+    --on-error: #ffffff;
+    --error-container: #ffdad6;
+    --on-error-container: #410002;
+    --background: #fdfdf6;
+    --on-background: #1a1c18;
+    --surface: #fdfdf6;
+    --on-surface: #1a1c18;
+    --surface-variant: #dfe4db;
+    --on-surface-variant: #43483f;
+    --outline: #73796f;
+    --outline-variant: #c3c8be;
+    --shadow: #000000;
+    --scrim: #000000;
+    --inverse-surface: #2f312c;
+    --inverse-on-surface: #f1f1ea;
+    --inverse-primary: #9bd3af;
+    --surface-dim: #dedfd8;
+    --surface-bright: #fdfdf6;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f7f8f1;
+    --surface-container: #f1f2eb;
+    --surface-container-high: #e9ebe4;
+    --surface-container-highest: #e3e4dd;
+}
+
+/* Optional dark mode static palette override */
+body.dark {
+    --primary: #9bd3af;
+    --on-primary: #0c2f17;
+    --primary-container: #0f4926;
+    --on-primary-container: #def6e5;
+    --secondary: #b6ccb9;
+    --on-secondary: #223526;
+    --secondary-container: #384b3c;
+    --on-secondary-container: #d2e8d6;
+    --tertiary: #a5cde0;
+    --on-tertiary: #053544;
+    --tertiary-container: #214c5a;
+    --on-tertiary-container: #c0e9fa;
+    --error: #ffb4ab;
+    --on-error: #690005;
+    --error-container: #93000a;
+    --on-error-container: #ffdad6;
+    --background: #11140f;
+    --on-background: #e3e3dc;
+    --surface: #11140f;
+    --on-surface: #e3e3dc;
+    --surface-variant: #43483f;
+    --on-surface-variant: #c3c8be;
+    --outline: #8d9388;
+    --outline-variant: #43483f;
+    --shadow: #000000;
+    --scrim: #000000;
+    --inverse-surface: #e3e3dc;
+    --inverse-on-surface: #2f312c;
+    --inverse-primary: #4caf50;
+    --surface-dim: #11140f;
+    --surface-bright: #373a35;
+    --surface-container-lowest: #0c0f0a;
+    --surface-container-low: #191c17;
+    --surface-container: #1c1f1a;
+    --surface-container-high: #272b25;
+    --surface-container-highest: #32362f;
+}
+
 .withIcon {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 3rem;
     font-size: 1.5rem;
+    gap: 0.4rem;
+    line-height: 1.1;
 }
 
 .withIcon > i {
+    /* Override BeerCSS icon sizing (BeerCSS uses --_size custom prop) */
+    --_size: 3rem;
     font-size: 3rem;
-    margin-right: 1rem;
+    line-height: 1;
+    margin: 0;
+    inline-size: var(--_size);
+    block-size: var(--_size);
+    min-inline-size: var(--_size);
+    min-block-size: var(--_size);
+}
+
+/* Truncate long inline text (e.g., player IDs) */
+.id-ellipsis {
+    display: inline-block;
+    max-width: 16ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.7;
+    font-size: 0.85em;
+    vertical-align: bottom;
 }
 
 #io {
@@ -198,9 +302,60 @@ main {
     margin: 2rem 0;
 }
 
+#playersList li {
+    position: relative;
+}
+
+#playersList li.selectable-player {
+    cursor: pointer;
+}
+
+#playersList li .player-select-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    color: var(--primary);
+    opacity: 0;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+#playersList li.selected-player {
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    background-color: rgba(76, 175, 80, 0.08);
+}
+
+#playersList li.selected-player .player-select-indicator {
+    opacity: 1;
+    border-color: var(--primary);
+}
+
 /* ==================== Index Page Styles ==================== */
 
 .home-link {
     display: block;
     margin: 1rem 0;
 }
+
+/* Utility helpers to replace inline styles */
+.hidden { display: none !important; }
+.info-box {
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    font-weight: bold;
+    text-align: center;
+}
+.mt-1 { margin-top: 1rem; }
+.btn-wide { padding: 0.75rem 1.5rem; }
+.mb-1 { margin-bottom: 1rem; }
+.status-display {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+.text-center { text-align: center; }

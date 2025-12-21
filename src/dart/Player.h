@@ -17,6 +17,7 @@ class Player
     protected:
         String id;
         String name;
+        uint16_t points = 0;
         uint8_t winPos = 0;
         std::vector<Throw> throws;
 
@@ -39,15 +40,38 @@ class Player
             return this->winPos > 0 ? true : false;
         }
 
-        uint16_t getPoints()
+        uint16_t getPoints() const
         {
+            if (throws.empty())
+                return this->points;
+
             uint16_t sum = 0;
-            for(Throw t : throws)
+            for(const Throw& t : throws)
                 sum += t.getPoints();
 
             return sum;
         }
+
+        void setPoints(uint16_t points)
+        {
+            this->points = points;
+        }
         std::vector<Throw> getLastThrows(size_t amount);
+
+        std::vector<Throw>& getThrows()
+        {
+            return throws;
+        }
+
+        const std::vector<Throw>& getThrows() const
+        {
+            return throws;
+        }
+
+        size_t getThrowCount() const
+        {
+            return throws.size();
+        }
 
         void serialize(JsonObject& obj) {
             obj["id"] = id;
@@ -76,12 +100,12 @@ class Player
             this->winPos = pos;
         }
 
-        String getId()
+        String getId() const
         {
             return this->id;
         }
 
-        String getName()
+        String getName() const
         {
             return name;
         }

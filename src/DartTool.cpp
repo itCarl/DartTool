@@ -46,7 +46,14 @@ void DartTool::setup()
     // PlayerManager::instance().addOrEditPlayer("Max1");
     // PlayerManager::instance().addOrEditPlayer("Spieler3");
     // PlayerManager::instance().addOrEditPlayer("Player sjfho erhbfwif sdfsf");
+    ExternalService::instance().setHost(externalServiceHost);
+    ExternalService::instance().setApiToken(externalServiceToken);
+    ExternalService::instance().setEnabled(EXTERNAL_SERVICE_ENABLED);
     listDir(LittleFS, "/", 1);
+
+    // Set game to initialised state after ESP32 boot is complete
+    game.setStatus(DartGameStatus::initialised);
+    DEBUG_PRINTLN("[DT] ESP32 boot complete - Game initialised");
 }
 
 void DartTool::loop()
@@ -58,7 +65,7 @@ void DartTool::loop()
     cleanupWs();
 
     // Poll external service for game state updates
-    pollExternalGameState();
+    // pollExternalGameState();
 
     // printConnectedClients();
 

@@ -42,6 +42,29 @@ void loadConfig()
         apSSID[32] = '\0';
     }
 
+    // Load External Service settings
+    size_t extHostLen = storage.getBytes("ext_host", (uint8_t*)NULL, 0);
+    if (extHostLen > 0 && extHostLen < 129) {
+        char temp[129];
+        storage.getBytes("ext_host", (uint8_t*)temp, extHostLen);
+        temp[extHostLen] = '\0';
+        ExternalService::instance().setHost(String(temp));
+    }
+
+    size_t extTokenLen = storage.getBytes("ext_token", (uint8_t*)NULL, 0);
+    if (extTokenLen > 0 && extTokenLen < 257) {
+        char tkn[257];
+        storage.getBytes("ext_token", (uint8_t*)tkn, extTokenLen);
+        tkn[extTokenLen] = '\0';
+        ExternalService::instance().setApiToken(String(tkn));
+    }
+
+    bool extEnabled = storage.getBool("ext_enabled", false);
+    ExternalService::instance().setEnabled(extEnabled);
+
+    unsigned long extInterval = storage.getULong("ext_interval", 5000);
+    ExternalService::instance().setPollInterval(extInterval);
+
     storage.end();
 }
 
@@ -74,6 +97,31 @@ void saveWifiSettings(const char* ssid, const char* password, const char* hostna
 
     storage.end();
     DEBUG_PRINTLN("[Storage] WiFi settings saved");
+}
+
+void saveExternalServiceConfig(const char* host, const char* token, bool enabled, unsigned long interval)
+{
+    storage.begin("cfg", false);
+
+    if (host && strlen(host) > 0 && strlen(host) < 129) {
+        storage.putBytes("ext_host", (const uint8_t*)host, strlen(host));
+    }
+
+    // token may be empty to clear
+    if (token) {
+        if (strlen(token) > 0 && strlen(token) < 257) {
+            storage.putBytes("ext_token", (const uint8_t*)token, strlen(token));
+        } else if (strlen(token) == 0) {
+            // Clear token by writing zero length
+            storage.remove("ext_token");
+        }
+    }
+
+    storage.putBool("ext_enabled", enabled);
+    storage.putULong("ext_interval", interval);
+
+    storage.end();
+    DEBUG_PRINTLN("[Storage] External service config saved");
 }
 
 void getWifiSettings(char* outSsid, char* outPassword, char* outHostname)
