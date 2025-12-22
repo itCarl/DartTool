@@ -34,6 +34,7 @@ var selectedPlayerId = null;
 var selectedPlayerList = [];
 var lastPlayerFetch = null;
 var gameState = "unknown";
+let latestGameSnapshot = null;
 
 window.addEventListener('load', onLoad);
 
@@ -190,6 +191,8 @@ function onMessage(event) {
     // Handle game status
     if(data.game) {
         var g = data.game;
+        // Keep a full snapshot for export if provided, else use display data
+        latestGameSnapshot = data.gameFull || g;
         var state = g?.status || 'unknown';
         d.querySelectorAll('#gameStateSelector button.active')?.forEach(btn => {
             btn.classList.remove('active');
@@ -201,6 +204,8 @@ function onMessage(event) {
         if(state == "unknown" || state == "initialised" || state == "aborted") {
             show('viewSetup');
             show('viewPlayerManagement');
+            show('io');
+            hide('doneActions');
             if (state == "aborted") {
                 showStatus('Game aborted - Ready for new game', 'info');
             }
@@ -210,6 +215,16 @@ function onMessage(event) {
             updateGameInfo(g);
             if (g && g.players) {
                 populatePlayers(g);
+            }
+            if (state == 'done') {
+                // Hide numpad and abort; show post-game actions
+                hide('numpad');
+                hide('abortGameBtn');
+                show('doneActions');
+            } else {
+                show('numpad');
+                show('abortGameBtn');
+                hide('doneActions');
             }
         }
     }
@@ -440,6 +455,8 @@ function updateGameInfo(gameData) {
     const status = gameData.status || 'unknown';
     const currentPlayer = gameData.players?.find(p => p.id === gameData.currentPlayerId);
     const playerName = currentPlayer?.name || 'Unknown';
+    const winner = (gameData.players || []).find(p => p.winPos === 1);
+    const winnerName = winner?.name || playerName;
     const points = gameData.points || 301;
 
     let statusText = '';
@@ -451,7 +468,7 @@ function updateGameInfo(gameData) {
             statusText = `${playerName}'s Turn - ${points} Points Remaining`;
             break;
         case 'done':
-            statusText = `Game Over - Winner: ${playerName}`;
+            statusText = `Game Over - Winner: ${winnerName}`;
             break;
         case 'aborted':
             statusText = 'Game Aborted';
@@ -475,11 +492,26 @@ function populatePlayers(data) {
         item.classList.add('playerCard');
 
         // Calculate remaining points and statistics
-        const remainingPoints = player.points !== undefined ? player.points : 0;
+        const remainingPoints = player.remainingPoints !== undefined ? player.remainingPoints : 0;
         const totalThrows = player.throwCounter !== undefined ? player.throwCounter : 0;
         const roundThrow = totalThrows % 3; // Current throw in round (0, 1, or 2)
         const averagePoints = totalThrows > 0 ? Math.round(remainingPoints / totalThrows) : 0;
         const isCurrentPlayer = data.currentPlayerId === player.id;
+
+        // Get the last 3 throws (current round)
+        const throws = player.throws || [];
+        const lastThrows = throws.slice(-3);
+
+        // Build throw display HTML
+        let throwsHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const throwData = lastThrows[i];
+            const throwPoints = throwData ? throwData.points : 0;
+            const opacity = i < roundThrow ? '1' : '0.3';
+            throwsHTML += `<div style="opacity: ${opacity};">
+                <span class="s4 center-align">${throwPoints}</span>
+            </div>`;
+        }
 
         item.innerHTML = `
             <div class="grid no-space" style="${isCurrentPlayer ? 'border: 3px solid gold;' : ''}">
@@ -489,15 +521,7 @@ function populatePlayers(data) {
                 </div>
                 <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
                     <div class="throwGroup">
-                        <div class="s4" style="opacity: ${roundThrow > 0 ? '1' : '0.3'};">
-                            <span class="s4 center-align">0</span>
-                        </div>
-                        <div class="s4" style="opacity: ${roundThrow > 1 ? '1' : '0.3'};">
-                            <span class="s4 center-align">1</span>
-                        </div>
-                        <div class="s4" style="opacity: ${roundThrow > 2 ? '1' : '0.3'};">
-                            <span class="s4 center-align">2</span>
-                        </div>
+                        ${throwsHTML}
                     </div>
                     <div class="s4 center-align" style="display: flex;flex-direction:column;flex:3;">
                         <h6>${totalThrows}</h6>
@@ -703,6 +727,16 @@ function initGamePage() {
         });
     }
 
+    // Post-game actions
+    const exportJsonBtn = byId('exportJsonBtn');
+    if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportGameAsJson);
+
+    const syncGameBtn = byId('syncGameBtn');
+    if (syncGameBtn) syncGameBtn.addEventListener('click', syncGameNow);
+
+    const newGameBtn = byId('newGameBtn');
+    if (newGameBtn) newGameBtn.addEventListener('click', startNewGame);
+
     ['unknown','initialised','running','done','aborted','error'].forEach(e => {
         const btn = byId(`state${e.charAt(0).toUpperCase() + e.slice(1)}`);
         if (btn) {
@@ -714,6 +748,43 @@ function initGamePage() {
             });
         }
     });
+}
+
+function exportGameAsJson() {
+    try {
+        const data = latestGameSnapshot || {};
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const gameId = data.id || (data.game_id) || 'dart-game';
+        a.href = url;
+        a.download = `${gameId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showStatus('Game exported as JSON', 'success');
+    } catch (e) {
+        console.error('Export failed:', e);
+        showStatus('Export failed', 'error');
+    }
+}
+
+function syncGameNow() {
+    // Reuse existing sync mechanism; backend handles details
+    syncNow();
+}
+
+function startNewGame() {
+    // Reset to setup state and allow starting a new game
+    sendMessage({ cmd: 'setGameStatus', s: 'initialised' });
+    show('viewSetup');
+    show('viewPlayerManagement');
+    show('io');
+    hide('doneActions');
+    show('numpad');
+    show('abortGameBtn');
 }
 
 // ============================================================================

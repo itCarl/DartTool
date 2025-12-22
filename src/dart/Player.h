@@ -11,7 +11,12 @@ class Player
 {
     private:
         struct Turn {
+            uint8_t turnNumber;
             Throw throws[3];
+            uint8_t throwCount;
+
+            Turn() : turnNumber(0), throwCount(0) {}
+            Turn(uint8_t num) : turnNumber(num), throwCount(0) {}
         };
 
     protected:
@@ -19,8 +24,7 @@ class Player
         String name;
         uint16_t points = 0;
         uint8_t winPos = 0;
-        std::vector<Throw> throws;
-
+        std::vector<Turn> turns;
 
     public:
         Player()
@@ -32,23 +36,52 @@ class Player
 
         void addThrow(Throw t)
         {
-            this->throws.push_back(t);
+            // Create new turn if needed or add to current turn
+            if (turns.empty() || turns.back().throwCount >= 3) {
+                turns.push_back(Turn(turns.size()));
+            }
+            turns.back().throws[turns.back().throwCount] = t;
+            turns.back().throwCount++;
         }
 
-        bool hasWon()
+        // Add a throw to a specific turn number (creates the turn if missing)
+        // Returns false if the target turn already has 3 throws
+        bool addThrowToTurn(uint8_t turnNumber, const Throw& t)
+        {
+            // Try to find existing turn
+            for (auto &turn : turns) {
+                if (turn.turnNumber == turnNumber) {
+                    if (turn.throwCount >= 3) return false; // turn full
+                    turn.throws[turn.throwCount] = t;
+                    turn.throwCount++;
+                    return true;
+                }
+            }
+
+            // Turn not found: create a new one
+            Turn newTurn(turnNumber);
+            newTurn.throws[0] = t;
+            newTurn.throwCount = 1;
+            turns.push_back(newTurn);
+            return true;
+        }
+
+        bool hasWon() const
         {
             return this->winPos > 0 ? true : false;
         }
 
         uint16_t getPoints() const
         {
-            if (throws.empty())
+            if (turns.empty())
                 return this->points;
 
             uint16_t sum = 0;
-            for(const Throw& t : throws)
-                sum += t.getPoints();
-
+            for(const Turn& turn : turns) {
+                for(uint8_t i = 0; i < turn.throwCount; i++) {
+                    sum += turn.throws[i].getPoints();
+                }
+            }
             return sum;
         }
 
@@ -56,21 +89,69 @@ class Player
         {
             this->points = points;
         }
-        std::vector<Throw> getLastThrows(size_t amount);
 
-        std::vector<Throw>& getThrows()
+        std::vector<Throw> getThrows() const
         {
-            return throws;
+            std::vector<Throw> result;
+            for(const Turn& turn : turns) {
+                for(uint8_t i = 0; i < turn.throwCount; i++) {
+                    result.push_back(turn.throws[i]);
+                }
+            }
+            return result;
         }
 
-        const std::vector<Throw>& getThrows() const
+        std::vector<Throw> getThrowsFromTurn(uint8_t turnNumber) const
         {
-            return throws;
+            std::vector<Throw> result;
+            for(const Turn& turn : turns) {
+                if (turn.turnNumber == turnNumber) {
+                    for(uint8_t i = 0; i < turn.throwCount; i++) {
+                        result.push_back(turn.throws[i]);
+                    }
+                    break;
+                }
+            }
+            return result;
         }
 
         size_t getThrowCount() const
         {
-            return throws.size();
+            size_t count = 0;
+            for(const Turn& turn : turns) {
+                count += turn.throwCount;
+            }
+            return count;
+        }
+
+        size_t getTurnCount() const
+        {
+            return turns.size();
+        }
+
+        // Undo the last throw (from the current/last turn)
+        bool undoLastThrow()
+        {
+            if (turns.empty() || turns.back().throwCount == 0) {
+                return false;
+            }
+            turns.back().throwCount--;
+            return true;
+        }
+
+        // Remove the last turn completely (e.g., after a bust rollback)
+        // Returns false if no turns are available to remove
+        bool removeLastTurn()
+        {
+            if (turns.empty()) return false;
+            turns.pop_back();
+            return true;
+        }
+
+        // Clear all turns
+        void clearTurns()
+        {
+            turns.clear();
         }
 
         void serialize(JsonObject& obj) {
@@ -78,6 +159,21 @@ class Player
             obj["name"] = name;
             obj["winPos"] = winPos;
             obj["points"] = getPoints();
+
+            // Serialize turns array with turn numbers
+            JsonArray turnsArray = obj.createNestedArray("turns");
+            for (const Turn& turn : turns) {
+                JsonObject turnObj = turnsArray.add<JsonObject>();
+                turnObj["turnNumber"] = turn.turnNumber;
+
+                JsonArray throwsArray = turnObj.createNestedArray("throws");
+                for(uint8_t i = 0; i < turn.throwCount; i++) {
+                    JsonObject throwObj = throwsArray.add<JsonObject>();
+                    throwObj["value"] = turn.throws[i].getValue();
+                    throwObj["field"] = turn.throws[i].getField();
+                    throwObj["points"] = turn.throws[i].getPoints();
+                }
+            }
         }
 
         static Player deserialize(const JsonObject& obj) {

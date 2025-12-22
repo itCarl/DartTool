@@ -36,9 +36,9 @@
     </header>
 
     <main class="container">
-        <div id="spinner" class="center-align p-4">
+        <!-- <div id="spinner" class="center-align p-4">
             <progress class="circle"></progress>
-        </div>
+        </div> -->
 
         <!-- Player Management Section -->
         <div id="viewPlayerManagement">
@@ -83,31 +83,26 @@
 
                 <hr class="large">
 
-                <div class="field label border">
-                    <input type="text">
-                    <label>Name</label>
-                    <span class="helper">Game name</span>
-                </div>
                 <div class="field middle-align">
                     <nav>
                         <label class="radio">
-                            <input type="radio" name="radio5_">
+                            <input type="radio" name="radio5_" value="201">
                             <span>201</span>
                         </label>
                         <label class="radio">
-                            <input type="radio" name="radio5_" checked>
+                            <input type="radio" name="radio5_" value="301" checked>
                             <span>301</span>
                         </label>
                         <label class="radio">
-                            <input type="radio" name="radio5_">
+                            <input type="radio" name="radio5_" value="401">
                             <span>401</span>
                         </label>
                         <label class="radio">
-                            <input type="radio" name="radio5_">
+                            <input type="radio" name="radio5_" value="601">
                             <span>601</span>
                         </label>
                         <label class="radio">
-                            <input type="radio" name="radio5_">
+                            <input type="radio" name="radio5_" value="801">
                             <span>801</span>
                         </label>
                     </nav>
@@ -160,6 +155,20 @@
                         <span>Abort Game</span>
                     </button>
                 </div>
+                <div id="doneActions" class="mt-1 text-center" style="display:none; gap:.5rem;">
+                    <button id="exportJsonBtn" class="outline btn-wide">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Download JSON</span>
+                    </button>
+                    <button id="syncGameBtn" class="outline btn-wide">
+                        <i class="fa-solid fa-cloud-upload"></i>
+                        <span>Sync External</span>
+                    </button>
+                    <button id="newGameBtn" class="fill btn-wide">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Start New Game</span>
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -208,7 +217,6 @@
                 <span>Settings</span>
             </a>
             <hr>
-            <label>Debug</label>
             <label>State</label>
             <div id="gameStateSelector">
                 <nav class="group connected">

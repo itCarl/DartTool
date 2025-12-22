@@ -73,10 +73,16 @@ Player& DartGame::getCurrentPlayer()
 
 void DartGame::nextPlayer()
 {
-    if (players.size() <= 1) return;
+    if (players.size() <= 1) {
+        throwCounter = 0;
+        turn++;  // Single-player: advance turn after each completed round
+        return;
+    }
     currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
     throwCounter = 0;  // Reset throw counter for new player
-    turn++;  // Increment turn when cycling through all players
+    if (currentPlayerIndex == 0) {
+        turn++;  // Increment turn after all players completed a round
+    }
 }
 
 bool DartGame::isPlayerTurnComplete()
@@ -129,6 +135,41 @@ void DartGame::serialize(JsonObject& obj)
         p.serialize(player);
         // Store remaining points (not accumulated points)
         player["remainingPoints"] = points - p.getPoints();
+    }
+}
+
+/**
+ * Serialize only data needed for displaying current game state
+ * Minimizes bandwidth by excluding internal state details
+ * Includes: status, current player, game points, player names, throws, and remaining points
+ */
+void DartGame::serializeForDisplay(JsonObject& obj)
+{
+    obj["status"] = getStatusString();
+    obj["points"] = points;
+    obj["turn"] = turn;
+
+    if (!players.empty()) {
+        obj["currentPlayerId"] = getCurrentPlayer().getId();
+    }
+
+    JsonArray jsonPlayers = obj["players"].to<JsonArray>();
+    for(const Player& p : players) {
+        JsonObject player = jsonPlayers.add<JsonObject>();
+        player["id"] = p.getId();
+        player["name"] = p.getName();
+        player["remainingPoints"] = points - p.getPoints();  // Points needed to reach target
+        player["winPos"] = p.hasWon() ? 1 : 0;  // Simple win indicator
+
+        // Include throws from last turn for current round display
+        JsonArray throwsArray = player["throws"].to<JsonArray>();
+        if (p.getTurnCount() > 0) {
+            std::vector<Throw> lastTurnThrows = p.getThrowsFromTurn(turn);
+            for (const Throw& t : lastTurnThrows) {
+                JsonObject throwObj = throwsArray.add<JsonObject>();
+                throwObj["points"] = t.getPoints();
+            }
+        }
     }
 }
 
@@ -453,14 +494,16 @@ bool DartGame::undoLastThrow()
         return false;
     }
 
-    currentPlayer.getThrows().pop_back();
-    if (throwCounter > 0) throwCounter--;
-    DEBUG_PRINT("[DT] Last throw undone for ");
-    DEBUG_PRINT(currentPlayer.getName());
-    DEBUG_PRINT(" (Remaining: ");
-    DEBUG_PRINT(throwCounter);
-    DEBUG_PRINTLN("/3)");
-    return true;
+    if (currentPlayer.undoLastThrow()) {
+        if (throwCounter > 0) throwCounter--;
+        DEBUG_PRINT("[DT] Last throw undone for ");
+        DEBUG_PRINT(currentPlayer.getName());
+        DEBUG_PRINT(" (Remaining: ");
+        DEBUG_PRINT(throwCounter);
+        DEBUG_PRINTLN("/3)");
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -483,16 +526,18 @@ bool DartGame::undoLastThrowForPlayer(const String& playerId)
                 return false;
             }
 
-            p.getThrows().pop_back();
-            if (p.getId() == getCurrentPlayer().getId() && throwCounter > 0) {
-                throwCounter--;
+            if (p.undoLastThrow()) {
+                if (p.getId() == getCurrentPlayer().getId() && throwCounter > 0) {
+                    throwCounter--;
+                }
+                DEBUG_PRINT("[DT] Last throw undone for ");
+                DEBUG_PRINT(p.getName());
+                DEBUG_PRINT(" (Remaining throws: ");
+                DEBUG_PRINT(p.getThrowCount());
+                DEBUG_PRINTLN(")");
+                return true;
             }
-            DEBUG_PRINT("[DT] Last throw undone for ");
-            DEBUG_PRINT(p.getName());
-            DEBUG_PRINT(" (Remaining throws: ");
-            DEBUG_PRINT(p.getThrowCount());
-            DEBUG_PRINTLN(")");
-            return true;
+            return false;
         }
     }
 
@@ -553,24 +598,15 @@ DartThrowResult DartGame::processDartThrow(int score)
     result.winner = "";
     result.winnerId = "";
 
-    // Validate game is running
     if (status != DartGameStatus::running) {
         result.success = false;
         result.message = "Game is not in running state";
         return result;
     }
 
-    // Validate score input (0-50)
-    if (score < 0 || score > 50) {
+    if (score < 0 || score > 25) {
         result.success = false;
-        result.message = "Invalid score: must be 0-50";
-        return result;
-    }
-
-    // Validate we have players
-    if (players.empty()) {
-        result.success = false;
-        result.message = "No players in game";
+        result.message = "Invalid score: must be 0-25";
         return result;
     }
 
@@ -611,7 +647,11 @@ DartThrowResult DartGame::processDartThrow(int score)
     Throw dartThrow;
     dartThrow.setValue(score);
     dartThrow.setField(1);  // Default: single ring (no multiplier)
-    currentPlayer.addThrow(dartThrow);
+    if (!currentPlayer.addThrowToTurn(turn, dartThrow)) {
+        result.success = false;
+        result.message = "Unable to record throw for current turn";
+        return result;
+    }
     throwCounter++;
 
     // Calculate remaining points after throw
@@ -625,7 +665,7 @@ DartThrowResult DartGame::processDartThrow(int score)
         // if (dartThrow.getField() < 2) {
         //     result.success = false;
         //     result.message = "Must finish on a double - BUST";
-        //     currentPlayer.getThrows().pop_back();  // Remove invalid finishing throw
+        //     currentPlayer.undoLastThrow();  // Remove invalid finishing throw
         //     return result;
         // }
 

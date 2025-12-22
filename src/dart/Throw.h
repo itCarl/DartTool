@@ -11,8 +11,6 @@ class Throw
         uint8_t value;
         uint8_t field;
         String ring;
-        float x;
-        float y;
 
     public:
         Throw()
@@ -25,11 +23,20 @@ class Throw
             return this->value * this->field;
         }
 
-        uint8_t getValue() const;
-        uint8_t getField() const;
-        String getRing() const;
-        float getX() const;
-        float getY() const;
+        uint8_t getValue() const
+        {
+            return this->value;
+        }
+
+        uint8_t getField() const
+        {
+            return this->field;
+        }
+
+        String getRing() const
+        {
+            return this->ring;
+        }
 
         void setValue(uint8_t value)
         {
@@ -44,16 +51,6 @@ class Throw
         void setRing(String ring)
         {
             this->ring = ring;
-        }
-
-        void setX(float x)
-        {
-            this->x = x;
-        }
-
-        void setY(float y)
-        {
-            this->y = y;
         }
 };
 

@@ -56,8 +56,10 @@ CommandEntry commandTable[] = {
         DEBUG_PRINT(" Mode: ");
         DEBUG_PRINTLN(points);
 
-        // TODO: Store game configuration (name, points) in game object
-        // For now, we just set the status to running
+        // Set the game points from the selected mode
+        game.setGamePoints(points);
+
+        // Set status to running
         game.setStatus(DartGameStatus::running);
         doc["cmd"] = "getGameStatus";
 
@@ -122,11 +124,6 @@ void initServer()
     server.on("/game", HTTP_GET, [](AsyncWebServerRequest *request) {
         if(handleFileRead(request, "/game.html")) return;
         request->send(LittleFS, "/game.html", "text/html");
-    });
-
-    server.on("/players", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if(handleFileRead(request, "/players.html")) return;
-        request->send(LittleFS, "/players.html", "text/html");
     });
 
     server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -596,6 +593,11 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *da
             if(!sendResponse)
                 return;
 
+            // Debug: always attach full game snapshot to outgoing WS responses
+            // This keeps existing consumers intact while providing extra diagnostics data.
+            JsonObject gameFull = doc["gameFull"].to<JsonObject>();
+            game.serialize(gameFull);
+
             serializeJson(doc, out);
             client->text(out);
             // ws.textAll(out);
@@ -679,9 +681,10 @@ bool handleGetGameStatus(JsonDocument& doc)
     JsonObject resp = doc["game"].to<JsonObject>();
     resp["status"] = game.getStatusString();
 
-    if(game.getStatus() == DartGameStatus::running)
+    // Serialize game state for display when game is active
+    if(game.getStatus() == DartGameStatus::running || game.getStatus() == DartGameStatus::done)
     {
-        game.serialize(resp);
+        game.serializeForDisplay(resp);
     }
 
     return true;
@@ -883,9 +886,9 @@ bool handleDartThrow(JsonDocument& doc)
     doc["cmd"] = "dartThrowResponse";
     doc["success"] = result.success;
 
+    // Include throw details in response
     if (result.success) {
         doc["score"] = result.score;
-        doc["pointsRemaining"] = result.pointsRemaining;
         doc["playerName"] = result.playerName;
         doc["playerId"] = result.playerId;
 
@@ -895,7 +898,8 @@ bool handleDartThrow(JsonDocument& doc)
         }
     }
 
-    // Return updated game status
+    // Return updated game status with full player data (including throws)
+    // This is handled by handleGetGameStatus which calls game.serialize()
     return handleGetGameStatus(doc);
 }
 

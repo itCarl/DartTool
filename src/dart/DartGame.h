@@ -82,6 +82,7 @@ class DartGame
         DartThrowResult processDartThrow(int score);
 
         void serialize(JsonObject& obj);
+        void serializeForDisplay(JsonObject& obj);
         void deserialize(const JsonObject& obj);
         void deserializePartial(const JsonObject& obj);
 
