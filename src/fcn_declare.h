@@ -4,6 +4,8 @@
 
 #include "DartTool.h"
 
+class DartGame;
+
 // display.cpp
 void initLCD();
 void showMessage(const char* msg);
@@ -13,6 +15,8 @@ void clearSecondRow();
 void clearRowSegment(uint8_t y, uint8_t start, uint8_t end);
 void printSpaceBetween(String left, String right);
 void printCentered(String text, uint8_t row);
+void drawBigNumber(uint16_t number, uint8_t col, uint8_t row);
+void displayGameState(DartGame& game);
 
 // storage.cpp
 void initStorage();

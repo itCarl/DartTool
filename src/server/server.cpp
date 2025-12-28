@@ -36,6 +36,15 @@ CommandEntry commandTable[] = {
         return handleGetGameStatus(doc);
     }},
     { "startGame", [](JsonDocument& doc) {
+        // Validate that players are selected
+        if (game.getPlayerCount() == 0) {
+            doc["cmd"] = "startGameResponse";
+            doc["success"] = false;
+            doc["msg"] = "Cannot start game: No players selected";
+            DEBUG_PRINTLN("[Game] Cannot start: No players selected");
+            return true;
+        }
+
         // Extract game configuration from frontend
         const char* gameName = doc["name"].as<const char*>();
         const char* gameMode = doc["mode"].as<const char*>();
@@ -54,7 +63,10 @@ CommandEntry commandTable[] = {
         DEBUG_PRINT("[Game] Starting game: ");
         DEBUG_PRINT(gameName ? gameName : "Unnamed Game");
         DEBUG_PRINT(" Mode: ");
-        DEBUG_PRINTLN(points);
+        DEBUG_PRINT(points);
+        DEBUG_PRINT(" with ");
+        DEBUG_PRINT(game.getPlayerCount());
+        DEBUG_PRINTLN(" players");
 
         // Set the game points from the selected mode
         game.setGamePoints(points);

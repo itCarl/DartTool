@@ -52,6 +52,19 @@ class Throw
         {
             this->ring = ring;
         }
+
+        String toString() const
+        {
+            String result = "";
+            if (field == 3) {
+                result = "T" + String(value);
+            } else if (field == 2) {
+                result = "D" + String(value);
+            } else {
+                result = "S" + String(value);
+            }
+            return result;
+        }
 };
 
 #endif

@@ -161,12 +161,12 @@ class Player
             obj["points"] = getPoints();
 
             // Serialize turns array with turn numbers
-            JsonArray turnsArray = obj.createNestedArray("turns");
+            JsonArray turnsArray = obj["turns"].to<JsonArray>();
             for (const Turn& turn : turns) {
                 JsonObject turnObj = turnsArray.add<JsonObject>();
                 turnObj["turnNumber"] = turn.turnNumber;
 
-                JsonArray throwsArray = turnObj.createNestedArray("throws");
+                JsonArray throwsArray = turnObj["throws"].to<JsonArray>();
                 for(uint8_t i = 0; i < turn.throwCount; i++) {
                     JsonObject throwObj = throwsArray.add<JsonObject>();
                     throwObj["value"] = turn.throws[i].getValue();

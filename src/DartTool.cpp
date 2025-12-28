@@ -64,6 +64,22 @@ void DartTool::loop()
     ElegantOTA.loop();
     cleanupWs();
 
+    // Update LCD with current game state
+    static DartGameStatus lastDisplayedStatus = DartGameStatus::unknown;
+    static uint8_t lastDisplayedThrow = 0;
+    static uint8_t lastDisplayedPlayer = 0;
+    
+    // Update display when game state, player, or throw count changes
+    if (game.getStatus() != lastDisplayedStatus || 
+        game.getThrowCounter() != lastDisplayedThrow ||
+        game.getCurrentPlayerIndex() != lastDisplayedPlayer) {
+        
+        displayGameState(game);
+        lastDisplayedStatus = game.getStatus();
+        lastDisplayedThrow = game.getThrowCounter();
+        lastDisplayedPlayer = game.getCurrentPlayerIndex();
+    }
+
     // Poll external service for game state updates
     // pollExternalGameState();
 

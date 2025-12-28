@@ -133,6 +133,14 @@ function onMessage(event) {
         return;
     }
 
+    // Handle start game response
+    if (data.cmd === 'startGameResponse') {
+        if (!data.success) {
+            showStatus(data.msg || 'Cannot start game', 'error');
+        }
+        return;
+    }
+
     // Handle servo responses (Debug page)
     if (data.cmd === 'servoResponse') {
         updateStatus(`Servo Position gesetzt: ${data.pos}°`, 'success');
@@ -218,11 +226,11 @@ function onMessage(event) {
             }
             if (state == 'done') {
                 // Hide numpad and abort; show post-game actions
-                hide('numpad');
+                hide('io');
                 hide('abortGameBtn');
                 show('doneActions');
             } else {
-                show('numpad');
+                show('io');
                 show('abortGameBtn');
                 hide('doneActions');
             }
