@@ -65,6 +65,31 @@ void loadConfig()
     unsigned long extInterval = storage.getULong("ext_interval", 5000);
     ExternalService::instance().setPollInterval(extInterval);
 
+    size_t modeLen = storage.getBytes("mode", (uint8_t*)NULL, 0);
+    if (modeLen > 0 && modeLen < 33) {
+        char mode[33] = {0};
+        char gameEndpoint[257] = {0};
+        int refreshInterval = 5;
+
+        storage.getBytes("mode", (uint8_t*)mode, modeLen);
+        mode[modeLen] = '\0';
+
+        size_t endpointLen = storage.getBytes("gameEndpoint", (uint8_t*)NULL, 0);
+        if (endpointLen > 0 && endpointLen < 257) {
+            storage.getBytes("gameEndpoint", (uint8_t*)gameEndpoint, endpointLen);
+            gameEndpoint[endpointLen] = '\0';
+        }
+
+        refreshInterval = storage.getInt("refreshInterval", 5);
+
+        DEBUG_PRINT("[Storage] Mode config loaded: mode=");
+        DEBUG_PRINT(mode);
+        DEBUG_PRINT(" endpoint=");
+        DEBUG_PRINT(gameEndpoint);
+        DEBUG_PRINT(" interval=");
+        DEBUG_PRINTLN(refreshInterval);
+    }
+
     storage.end();
 }
 
@@ -122,6 +147,49 @@ void saveExternalServiceConfig(const char* host, const char* token, bool enabled
 
     storage.end();
     DEBUG_PRINTLN("[Storage] External service config saved");
+}
+
+void saveModeConfig(const char* mode, const char* gameEndpoint, int refreshInterval)
+{
+    storage.begin("cfg", false);
+
+    if (mode && strlen(mode) > 0 && strlen(mode) < 33) {
+        storage.putBytes("mode", (const uint8_t*)mode, strlen(mode));
+    }
+
+    if (gameEndpoint && strlen(gameEndpoint) > 0 && strlen(gameEndpoint) < 257) {
+        storage.putBytes("gameEndpoint", (const uint8_t*)gameEndpoint, strlen(gameEndpoint));
+    }
+
+    storage.putInt("refreshInterval", refreshInterval);
+
+    storage.end();
+    DEBUG_PRINTLN("[Storage] Mode config saved");
+}
+
+void loadModeConfig(char* outMode, char* outGameEndpoint, int& outRefreshInterval)
+{
+    storage.begin("cfg", false);
+
+    size_t modeLen = storage.getBytes("mode", (uint8_t*)NULL, 0);
+    if (modeLen > 0 && modeLen < 33) {
+        storage.getBytes("mode", (uint8_t*)outMode, modeLen);
+        outMode[modeLen] = '\0';
+    } else {
+        strcpy(outMode, "display");  // default
+    }
+
+    size_t endpointLen = storage.getBytes("gameEndpoint", (uint8_t*)NULL, 0);
+    if (endpointLen > 0 && endpointLen < 257) {
+        storage.getBytes("gameEndpoint", (uint8_t*)outGameEndpoint, endpointLen);
+        outGameEndpoint[endpointLen] = '\0';
+    } else {
+        strcpy(outGameEndpoint, "");  // default empty
+    }
+
+    outRefreshInterval = storage.getInt("refreshInterval", 5);  // default 5 seconds
+
+    storage.end();
 }
 
 void getWifiSettings(char* outSsid, char* outPassword, char* outHostname)

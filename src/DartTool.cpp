@@ -40,14 +40,13 @@ void DartTool::setup()
     initAdvance("Server");
     initServer();
 
-    delay(3000);
-    initAdvance("Players");
+    // initAdvance("Players");
     PlayerManager::instance().init();
     // PlayerManager::instance().addOrEditPlayer("Max1");
     // PlayerManager::instance().addOrEditPlayer("Spieler3");
     // PlayerManager::instance().addOrEditPlayer("Player sjfho erhbfwif sdfsf");
 
-    initAdvance("ExternalService");
+    // initAdvance("ExternalService");
     ExternalService::instance().setHost(externalServiceHost);
     ExternalService::instance().setApiToken(externalServiceToken);
     ExternalService::instance().setEnabled(EXTERNAL_SERVICE_ENABLED);
@@ -181,13 +180,13 @@ void DartTool::initConnection()
     while (WiFi.waitForConnectResult(1000) != WL_CONNECTED && retries < 3) {
         retries++;
     }
-    delay(3000);
 
     if(WIFI_CONNECTED) {
         // LCD.print("Connected to WLAN");
         // printCentered(CLIENT_SSID, 1);
         // LCD.setCursor(0, 2);
         // LCD.print("IP-Address:");
+        delay(500);
         initAdvanceDetails("IP-Address:", WiFi.localIP().toString());
         // printCentered(WiFi.localIP().toString(), 3);
         DEBUG_PRINTLN("WLAN connected");

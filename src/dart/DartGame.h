@@ -4,46 +4,40 @@
 
 #include <Arduino.h>
 #include <vector>
+#include <memory>
 #include "DartGameStatus.h"
 #include "Player.h"
 #include "utils.h"
+#include "GameMode.h"
 
-// Result structure for dart throw processing
-struct DartThrowResult {
-    bool success;
-    String message;
-    int score;
-    uint16_t pointsRemaining;
-    String playerName;
-    String playerId;
-    bool hasWon;
-    String winner;
-    String winnerId;
-};
-
+/**
+ * DartGame - Main game controller
+ *
+ * Responsibilities:
+ * - Manages game lifecycle and unique game ID
+ * - Holds and delegates to a GameMode implementation
+ * - Provides a unified interface for game operations regardless of game mode
+ * - Orchestrates state management and player operations
+ *
+ * The actual game logic (scoring rules, win conditions, etc.) is delegated
+ * to the active GameMode instance (e.g., X01GameMode, CricketGameMode, etc.)
+ */
 class DartGame
 {
     protected:
         String id;
-        DartGameStatus status = DartGameStatus::unknown;
-        std::vector<Player> players;
-
-        // Player *currentPlayer = nullptr;
-        uint8_t currentPlayerIndex = 0; //use a pointer at a later point
-
-        uint8_t throwCounter = 0;        // throws in current turn (0-3)
-        uint8_t winCount = 0;
-        uint16_t points = 301;           // starting points (X01 format: 301, 501, etc)
-        uint8_t turn = 0;                // current round/turn number
-        static const uint8_t THROWS_PER_TURN = 3;  // X01 standard: 3 throws per player per turn
-
-        Player& getCurrentPlayer();
-        void nextPlayer();  // to advance turn
-        bool isPlayerTurnComplete();  // check if player has completed 3 throws
+        std::unique_ptr<GameMode> gameMode;  // Strategy pattern: holds the active game mode
 
     public:
         DartGame();
+        ~DartGame() = default;
 
+        // Game mode management
+        void setGameMode(std::unique_ptr<GameMode> newGameMode);
+        GameMode* getGameMode() { return gameMode.get(); }
+        String getGameModeName();
+
+        // Delegation methods that forward to the active game mode
         String listPlayers();
         void setPlayers(std::vector<Player> &selectedPlayers);
 
@@ -52,23 +46,23 @@ class DartGame
         String getStatusString();
         DartGameStatus stringToStatus(String status);
 
-        // Getters for game state
+        // Getters for game state (delegated to game mode)
         String getId() { return id; }
-        uint8_t getCurrentPlayerIndex() { return currentPlayerIndex; }
-        uint16_t getGamePoints() { return points; }
-        void setGamePoints(uint16_t pts) { points = pts; }
-        uint8_t getThrowCounter() { return throwCounter; }
-        void setThrowCounter(uint8_t count) { throwCounter = count; }
-        uint8_t getWinCount() { return winCount; }
-        void setWinCount(uint8_t count) { winCount = count; }
-        uint8_t getTurn() { return turn; }
-        void setTurn(uint8_t t) { turn = t; }
-        size_t getPlayerCount() { return players.size(); }
-        Player& getPlayerAt(size_t index) { return players[index]; }
+        uint8_t getCurrentPlayerIndex();
+        uint16_t getGamePoints();
+        void setGamePoints(uint16_t pts);
+        uint8_t getThrowCounter();
+        void setThrowCounter(uint8_t count);
+        uint8_t getWinCount();
+        void setWinCount(uint8_t count);
+        uint8_t getTurn();
+        void setTurn(uint8_t t);
+        size_t getPlayerCount();
+        Player& getPlayerAt(size_t index);
 
         void reset();
 
-        // Throw management methods
+        // Throw management methods (delegated to game mode)
         bool addThrowToCurrentPlayer(const Throw& dartThrow);
         bool addThrowToPlayer(const String& playerId, const Throw& dartThrow);
         std::vector<Throw> getCurrentPlayerThrows();
@@ -78,9 +72,10 @@ class DartGame
         uint16_t getCurrentPlayerRemainingPoints();
         uint16_t getPlayerRemainingPoints(const String& playerId);
 
-        // Process a dart throw with full game logic
-        DartThrowResult processDartThrow(int score);
+        // Process a dart throw - delegated to active game mode
+        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1);
 
+        // Serialization methods - delegated to game mode
         void serialize(JsonObject& obj);
         void serializeForDisplay(JsonObject& obj);
         void deserialize(const JsonObject& obj);

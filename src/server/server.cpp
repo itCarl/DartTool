@@ -2,6 +2,7 @@
 
 #include "web/CaptiveRequestHandler.h"
 #include "web/GameMasterMiddleware.h"
+#include "dart/GameModeFactory.h"
 
 using WsCommandHandler = std::function<bool(JsonDocument&)>; //typedef bool (*WsCommandHandler)(JsonDocument& doc);
 struct CommandEntry {
@@ -23,6 +24,9 @@ bool handleLaserControl(JsonDocument& doc);
 bool handleDartThrow(JsonDocument& doc);
 bool handleDartUndo(JsonDocument& doc);
 bool handleFetchExternalPlayers(JsonDocument& doc);
+bool handleGetModeConfig(JsonDocument& doc);
+bool handleSetModeConfig(JsonDocument& doc);
+bool handleGetSystemInfo(JsonDocument& doc);
 
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
@@ -47,29 +51,58 @@ CommandEntry commandTable[] = {
 
         // Extract game configuration from frontend
         const char* gameName = doc["name"].as<const char*>();
-        const char* gameMode = doc["mode"].as<const char*>();
+        const char* gameModeParam = doc["mode"].as<const char*>();
+        uint16_t points = doc["points"].is<uint16_t>() ? doc["points"].as<uint16_t>() : 501;
+        String gameModeType = "X01";  // Default game mode type
 
-        // Set game points based on mode
-        uint16_t points = 301;  // Default
-        if (gameMode) {
-            String modeStr(gameMode);
-            if (modeStr == "201") points = 201;
-            else if (modeStr == "301") points = 301;
-            else if (modeStr == "401") points = 401;
-            else if (modeStr == "601") points = 601;
-            else if (modeStr == "801") points = 801;
+        auto isNumeric = [](const String& value) {
+            if (value.isEmpty()) return false;
+            for (size_t i = 0; i < value.length(); ++i) {
+                if (!isDigit(value.charAt(i))) return false;
+            }
+            return true;
+        };
+
+        if (gameModeParam) {
+            String modeStr(gameModeParam);
+            if (isNumeric(modeStr)) {
+                points = modeStr.toInt();
+                gameModeType = "X01";
+            } else if (modeStr.equalsIgnoreCase("cricket")) {
+                gameModeType = "Cricket";
+            } else if (modeStr.equalsIgnoreCase("aroundtheclock") || modeStr.equalsIgnoreCase("around_the_clock") || modeStr.equalsIgnoreCase("atc")) {
+                gameModeType = "AroundTheClock";
+            } else {
+                // Fall back to provided mode string and let factory decide
+                gameModeType = modeStr;
+            }
         }
+
+        // Create the game mode using the factory
+        auto newGameMode = GameModeFactory::createGameMode(gameModeType, points);
+        if (!newGameMode) {
+            doc["cmd"] = "startGameResponse";
+            doc["success"] = false;
+            doc["msg"] = "Failed to create game mode: " + gameModeType;
+            DEBUG_PRINTLN("[Game] Failed to create game mode");
+            return true;
+        }
+
+        // Set the new game mode
+        game.setGameMode(std::move(newGameMode));
 
         DEBUG_PRINT("[Game] Starting game: ");
         DEBUG_PRINT(gameName ? gameName : "Unnamed Game");
         DEBUG_PRINT(" Mode: ");
-        DEBUG_PRINT(points);
+        DEBUG_PRINT(game.getGameModeName());
+        if (game.getGameModeName() == "X01") {
+            DEBUG_PRINT(" (");
+            DEBUG_PRINT(points);
+            DEBUG_PRINT(" points)");
+        }
         DEBUG_PRINT(" with ");
         DEBUG_PRINT(game.getPlayerCount());
         DEBUG_PRINTLN(" players");
-
-        // Set the game points from the selected mode
-        game.setGamePoints(points);
 
         // Set status to running
         game.setStatus(DartGameStatus::running);
@@ -95,6 +128,9 @@ CommandEntry commandTable[] = {
     { "initServo", handleInitServo },
     { "setServoByDistance", handleSetServoByDistance },
     { "laserControl", handleLaserControl },
+    { "getModeConfig", handleGetModeConfig },
+    { "setModeConfig", handleSetModeConfig },
+    { "getSystemInfo", handleGetSystemInfo },
     { nullptr, nullptr }
 };
 
@@ -318,9 +354,15 @@ void initServer()
     // Operation Mode API Endpoints
     server.on("/api/mode/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        doc["mode"] = "display";  // Will be retrieved from storage
-        doc["gameEndpoint"] = "";  // Will be retrieved from storage
-        doc["refreshInterval"] = 5;  // Will be retrieved from storage
+        char mode[33] = {0};
+        char gameEndpoint[257] = {0};
+        int refreshInterval = 5;
+
+        loadModeConfig(mode, gameEndpoint, refreshInterval);
+
+        doc["mode"] = mode;
+        doc["gameEndpoint"] = gameEndpoint;
+        doc["refreshInterval"] = refreshInterval;
 
         String response;
         serializeJson(doc, response);
@@ -349,9 +391,10 @@ void initServer()
                 return;
             }
 
-            // TODO: Save to persistent storage
+            // Save to persistent storage
+            saveModeConfig(mode, gameEndpoint ? gameEndpoint : "", refreshInterval > 0 ? refreshInterval : 5);
             // TODO: If mode is display, start polling mechanism for external API
-            DEBUG_PRINTLN("[API] Display mode updated");
+            DEBUG_PRINTLN("[API] Display mode updated and saved");
 
             JsonDocument respDoc;
             respDoc["success"] = true;
@@ -888,10 +931,14 @@ bool handleLaserControl(JsonDocument& doc)
 bool handleDartThrow(JsonDocument& doc)
 {
     // Validate score input
-    int score = doc["score"].as<int>();
+    uint8_t value = doc["score"].as<uint8_t>();
+    uint8_t multiplier = 1;
+    if (doc["multiplier"].is<uint8_t>()) {
+        multiplier = doc["multiplier"].as<uint8_t>();
+    }
 
     // Delegate all game logic to DartGame
-    DartThrowResult result = game.processDartThrow(score);
+    DartThrowResult result = game.processDartThrow(value, multiplier);
 
     // Prepare response from game result
     doc["msg"] = result.message;
@@ -917,12 +964,14 @@ bool handleDartThrow(JsonDocument& doc)
 
 bool handleDartUndo(JsonDocument& doc)
 {
-    // TODO: Implement dart undo logic
-    // This will revert the last dart throw for current player
+    bool undone = game.undoLastThrow();
 
-    doc["msg"] = "Last dart throw undone";
     doc["cmd"] = "dartUndoResponse";
-    return true;
+    doc["success"] = undone;
+    doc["msg"] = undone ? "Last dart throw undone" : "No throw to undo";
+
+    // Return updated game status to sync clients
+    return handleGetGameStatus(doc);
 }
 
 bool handleFetchExternalPlayers(JsonDocument& doc)
@@ -940,5 +989,56 @@ bool handleFetchExternalPlayers(JsonDocument& doc)
         doc["status"] = "error";
         return false;
     }
+}
+
+bool handleGetModeConfig(JsonDocument& doc)
+{
+    char mode[33] = {0};
+    char gameEndpoint[257] = {0};
+    int refreshInterval = 5;
+
+    loadModeConfig(mode, gameEndpoint, refreshInterval);
+
+    doc["cmd"] = "getModeConfigResponse";
+    doc["mode"] = mode;
+    doc["gameEndpoint"] = gameEndpoint;
+    doc["refreshInterval"] = refreshInterval;
+    doc["success"] = true;
+
+    return true;
+}
+
+bool handleSetModeConfig(JsonDocument& doc)
+{
+    const char* mode = doc["mode"].as<const char*>();
+    const char* gameEndpoint = doc["serverApiUrl"].as<const char*>();
+    int refreshInterval = doc["refreshInterval"].as<int>();
+
+    if (!mode || strlen(mode) == 0) {
+        doc["cmd"] = "setModeConfigResponse";
+        doc["success"] = false;
+        doc["msg"] = "Mode is required";
+        return true;
+    }
+
+    // Save to persistent storage
+    saveModeConfig(mode, gameEndpoint ? gameEndpoint : "", refreshInterval > 0 ? refreshInterval : 5);
+
+    DEBUG_PRINTLN("[WS] Mode config saved via WebSocket");
+
+    doc["cmd"] = "setModeConfigResponse";
+    doc["success"] = true;
+    doc["msg"] = "Mode config saved";
+
+    return true;
+}
+
+bool handleGetSystemInfo(JsonDocument& doc)
+{
+    doc["cmd"] = "getSystemInfoResponse";
+    doc["heap"] = ESP.getFreeHeap();
+    doc["uptime"] = millis();
+
+    return true;
 }
 

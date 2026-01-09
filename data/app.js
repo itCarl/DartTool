@@ -91,6 +91,11 @@ function onOpen(event) {
         });
     }
 
+    if(isPage('/data/settings.html', '/settings')) {
+        loadOperationMode();
+        loadSystemInfo();
+    }
+
     if(isPage('/data/debug.html', '/debug')) {
         updateStatus('Verbunden', 'success');
     }
@@ -163,6 +168,50 @@ function onMessage(event) {
             console.warn('Failed to fetch external players:', data.msg);
         }
         // Continue to handle players list if present
+    }
+
+    // Handle mode config responses
+    if (data.cmd === 'getModeConfigResponse') {
+        if (data.success) {
+            operationMode = data.mode || 'display';
+            const modeDisplay = byId('modeDisplay');
+            const modeScoreboard = byId('modeScoreboard');
+            if (operationMode === 'display') {
+                if (modeDisplay) modeDisplay.checked = true;
+            } else {
+                if (modeScoreboard) modeScoreboard.checked = true;
+            }
+            const gameEndpoint = byId('gameEndpoint');
+            const refreshInterval = byId('refreshInterval');
+            if (gameEndpoint) gameEndpoint.value = data.gameEndpoint || '';
+            if (refreshInterval) refreshInterval.value = data.refreshInterval || 5;
+            updateModeUI();
+        }
+        return;
+    }
+
+    if (data.cmd === 'setModeConfigResponse') {
+        if (data.success) {
+            showStatus('Anzeigemodus gespeichert', 'success');
+        } else {
+            showStatus('Fehler beim Speichern: ' + (data.msg || 'Unbekannter Fehler'), 'error');
+        }
+        return;
+    }
+
+    // Handle system info response
+    if (data.cmd === 'getSystemInfoResponse') {
+        const heapEl = byId('freeHeap');
+        const uptimeEl = byId('uptime');
+
+        if (heapEl && data.heap !== undefined) {
+            heapEl.textContent = (data.heap / 1024).toFixed(2) + ' KB';
+        }
+
+        if (uptimeEl && data.uptime !== undefined) {
+            uptimeEl.textContent = formatUptime(data.uptime);
+        }
+        return;
     }
 
     // Handle players list
@@ -658,6 +707,8 @@ function initPlayersPage() {
 function initGamePage() {
     updateSelectedPlayersUI();
 
+    let pendingMultiplier = 1;
+
     const startGame = byId('startGame');
     if (startGame) {
         startGame.addEventListener('click', e => {
@@ -675,12 +726,23 @@ function initGamePage() {
 
             // Get selected game mode
             const selectedMode = document.querySelector('input[name="radio5_"]:checked');
-            const gameMode = selectedMode?.value || '301';
+            const rawMode = selectedMode?.value || '301';
+
+            let mode = 'X01';
+            let points = 501;
+            if (/^\d+$/.test(rawMode)) {
+                points = parseInt(rawMode, 10);
+                mode = 'X01';
+            } else {
+                mode = rawMode;
+                points = 0;
+            }
 
             sendMessage({
                 cmd: 'startGame',
                 name: gameName,
-                mode: gameMode,
+                mode: mode,
+                points: points,
                 playerIds: selectedPlayerList
             });
         });
@@ -699,20 +761,19 @@ function initGamePage() {
                     sendMessage({
                         cmd: 'dartUndo'
                     });
+                    pendingMultiplier = 1;
                 } else if (value === 'double' || value === 'tripple') {
-                    // Handle multiplier
-                    const multiplier = value === 'double' ? 2 : 3;
-                    sendMessage({
-                        cmd: 'setDartMultiplier',
-                        multiplier: multiplier
-                    });
+                    // Handle multiplier selection for the next dart
+                    pendingMultiplier = value === 'double' ? 2 : 3;
                 } else if (value !== '') {
                     // Handle number input
-                    const score = parseInt(value);
+                    const score = parseInt(value, 10);
                     sendMessage({
                         cmd: 'dartThrow',
-                        score: score
+                        score: score,
+                        multiplier: pendingMultiplier
                     });
+                    pendingMultiplier = 1;
                 }
             });
         });
@@ -801,9 +862,7 @@ function startNewGame() {
 
 function initSettingsPage() {
     loadSettings();
-    loadSystemInfo();
     loadDataSyncSettings();
-    loadOperationMode();
     loadExternalHostSettings();
 
     const saveExternalHostBtn = byId('saveExternalHostBtn');
@@ -919,25 +978,10 @@ async function saveSettings(e) {
     }
 }
 
-async function loadSystemInfo() {
-    try {
-        const heapResponse = await fetch(`${host}/freeheap`);
-        const uptimeResponse = await fetch(`${host}/uptime`);
-
-        if (heapResponse.ok) {
-            const heap = await heapResponse.text();
-            const heapEl = byId('freeHeap');
-            if (heapEl) heapEl.textContent = (parseInt(heap) / 1024).toFixed(2) + ' KB';
-        }
-
-        if (uptimeResponse.ok) {
-            const uptime = parseInt(await uptimeResponse.text());
-            const uptimeEl = byId('uptime');
-            if (uptimeEl) uptimeEl.textContent = formatUptime(uptime);
-        }
-    } catch (error) {
-        console.error('Error loading system info:', error);
-    }
+function loadSystemInfo() {
+    sendMessage({
+        cmd: 'getSystemInfo'
+    });
 }
 
 function formatUptime(ms) {
@@ -957,29 +1001,38 @@ function formatUptime(ms) {
     }
 }
 
+function showToast(message, type = 'info') {
+    const toastContainer = byId('toastContainer');
+    if (!toastContainer) {
+        console.warn('[Toast] Container not found');
+        return;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span>${escapeHtml(message)}</span>
+        </div>
+    `;
+
+    toastContainer.appendChild(toast);
+
+    // Animate in
+    setTimeout(() => toast.classList.add('toast-show'), 10);
+
+    // Auto remove
+    const duration = type === 'error' ? 5000 : 3000;
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
 function showStatus(message, type) {
-    const statusDiv = byId('statusMessage');
-    const statusText = byId('statusText');
-
-    if (!statusDiv || !statusText) return;
-
-    statusText.textContent = message;
-    statusDiv.style.display = 'block';
-    statusDiv.classList.remove('success-bg', 'error-bg');
-
-    if (type === 'success') {
-        statusDiv.style.backgroundColor = '#4CAF50';
-        statusDiv.style.color = 'white';
-    } else if (type === 'error') {
-        statusDiv.style.backgroundColor = '#f44336';
-        statusDiv.style.color = 'white';
-    }
-
-    if (type === 'success') {
-        setTimeout(() => {
-            statusDiv.style.display = 'none';
-        }, 5000);
-    }
+    // Alias for backward compatibility
+    showToast(message, type === 'success' ? 'success' : type === 'error' ? 'error' : 'info');
 }
 
 async function rebootDevice() {
@@ -1133,36 +1186,10 @@ async function updateQueueStatus() {
 // OPERATION MODE FUNCTIONS
 // ============================================================================
 
-async function loadOperationMode() {
-    try {
-        const response = await fetch(`${host}/api/mode/config`);
-        if (!response.ok) {
-            return;
-        }
-
-        const data = await response.json();
-        operationMode = data.mode || 'display';
-
-        const modeDisplay = byId('modeDisplay');
-        const modeScoreboard = byId('modeScoreboard');
-        if (operationMode === 'display') {
-            if (modeDisplay) modeDisplay.checked = true;
-        } else {
-            if (modeScoreboard) modeScoreboard.checked = true;
-        }
-
-        const gameEndpoint = byId('gameEndpoint');
-        const refreshInterval = byId('refreshInterval');
-        if (gameEndpoint) gameEndpoint.value = data.gameEndpoint || '';
-        if (refreshInterval) refreshInterval.value = data.refreshInterval || 5;
-
-        updateModeUI();
-    } catch (error) {
-        console.error('Error loading operation mode:', error);
-        const modeDisplay = byId('modeDisplay');
-        if (modeDisplay) modeDisplay.checked = true;
-        updateModeUI();
-    }
+function loadOperationMode() {
+    sendMessage({
+        cmd: 'getModeConfig'
+    });
 }
 
 function updateModeUI() {
@@ -1181,44 +1208,22 @@ function updateModeUI() {
     }
 }
 
-async function saveOperationMode() {
-    const mode = operationMode;
+function saveOperationMode() {
+    const mode = byId('modeDisplay')?.checked ? 'display' : 'scoreboard';
     const gameEndpoint = byId('gameEndpoint')?.value;
     const refreshInterval = parseInt(byId('refreshInterval')?.value) || 5;
 
     if (mode === 'display' && !gameEndpoint?.trim()) {
-        showStatus('Game Endpoint ist erforderlich im Remote-Anzeige Modus', 'error');
+        showStatus('Game Endpoint ist erforderlich im Display Modus', 'error');
         return;
     }
 
-    try {
-        const response = await fetch(`${host}/api/mode/config`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                mode: mode,
-                serverApiUrl: gameEndpoint,
-                refreshInterval: refreshInterval
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-            showStatus('Anzeigemodus gespeichert', 'success');
-        } else {
-            showStatus('Fehler beim Speichern: ' + (data.message || 'Unbekannter Fehler'), 'error');
-        }
-    } catch (error) {
-        console.error('Error saving operation mode:', error);
-        showStatus('Fehler beim Speichern des Anzeigemodus: ' + error.message, 'error');
-    }
+    sendMessage({
+        cmd: 'setModeConfig',
+        mode: mode,
+        serverApiUrl: gameEndpoint,
+        refreshInterval: refreshInterval
+    });
 }
 
 // ============================================================================

@@ -30,6 +30,8 @@ void saveConfig();
 void saveWifiSettings(const char* ssid, const char* password, const char* hostname);
 void getWifiSettings(char* outSsid, char* outPassword, char* outHostname);
 void saveExternalServiceConfig(const char* host, const char* token, bool enabled, unsigned long interval);
+void saveModeConfig(const char* mode, const char* gameEndpoint, int refreshInterval);
+void loadModeConfig(char* outMode, char* outGameEndpoint, int& outRefreshInterval);
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels);
 
 // server.cpp

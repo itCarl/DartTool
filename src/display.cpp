@@ -272,7 +272,8 @@ void displayGameState(DartGame& game)
 
     if (game.getStatus() == DartGameStatus::unknown || game.getStatus() == DartGameStatus::initialised) {
         printCentered("Ready to play!", 1);
-        printCentered(String("X01 Game"), 2);
+        String gameMode = "Mode: " + game.getGameModeName();
+        printCentered(gameMode, 2);
         return;
     }
 
