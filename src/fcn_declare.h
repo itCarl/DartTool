@@ -8,11 +8,16 @@ class DartGame;
 
 // display.cpp
 void initLCD();
+void initAdvance(String text);
+void initAdvanceDetails(String textFirstRow, String textSecondRow);
 void showMessage(const char* msg);
 void clearRow(uint8_t y);
-void clearFirstRow();
-void clearSecondRow();
 void clearRowSegment(uint8_t y, uint8_t start, uint8_t end);
+void clearRowWithAnimation(uint8_t y, uint16_t delayMs = 100);
+void clearRowWithAnimationBothSides(uint8_t y, uint16_t delayMs);
+void clearRowWithAnimationBothSides(uint8_t y);
+void clearRowWithScramble(uint8_t y, uint8_t scrambleCount, uint16_t delayMs = 100);
+void printCenteredAnimated(uint8_t y, String text, uint16_t writeDelayMs = 100);
 void printSpaceBetween(String left, String right);
 void printCentered(String text, uint8_t row);
 void drawBigNumber(uint16_t number, uint8_t col, uint8_t row);

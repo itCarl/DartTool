@@ -16,41 +16,45 @@ void DartTool::setup()
     Wire.setClock(400000); // use 400 kHz I2C
     randomSeed(rand());   // prepare for random number generation
 
+    // initAdvance("File system");
     initStorage();
+
+    // initAdvance("GPIOs");
     initPins();
+
+    initAdvance("Display");
     initLCD();
 
-    LCD.print(".");
-    delay(500);
-
     // initDistanceSensor();
+    // initAdvance("TOF Sensor");
 
-    LCD.print(".");
-    delay(500);
+    initAdvance("Servo");
+    servoInit();
 
-    initServo();
-
-    LCD.print(".");
-    delay(500);
-
+    initAdvance("Laser");
     laserInit();
 
-    LCD.print(".");
-    delay(500);
-
+    initAdvance("Network");
     initConnection();
+
+    initAdvance("Server");
     initServer();
 
     delay(3000);
+    initAdvance("Players");
     PlayerManager::instance().init();
     // PlayerManager::instance().addOrEditPlayer("Max1");
     // PlayerManager::instance().addOrEditPlayer("Spieler3");
     // PlayerManager::instance().addOrEditPlayer("Player sjfho erhbfwif sdfsf");
+
+    initAdvance("ExternalService");
     ExternalService::instance().setHost(externalServiceHost);
     ExternalService::instance().setApiToken(externalServiceToken);
     ExternalService::instance().setEnabled(EXTERNAL_SERVICE_ENABLED);
+
     listDir(LittleFS, "/", 1);
 
+    initAdvance("Done");
     // Set game to initialised state after ESP32 boot is complete
     game.setStatus(DartGameStatus::initialised);
     DEBUG_PRINTLN("[DT] ESP32 boot complete - Game initialised");
@@ -68,12 +72,12 @@ void DartTool::loop()
     static DartGameStatus lastDisplayedStatus = DartGameStatus::unknown;
     static uint8_t lastDisplayedThrow = 0;
     static uint8_t lastDisplayedPlayer = 0;
-    
+
     // Update display when game state, player, or throw count changes
-    if (game.getStatus() != lastDisplayedStatus || 
+    if (game.getStatus() != lastDisplayedStatus ||
         game.getThrowCounter() != lastDisplayedThrow ||
         game.getCurrentPlayerIndex() != lastDisplayedPlayer) {
-        
+
         displayGameState(game);
         lastDisplayedStatus = game.getStatus();
         lastDisplayedThrow = game.getThrowCounter();
@@ -162,44 +166,40 @@ void DartTool::initDistanceSensor()
     sensor.startContinuous(50);
 }
 
-void DartTool::initServo()
-{
-    servoInit();
-    // servoInitSequence();
-}
 
 void DartTool::initConnection()
 {
     WiFi.disconnect(true);
-    delay(10);
+    delay(50);
     WiFi.softAPdisconnect();
-    delay(10);
+    delay(50);
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(CLIENT_SSID, CLIENT_PASS);
 
     uint8_t retries = 0;
-    while (WiFi.waitForConnectResult(1000) != WL_CONNECTED && retries < 5) {
+    while (WiFi.waitForConnectResult(1000) != WL_CONNECTED && retries < 3) {
         retries++;
     }
     delay(3000);
-    LCD.clear();
-    LCD.home();
 
     if(WIFI_CONNECTED) {
-        LCD.print("Connected to WLAN");
-        printCentered(CLIENT_SSID, 1);
-        LCD.setCursor(0, 2);
-        LCD.print("IP-Address:");
-        printCentered(WiFi.localIP().toString(), 3);
+        // LCD.print("Connected to WLAN");
+        // printCentered(CLIENT_SSID, 1);
+        // LCD.setCursor(0, 2);
+        // LCD.print("IP-Address:");
+        initAdvanceDetails("IP-Address:", WiFi.localIP().toString());
+        // printCentered(WiFi.localIP().toString(), 3);
         DEBUG_PRINTLN("WLAN connected");
         DEBUG_PRINT("IP: ");
         DEBUG_PRINTLN(WiFi.localIP());
     } else {
         initAP();
-        LCD.print("Connect to: ");
-        LCD.setCursor(0, 1);
-        LCD.print(apSSID); //WIFI_HOSTNAME
+
+        initAdvanceDetails("Connect to: ", apSSID);
+        // LCD.print("Connect to: ");
+        // LCD.setCursor(0, 1);
+        // LCD.print(apSSID); //WIFI_HOSTNAME
     }
 }
 

@@ -33,7 +33,7 @@ class DartGame
 
         uint8_t throwCounter = 0;        // throws in current turn (0-3)
         uint8_t winCount = 0;
-        uint16_t points = 501;           // starting points (X01 format: 301, 501, etc)
+        uint16_t points = 301;           // starting points (X01 format: 301, 501, etc)
         uint8_t turn = 0;                // current round/turn number
         static const uint8_t THROWS_PER_TURN = 3;  // X01 standard: 3 throws per player per turn
 

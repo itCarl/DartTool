@@ -11,13 +11,54 @@ void initLCD()
     LCD.createChar(2, dart);
 
     LCD.home();
-    LCD.print("Initializing");
+    printCentered("Initializing", 1);
+    printCentered("==- DartTool -==", 2);
+    delay(1000);
+    clearRowWithAnimationBothSides(2, ANIMATION_DELAY_INIT);
 }
 
+void initAdvance(String text)
+{
+    clearRowWithAnimation(3);
+    clearRowWithAnimation(2);
+    printCenteredAnimated(2, text);
+}
+
+void initAdvanceDetails(String textFirstRow, String textSecondRow)
+{
+    // Clear both rows in parallel
+    for (uint8_t i = 0; i < 20; i++) {
+        LCD.setCursor(i, 2);
+        LCD.print(" ");
+        LCD.setCursor(i, 3);
+        LCD.print(" ");
+        delay(ANIMATION_DELAY_DEFAULT);
+    }
+
+    // Print both rows in parallel with centered text
+    uint8_t textLen1 = textFirstRow.length();
+    uint8_t padding1 = (20 - textLen1) / 2;
+    uint8_t textLen2 = textSecondRow.length();
+    uint8_t padding2 = (20 - textLen2) / 2;
+
+    uint8_t maxLen = max(textLen1, textLen2);
+
+    for (uint8_t i = 0; i < maxLen; i++) {
+        if (i < textLen1) {
+            LCD.setCursor(padding1 + i, 2);
+            LCD.print(textFirstRow[i]);
+        }
+        if (i < textLen2) {
+            LCD.setCursor(padding2 + i, 3);
+            LCD.print(textSecondRow[i]);
+        }
+        delay(ANIMATION_DELAY_CHAR_WRITE);
+    }
+}
 
 void showMessage(const char* msg)
 {
-    clearFirstRow();
+    clearRow(0);
     LCD.print(msg);
     delay(1000);
 }
@@ -35,16 +76,6 @@ void clearRow(uint8_t y)
     LCD.setCursor(0, y);
 }
 
-void clearFirstRow()
-{
-    clearRow(0);
-}
-
-void clearSecondRow()
-{
-    clearRow(1);
-}
-
 void clearRowSegment(uint8_t y, uint8_t start, uint8_t end)
 {
     if (start > end || end >= 20) return; // Invalid range
@@ -56,13 +87,96 @@ void clearRowSegment(uint8_t y, uint8_t start, uint8_t end)
     LCD.setCursor(start, y);
 }
 
+void clearRowWithAnimation(uint8_t y, uint16_t delayMs)
+{
+    LCD.setCursor(0, y);
+    for (uint8_t i = 0; i < 20; i++) {
+        LCD.print(" ");
+        delay(delayMs);
+    }
+    LCD.setCursor(0, y);
+}
+
+// Overload
+void clearRowWithAnimation(uint8_t y)
+{
+    clearRowWithAnimation(y, ANIMATION_DELAY_DEFAULT);
+}
+
+void clearRowWithAnimationBothSides(uint8_t y, uint16_t delayMs)
+{
+    // Clear from both ends toward the center
+    for (uint8_t i = 0; i < 10; i++) {
+        LCD.setCursor(i, y);
+        LCD.print(' ');
+        LCD.setCursor(19 - i, y);
+        LCD.print(' ');
+        delay(delayMs);
+    }
+    LCD.setCursor(0, y);
+}
+
+// Overload
+void clearRowWithAnimationBothSides(uint8_t y)
+{
+    clearRowWithAnimationBothSides(y, ANIMATION_DELAY_DEFAULT);
+}
+
+void clearRowWithScramble(uint8_t y, uint8_t scrambleCount, uint16_t delayMs)
+{
+    const char scrambleChars[] = "!@#$%^&*+-=~?";
+    uint8_t charCount = sizeof(scrambleChars) - 1;
+
+    // Scramble phase
+    for (uint8_t iteration = 0; iteration < scrambleCount; iteration++) {
+        LCD.setCursor(0, y);
+        for (uint8_t i = 0; i < 20; i++) {
+            LCD.print(scrambleChars[random(charCount)]);
+        }
+        delay(delayMs);
+    }
+
+    // Clear phase
+    LCD.setCursor(0, y);
+    for (uint8_t i = 0; i < 20; i++) {
+        LCD.print(" ");
+        delay(delayMs / 2);
+    }
+    LCD.setCursor(0, y);
+}
+
+// Overload
+void clearRowWithScramble(uint8_t y, uint8_t scrambleCount)
+{
+    clearRowWithScramble(y, scrambleCount, ANIMATION_DELAY_DEFAULT);
+}
+
+void printCenteredAnimated(uint8_t y, String text, uint16_t writeDelayMs)
+{
+    uint8_t textLen = text.length();
+    uint8_t padding = (20 - textLen) / 2;
+
+    LCD.setCursor(padding, y);
+    for (uint8_t i = 0; i < textLen; i++) {
+        LCD.print(text[i]);
+        delay(writeDelayMs);
+    }
+    LCD.setCursor(0, y);
+}
+
+// Overload
+void printCenteredAnimated(uint8_t y, String text)
+{
+    printCenteredAnimated(y, text, ANIMATION_DELAY_CHAR_WRITE);
+}
+
 void printSpaceBetween(String left, String right)
 {
     static String leftOld = "";
     static String rightOld = "";
 
     if (leftOld == left && rightOld == right) return; // No update needed
-    // if (leftOld != left && rightOld != right) clearFirstRow();
+    // if (leftOld != left && rightOld != right) clearRow(0);
 
     uint8_t leftLength = left.length();
     uint8_t rightLength = right.length();
@@ -158,7 +272,7 @@ void displayGameState(DartGame& game)
 
     if (game.getStatus() == DartGameStatus::unknown || game.getStatus() == DartGameStatus::initialised) {
         printCentered("Ready to play!", 1);
-        printCentered(String(game.getGamePoints()) + " Game", 2);
+        printCentered(String("X01 Game"), 2);
         return;
     }
 

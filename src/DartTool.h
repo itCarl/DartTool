@@ -47,6 +47,19 @@
     #define CLIENT_PASS ""
 #endif
 
+// Display Animation Configuration (milliseconds) - can be overridden in config.h
+#ifndef ANIMATION_DELAY_DEFAULT
+    #define ANIMATION_DELAY_DEFAULT 100
+#endif
+
+#ifndef ANIMATION_DELAY_CHAR_WRITE
+    #define ANIMATION_DELAY_CHAR_WRITE 75
+#endif
+
+#ifndef ANIMATION_DELAY_INIT
+    #define ANIMATION_DELAY_INIT 150
+#endif
+
 // GLOBAL VARIABLES
 // both declared and defined in header (solution from http://www.keil.com/support/docs/1868.htm)
 //
