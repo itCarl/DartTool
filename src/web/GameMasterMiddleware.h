@@ -1,7 +1,7 @@
 #ifndef GameMasterMiddleware_h
 #define GameMasterMiddleware_h
 
-#include "DartTool.h"
+#include "../DartTool.h"
 
 class GameMasterMiddleware : public AsyncMiddleware
 {

@@ -4,8 +4,8 @@
 
 #include <map>
 #include <vector>
-#include "GameMode.h"
-#include "DartGameStatus.h"
+#include "../GameMode.h"
+#include "../DartGameStatus.h"
 
 class AroundTheClockGameMode : public GameMode
 {
@@ -50,6 +50,7 @@ class AroundTheClockGameMode : public GameMode
 
         String getGameModeName() override { return "AroundTheClock"; }
         String getGameModeDescription() override { return "Around the Clock - Hit 1 through 20 then Bull"; }
+        void displayGameInfo() override;
 };
 
 #endif

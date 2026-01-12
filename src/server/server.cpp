@@ -1,8 +1,8 @@
-#include "DartTool.h"
+#include "../DartTool.h"
 
-#include "web/CaptiveRequestHandler.h"
-#include "web/GameMasterMiddleware.h"
-#include "dart/GameModeFactory.h"
+#include "../web/CaptiveRequestHandler.h"
+#include "../web/GameMasterMiddleware.h"
+#include "../dart/GameModeFactory.h"
 
 using WsCommandHandler = std::function<bool(JsonDocument&)>; //typedef bool (*WsCommandHandler)(JsonDocument& doc);
 struct CommandEntry {

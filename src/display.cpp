@@ -311,10 +311,9 @@ void displayGameState(DartGame& game)
 
     // Get current player
     Player& currentPlayer = game.getPlayerAt(game.getCurrentPlayerIndex());
-    uint16_t remainingPoints = game.getCurrentPlayerRemainingPoints();
     uint8_t throwCount = game.getThrowCounter();
 
-    // Row 0: Player name + throw count
+    // Row 0: Player name + throw count (COMMON)
     String playerName = currentPlayer.getName();
     if (playerName.length() > 13) {
         playerName = playerName.substring(0, 12) + ".";
@@ -322,23 +321,10 @@ void displayGameState(DartGame& game)
     String throwInfo = "(" + String(throwCount) + "/3)";
     printSpaceBetween(playerName, throwInfo);
 
-    // Row 1: Remaining points (large display)
-    String pointsStr = String(remainingPoints);
-    clearRow(1);
-    printCentered(pointsStr, 1);
+    // Rows 1-2: Game mode specific display
+    game.displayGameInfo();
 
-    // Row 2: Last throw info
-    clearRow(2);
-    std::vector<Throw> throws = currentPlayer.getThrows();
-    if (throws.size() > 0) {
-        Throw lastThrow = throws.back();
-        String throwStr = lastThrow.toString() + " (" + String(lastThrow.getPoints()) + ")";
-        printCentered(throwStr, 2);
-    } else {
-        printCentered("--", 2);
-    }
-
-    // Row 3: Turn and player count
+    // Row 3: Turn and player count (COMMON)
     clearRow(3);
     String turnInfo = "Turn: " + String(game.getTurn() + 1);
     String playerInfo = "P" + String(game.getCurrentPlayerIndex() + 1) + "/" + String(game.getPlayerCount());

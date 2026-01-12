@@ -96,6 +96,10 @@ class GameMode
         virtual String getGameModeName() = 0;
         virtual String getGameModeDescription() = 0;
 
+        // Display method for game-specific LCD content (rows 1-2)
+        // Row 0 and Row 3 are handled by common display logic
+        virtual void displayGameInfo() = 0;
+
         // List players
         virtual String listPlayers();
 };

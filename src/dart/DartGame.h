@@ -7,7 +7,7 @@
 #include <memory>
 #include "DartGameStatus.h"
 #include "Player.h"
-#include "utils.h"
+#include "../utils.h"
 #include "GameMode.h"
 
 /**
@@ -74,6 +74,9 @@ class DartGame
 
         // Process a dart throw - delegated to active game mode
         DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1);
+
+        // Display game-specific info on LCD
+        void displayGameInfo();
 
         // Serialization methods - delegated to game mode
         void serialize(JsonObject& obj);

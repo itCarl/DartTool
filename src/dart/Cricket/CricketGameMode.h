@@ -4,8 +4,8 @@
 
 #include <map>
 #include <vector>
-#include "GameMode.h"
-#include "DartGameStatus.h"
+#include "../GameMode.h"
+#include "../DartGameStatus.h"
 
 class CricketGameMode : public GameMode
 {
@@ -56,6 +56,7 @@ class CricketGameMode : public GameMode
 
         String getGameModeName() override { return "Cricket"; }
         String getGameModeDescription() override { return "Cricket - Close 15-20 and Bull to win"; }
+        void displayGameInfo() override;
 };
 
 #endif

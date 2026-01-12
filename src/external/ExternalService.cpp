@@ -1,6 +1,6 @@
-#include "external/ExternalService.h"
+#include "ExternalService.h"
 
-#include "DartTool.h"
+#include "../DartTool.h"
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 

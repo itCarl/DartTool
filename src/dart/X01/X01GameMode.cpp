@@ -1,9 +1,9 @@
 #include "X01GameMode.h"
-#include "DartTool.h"
+#include "../../DartTool.h"
 
 X01GameMode::X01GameMode()
 {
-    points = 501;  // Default X01 starting points
+    points = 301;  // Default X01 starting points
     status = DartGameStatus::unknown;
 }
 
@@ -378,5 +378,28 @@ void X01GameMode::deserializePartial(const JsonObject& obj)
                 players[i].setWinPos(playerObj["winPos"].as<uint8_t>());
             }
         }
+    }
+}
+
+void X01GameMode::displayGameInfo()
+{
+    if (players.empty()) return;
+
+    Player& currentPlayer = getCurrentPlayer();
+    uint16_t remainingPoints = currentPlayer.getPoints();
+    std::vector<Throw> throws = currentPlayer.getThrows();
+
+    String pointsStr = String(remainingPoints);
+    clearRow(1);
+    printCentered(pointsStr, 1);
+
+    // Row 2: Last throw info
+    clearRow(2);
+    if (throws.size() > 0) {
+        Throw lastThrow = throws.back();
+        String throwStr = lastThrow.toString() + " (" + String(lastThrow.getPoints()) + ")";
+        printCentered(throwStr, 2);
+    } else {
+        printCentered("--", 2);
     }
 }

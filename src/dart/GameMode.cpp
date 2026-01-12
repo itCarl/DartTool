@@ -1,5 +1,5 @@
 #include "GameMode.h"
-#include "DartTool.h"
+#include "../DartTool.h"
 
 Player& GameMode::getCurrentPlayer()
 {

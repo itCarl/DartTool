@@ -5,9 +5,9 @@
 #include <Arduino.h>
 #include <memory>
 #include "GameMode.h"
-#include "X01GameMode.h"
-#include "CricketGameMode.h"
-#include "AroundTheClockGameMode.h"
+#include "X01/X01GameMode.h"
+#include "Cricket/CricketGameMode.h"
+#include "AroundTheClock/AroundTheClockGameMode.h"
 
 /**
  * GameModeFactory

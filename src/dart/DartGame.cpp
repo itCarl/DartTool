@@ -1,7 +1,7 @@
 
 #include "DartGame.h"
-#include "X01GameMode.h"
-#include "DartTool.h"
+#include "X01/X01GameMode.h"
+#include "../DartTool.h"
 
 /**
  * Constructor
@@ -282,4 +282,10 @@ Player& DartGame::getPlayerAt(size_t index)
         return defaultPlayer;
     }
     return gameMode->getPlayerAt(index);
+}
+
+void DartGame::displayGameInfo()
+{
+    if (!gameMode) return;
+    gameMode->displayGameInfo();
 }

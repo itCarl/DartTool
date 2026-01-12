@@ -81,7 +81,7 @@ function checkDeviceAvailability() {
             deviceReady = true;
             initWebSocket();
             await sleep(500);
-            // showMainContent();
+            showMainContent();
         })
         .catch((error) => {
             console.warn('Device not available, retrying...', error);
@@ -887,7 +887,7 @@ function addNewPlayer() {
 
 // Global game mode state
 let currentGameMode = 'X01';
-let currentGameModePoints = 501;
+let currentGameModePoints = 301;
 
 function initGamePage() {
     updateSelectedPlayersUI();

@@ -1,69 +1,86 @@
-#include "AroundTheClockGameMode.h"
-#include "DartTool.h"
+#include "CricketGameMode.h"
+#include "../../DartTool.h"
+#include <algorithm>
 
-AroundTheClockGameMode::AroundTheClockGameMode()
+CricketGameMode::CricketGameMode()
 {
-    initSequence();
     status = DartGameStatus::unknown;
     points = 0;
 }
 
-void AroundTheClockGameMode::initSequence()
+void CricketGameMode::initStateForPlayer(const String& playerId)
 {
-    sequence.clear();
-    for (uint8_t i = 1; i <= 20; ++i) {
-        sequence.push_back(i);
+    if (playerState.find(playerId) != playerState.end()) {
+        return;
     }
-    sequence.push_back(25); // bull to finish
-}
 
-void AroundTheClockGameMode::initProgressForPlayer(const String& playerId)
-{
-    if (progress.find(playerId) == progress.end()) {
-        progress[playerId] = 0;
+    PlayerCricketState state;
+    for (uint8_t t : targets) {
+        state.marks[t] = 0;
     }
+    state.score = 0;
+    playerState[playerId] = state;
 }
 
-uint8_t AroundTheClockGameMode::currentTargetFor(const String& playerId) const
+bool CricketGameMode::isTarget(uint8_t value) const
 {
-    auto it = progress.find(playerId);
-    if (it == progress.end()) return sequence.empty() ? 0 : sequence.front();
-
-    size_t idx = it->second;
-    if (idx >= sequence.size()) return 0;
-    return sequence[idx];
+    return std::find(targets.begin(), targets.end(), value) != targets.end();
 }
 
-bool AroundTheClockGameMode::hasPlayerFinished(const String& playerId) const
+bool CricketGameMode::opponentsClosed(uint8_t value, const String& playerId)
 {
-    auto it = progress.find(playerId);
-    if (it == progress.end()) return false;
-    return it->second >= sequence.size();
-}
-
-void AroundTheClockGameMode::applyThrow(const String& playerId, const Throw& dartThrow)
-{
-    initProgressForPlayer(playerId);
-    if (hasPlayerFinished(playerId)) return;
-
-    uint8_t target = currentTargetFor(playerId);
-    if (dartThrow.getValue() == target) {
-        progress[playerId] += 1;
-    }
-}
-
-void AroundTheClockGameMode::rebuildFromHistory()
-{
-    progress.clear();
     for (Player& p : players) {
-        initProgressForPlayer(p.getId());
+        if (p.getId() == playerId) continue;
+        initStateForPlayer(p.getId());
+        if (playerState[p.getId()].marks[value] < 3) {
+            return false;
+        }
     }
-    for (const HistoryEntry& entry : history) {
-        applyThrow(entry.playerId, entry.dartThrow);
+    return true;
+}
+
+void CricketGameMode::applyThrowToState(const String& playerId, const Throw& dartThrow)
+{
+    initStateForPlayer(playerId);
+
+    uint8_t value = dartThrow.getValue();
+    uint8_t multiplier = dartThrow.getField();
+
+    if (!isTarget(value) || multiplier == 0) {
+        return;
+    }
+
+    PlayerCricketState& state = playerState[playerId];
+    uint8_t before = state.marks[value];
+    uint8_t newMarks = before + multiplier;
+    uint8_t scoringHits = 0;
+
+    if (before >= 3) {
+        scoringHits = multiplier;
+    } else if (newMarks > 3) {
+        scoringHits = newMarks - 3;
+    }
+
+    state.marks[value] = std::min<uint8_t>(newMarks, 3);
+
+    if (scoringHits > 0 && !opponentsClosed(value, playerId)) {
+        state.score += scoringHits * value;
     }
 }
 
-void AroundTheClockGameMode::recomputeTurnTracking()
+void CricketGameMode::rebuildStateFromHistory()
+{
+    playerState.clear();
+    for (Player& p : players) {
+        initStateForPlayer(p.getId());
+    }
+
+    for (const HistoryEntry& entry : history) {
+        applyThrowToState(entry.playerId, entry.dartThrow);
+    }
+}
+
+void CricketGameMode::recomputeTurnTracking()
 {
     currentPlayerIndex = 0;
     throwCounter = 0;
@@ -81,41 +98,65 @@ void AroundTheClockGameMode::recomputeTurnTracking()
     }
 }
 
-void AroundTheClockGameMode::reset()
+bool CricketGameMode::allTargetsClosed(const String& playerId) const
+{
+    auto it = playerState.find(playerId);
+    if (it == playerState.end()) return false;
+
+    for (uint8_t t : targets) {
+        auto mark = it->second.marks.find(t);
+        uint8_t hits = (mark != it->second.marks.end()) ? mark->second : 0;
+        if (hits < 3) {
+            return false;
+        }
+    }
+    return true;
+}
+
+uint16_t CricketGameMode::leadingScore() const
+{
+    uint16_t maxScore = 0;
+    for (const auto& pair : playerState) {
+        maxScore = std::max<uint16_t>(maxScore, pair.second.score);
+    }
+    return maxScore;
+}
+
+void CricketGameMode::reset()
 {
     status = DartGameStatus::initialised;
     resetPlayersState();
     points = 0;
-    progress.clear();
-    for (Player& p : players) {
-        initProgressForPlayer(p.getId());
-    }
     history.clear();
-    DEBUG_PRINTLN("[DT] AroundTheClockGameMode reset");
+    playerState.clear();
+    for (Player& p : players) {
+        initStateForPlayer(p.getId());
+    }
+    DEBUG_PRINTLN("[DT] CricketGameMode reset");
 }
 
-void AroundTheClockGameMode::setPlayers(std::vector<Player>& selectedPlayers)
+void CricketGameMode::setPlayers(std::vector<Player>& selectedPlayers)
 {
     GameMode::setPlayers(selectedPlayers);
-    progress.clear();
     history.clear();
+    playerState.clear();
     for (Player& p : players) {
-        initProgressForPlayer(p.getId());
+        initStateForPlayer(p.getId());
     }
     status = DartGameStatus::initialised;
 }
 
-DartGameStatus AroundTheClockGameMode::getStatus()
+DartGameStatus CricketGameMode::getStatus()
 {
     return status;
 }
 
-void AroundTheClockGameMode::setStatus(DartGameStatus newStatus)
+void CricketGameMode::setStatus(DartGameStatus newStatus)
 {
     status = newStatus;
 }
 
-String AroundTheClockGameMode::getStatusString()
+String CricketGameMode::getStatusString()
 {
     switch(status) {
         case DartGameStatus::initialised: return "initialised";
@@ -129,7 +170,7 @@ String AroundTheClockGameMode::getStatusString()
     }
 }
 
-DartGameStatus AroundTheClockGameMode::stringToStatus(String statusString)
+DartGameStatus CricketGameMode::stringToStatus(String statusString)
 {
     if (statusString == "initialised")    return DartGameStatus::initialised;
     else if (statusString == "running")   return DartGameStatus::running;
@@ -141,7 +182,7 @@ DartGameStatus AroundTheClockGameMode::stringToStatus(String statusString)
     else                                   return DartGameStatus::unknown;
 }
 
-DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t multiplier)
+DartThrowResult CricketGameMode::processDartThrow(uint8_t value, uint8_t multiplier)
 {
     DartThrowResult result;
     multiplier = multiplier == 0 ? 1 : multiplier;
@@ -185,15 +226,19 @@ DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t 
 
     throwCounter++;
     history.push_back({currentPlayer.getId(), dartThrow});
-    applyThrow(currentPlayer.getId(), dartThrow);
+    applyThrowToState(currentPlayer.getId(), dartThrow);
 
-    if (hasPlayerFinished(currentPlayer.getId())) {
+    const PlayerCricketState& state = playerState[currentPlayer.getId()];
+    bool closedAll = allTargetsClosed(currentPlayer.getId());
+    bool leading = state.score >= leadingScore();
+
+    if (closedAll && leading) {
         currentPlayer.setWinPos(1);
         status = DartGameStatus::playerWon;
         result.hasWon = true;
         result.winner = currentPlayer.getName();
         result.winnerId = currentPlayer.getId();
-        result.message = "Around the Clock complete - winner: " + currentPlayer.getName();
+        result.message = "Cricket complete - winner: " + currentPlayer.getName();
         winCount++;
         result.pointsRemaining = 0;
         result.success = true;
@@ -212,7 +257,7 @@ DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t 
     return result;
 }
 
-bool AroundTheClockGameMode::undoLastThrow()
+bool CricketGameMode::undoLastThrow()
 {
     if (history.empty()) {
         return false;
@@ -228,7 +273,7 @@ bool AroundTheClockGameMode::undoLastThrow()
         }
     }
 
-    rebuildFromHistory();
+    rebuildStateFromHistory();
     recomputeTurnTracking();
 
     if (status == DartGameStatus::done || status == DartGameStatus::playerWon) {
@@ -238,7 +283,7 @@ bool AroundTheClockGameMode::undoLastThrow()
     return true;
 }
 
-void AroundTheClockGameMode::serialize(JsonObject& obj)
+void CricketGameMode::serialize(JsonObject& obj)
 {
     obj["status"] = getStatusString();
     obj["currentPlayerIndex"] = currentPlayerIndex;
@@ -247,25 +292,33 @@ void AroundTheClockGameMode::serialize(JsonObject& obj)
     }
     obj["throwCounter"] = throwCounter;
     obj["winCount"] = winCount;
+    obj["points"] = points;
     obj["turn"] = turn;
     obj["gameMode"] = getGameModeName();
 
-    JsonArray seqArray = obj["sequence"].to<JsonArray>();
-    for (uint8_t t : sequence) {
-        seqArray.add(t);
+    JsonArray targetArray = obj["targets"].to<JsonArray>();
+    for (uint8_t t : targets) {
+        targetArray.add(t);
     }
 
     JsonArray jsonPlayers = obj["players"].to<JsonArray>();
     for (Player& p : players) {
         JsonObject player = jsonPlayers.add<JsonObject>();
         p.serialize(player);
-        initProgressForPlayer(p.getId());
-        player["nextTarget"] = currentTargetFor(p.getId());
-        player["progressIndex"] = progress[p.getId()];
+        initStateForPlayer(p.getId());
+        player["score"] = playerState[p.getId()].score;
+
+        JsonArray marksArray = player["marks"].to<JsonArray>();
+        for (uint8_t t : targets) {
+            JsonObject markObj = marksArray.add<JsonObject>();
+            markObj["target"] = t;
+            markObj["marks"] = playerState[p.getId()].marks[t];
+            markObj["closed"] = playerState[p.getId()].marks[t] >= 3;
+        }
     }
 }
 
-void AroundTheClockGameMode::serializeForDisplay(JsonObject& obj)
+void CricketGameMode::serializeForDisplay(JsonObject& obj)
 {
     obj["status"] = getStatusString();
     obj["turn"] = turn;
@@ -274,9 +327,9 @@ void AroundTheClockGameMode::serializeForDisplay(JsonObject& obj)
         obj["currentPlayerId"] = getCurrentPlayer().getId();
     }
 
-    JsonArray seqArray = obj["sequence"].to<JsonArray>();
-    for (uint8_t t : sequence) {
-        seqArray.add(t);
+    JsonArray targetArray = obj["targets"].to<JsonArray>();
+    for (uint8_t t : targets) {
+        targetArray.add(t);
     }
 
     JsonArray jsonPlayers = obj["players"].to<JsonArray>();
@@ -284,30 +337,40 @@ void AroundTheClockGameMode::serializeForDisplay(JsonObject& obj)
         JsonObject playerObj = jsonPlayers.add<JsonObject>();
         playerObj["id"] = p.getId();
         playerObj["name"] = p.getName();
-        initProgressForPlayer(p.getId());
-        playerObj["nextTarget"] = currentTargetFor(p.getId());
-        playerObj["progressIndex"] = progress[p.getId()];
+        initStateForPlayer(p.getId());
+        playerObj["score"] = playerState[p.getId()].score;
         playerObj["winPos"] = p.hasWon() ? 1 : 0;
+
+        JsonArray marksArray = playerObj["marks"].to<JsonArray>();
+        for (uint8_t t : targets) {
+            JsonObject markObj = marksArray.add<JsonObject>();
+            markObj["target"] = t;
+            markObj["marks"] = playerState[p.getId()].marks[t];
+            markObj["closed"] = playerState[p.getId()].marks[t] >= 3;
+        }
     }
 }
 
-void AroundTheClockGameMode::deserialize(const JsonObject& obj)
+void CricketGameMode::deserialize(const JsonObject& obj)
 {
     if (obj["status"].is<String>()) {
         status = stringToStatus(obj["status"].as<String>());
     }
+
     if (obj["throwCounter"].is<uint8_t>()) {
         throwCounter = obj["throwCounter"].as<uint8_t>();
     }
+
     if (obj["turn"].is<uint8_t>()) {
         turn = obj["turn"].as<uint8_t>();
     }
+
     if (obj["currentPlayerIndex"].is<uint8_t>()) {
         currentPlayerIndex = obj["currentPlayerIndex"].as<uint8_t>();
     }
 
     players.clear();
-    progress.clear();
+    playerState.clear();
 
     if (obj["players"].is<JsonArray>()) {
         JsonArray jsonPlayers = obj["players"].as<JsonArray>();
@@ -323,9 +386,17 @@ void AroundTheClockGameMode::deserialize(const JsonObject& obj)
                 player.setWinPos(playerObj["winPos"].as<uint8_t>());
             }
             players.push_back(player);
-            initProgressForPlayer(player.getId());
-            if (playerObj["progressIndex"].is<uint8_t>()) {
-                progress[player.getId()] = playerObj["progressIndex"].as<uint8_t>();
+
+            initStateForPlayer(player.getId());
+            if (playerObj["score"].is<uint16_t>()) {
+                playerState[player.getId()].score = playerObj["score"].as<uint16_t>();
+            }
+            if (playerObj["marks"].is<JsonArray>()) {
+                for (JsonObject markObj : playerObj["marks"].as<JsonArray>()) {
+                    uint8_t target = markObj["target"].as<uint8_t>();
+                    uint8_t hits = markObj["marks"].as<uint8_t>();
+                    playerState[player.getId()].marks[target] = hits;
+                }
             }
         }
     }
@@ -341,7 +412,7 @@ void AroundTheClockGameMode::deserialize(const JsonObject& obj)
     }
 }
 
-void AroundTheClockGameMode::deserializePartial(const JsonObject& obj)
+void CricketGameMode::deserializePartial(const JsonObject& obj)
 {
     if (obj["status"].is<String>()) {
         status = stringToStatus(obj["status"].as<String>());
@@ -351,5 +422,42 @@ void AroundTheClockGameMode::deserializePartial(const JsonObject& obj)
     }
     if (obj["turn"].is<uint8_t>()) {
         turn = obj["turn"].as<uint8_t>();
+    }
+    // Player partial updates are not needed for Cricket at the moment.
+}
+
+void CricketGameMode::displayGameInfo()
+{
+    if (players.empty()) return;
+
+    Player& currentPlayer = getCurrentPlayer();
+    std::vector<Throw> throws = currentPlayer.getThrows();
+
+    // Row 1: Current score
+    clearRow(1);
+    uint16_t score = 0;
+    if (playerState.find(currentPlayer.getId()) != playerState.end()) {
+        score = playerState[currentPlayer.getId()].score;
+    }
+    String scoreStr = "Score: " + String(score);
+    printCentered(scoreStr, 1);
+
+    // Row 2: Last throw and marks
+    clearRow(2);
+    if (throws.size() > 0) {
+        Throw lastThrow = throws.back();
+        String throwStr = lastThrow.toString();
+        // Add marks info if available
+        uint8_t target = lastThrow.getValue();
+        if (playerState.find(currentPlayer.getId()) != playerState.end()) {
+            auto& marks = playerState[currentPlayer.getId()].marks;
+            if (marks.find(target) != marks.end()) {
+                uint8_t markCount = marks[target];
+                throwStr += " (" + String(markCount) + "/3)";
+            }
+        }
+        printCentered(throwStr, 2);
+    } else {
+        printCentered("--", 2);
     }
 }
