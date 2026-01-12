@@ -271,9 +271,22 @@ void displayGameState(DartGame& game)
     LCD.clear();
 
     if (game.getStatus() == DartGameStatus::unknown || game.getStatus() == DartGameStatus::initialised) {
-        printCentered("Ready to play!", 1);
-        String gameMode = "Mode: " + game.getGameModeName();
-        printCentered(gameMode, 2);
+        printCentered("Ready to play!", 0);
+        String gameMode = game.getGameModeName();
+        if (gameMode == "X01") {
+            gameMode = String(game.getGamePoints()) + " Points";
+        }
+
+        printCentered(gameMode, 1);
+
+        // Rows 2-3: Display selected players in order
+        if (game.getPlayerCount() > 0) {
+            displaySelectedPlayers(game);
+        } else {
+            clearRow(2);
+            clearRow(3);
+            printCentered("Select players", 2);
+        }
         return;
     }
 
@@ -330,4 +343,169 @@ void displayGameState(DartGame& game)
     String turnInfo = "Turn: " + String(game.getTurn() + 1);
     String playerInfo = "P" + String(game.getCurrentPlayerIndex() + 1) + "/" + String(game.getPlayerCount());
     printSpaceBetween(turnInfo, playerInfo);
+}
+
+/*
+ * Display selected players on LCD
+ * Row 2: First player (left), Second player (right)
+ * Row 3: Third player (left), Fourth player (right)
+ */
+void displaySelectedPlayers(const std::vector<Player>& players)
+{
+    // Clear rows 2 and 3
+    clearRow(2);
+    clearRow(3);
+
+    if (players.empty()) {
+        printCentered("No players selected", 2);
+        return;
+    }
+
+    // Dynamically fit up to two names per row without fixed halves
+    auto fitAndPrint = [](const String& leftSrc, const String& rightSrc, uint8_t row) {
+        String left = leftSrc;
+        String right = rightSrc;
+
+        // Iteratively shorten the longer side until both fit with at least one space if both exist
+        bool shortened = false;
+        while (true) {
+            uint8_t spacer = (left.length() && right.length()) ? 1 : 0;
+            if (left.length() + right.length() + spacer <= 20) break;
+            shortened = true;
+            if (left.length() >= right.length() && left.length() > 1) {
+                left.remove(left.length() - 1);
+            } else if (right.length() > 1) {
+                right.remove(right.length() - 1);
+            } else {
+                break;
+            }
+        }
+
+        // Add a trailing dot to truncated entries (re-check fit afterward)
+        auto addEllipsisIfTrimmed = [](String original, String current) {
+            if (original == current || current.length() == 0) return current;
+            if (current.length() == 1) return current; // too short for dot
+            current.remove(current.length() - 1);
+            current += ".";
+            return current;
+        };
+
+        String leftFinal = addEllipsisIfTrimmed(leftSrc, left);
+        String rightFinal = addEllipsisIfTrimmed(rightSrc, right);
+
+        // Ensure final fit after adding dots
+        while (true) {
+            uint8_t spacer = (leftFinal.length() && rightFinal.length()) ? 1 : 0;
+            if (leftFinal.length() + rightFinal.length() + spacer <= 20) break;
+            if (leftFinal.length() >= rightFinal.length() && leftFinal.length() > 1) {
+                leftFinal.remove(leftFinal.length() - 1);
+            } else if (rightFinal.length() > 1) {
+                rightFinal.remove(rightFinal.length() - 1);
+            } else {
+                break;
+            }
+        }
+
+        // Render
+        clearRow(row);
+        if (leftFinal.length()) {
+            LCD.setCursor(0, row);
+            LCD.print(leftFinal);
+        }
+        if (rightFinal.length()) {
+            LCD.setCursor(20 - rightFinal.length(), row);
+            LCD.print(rightFinal);
+        }
+    };
+
+    // Row 2: First and second player
+    String p1 = players.size() >= 1 ? players[0].getName() : "";
+    String p2 = players.size() >= 2 ? players[1].getName() : "";
+    fitAndPrint(p1, p2, 2);
+
+    // Row 3: Third and fourth player
+    String p3 = players.size() >= 3 ? players[2].getName() : "";
+    String p4 = players.size() >= 4 ? players[3].getName() : "";
+    fitAndPrint(p3, p4, 3);
+}
+
+/*
+ * Display selected players from DartGame on LCD
+ * Overload for DartGame reference
+ * Row 2: First player (left), Second player (right)
+ * Row 3: Third player (left), Fourth player (right)
+ */
+void displaySelectedPlayers(DartGame& game)
+{
+    // Clear rows 2 and 3
+    clearRow(2);
+    clearRow(3);
+
+    if (game.getPlayerCount() == 0) {
+        printCentered("No players selected", 2);
+        return;
+    }
+
+    // Shared dynamic fitter
+    auto fitAndPrint = [](const String& leftSrc, const String& rightSrc, uint8_t row) {
+        String left = leftSrc;
+        String right = rightSrc;
+
+        bool shortened = false;
+        while (true) {
+            uint8_t spacer = (left.length() && right.length()) ? 1 : 0;
+            if (left.length() + right.length() + spacer <= 20) break;
+            shortened = true;
+            if (left.length() >= right.length() && left.length() > 1) {
+                left.remove(left.length() - 1);
+            } else if (right.length() > 1) {
+                right.remove(right.length() - 1);
+            } else {
+                break;
+            }
+        }
+
+        auto addEllipsisIfTrimmed = [](String original, String current) {
+            if (original == current || current.length() == 0) return current;
+            if (current.length() == 1) return current;
+            current.remove(current.length() - 1);
+            current += ".";
+            return current;
+        };
+
+        String leftFinal = addEllipsisIfTrimmed(leftSrc, left);
+        String rightFinal = addEllipsisIfTrimmed(rightSrc, right);
+
+        while (true) {
+            uint8_t spacer = (leftFinal.length() && rightFinal.length()) ? 1 : 0;
+            if (leftFinal.length() + rightFinal.length() + spacer <= 20) break;
+            if (leftFinal.length() >= rightFinal.length() && leftFinal.length() > 1) {
+                leftFinal.remove(leftFinal.length() - 1);
+            } else if (rightFinal.length() > 1) {
+                rightFinal.remove(rightFinal.length() - 1);
+            } else {
+                break;
+            }
+        }
+
+        clearRow(row);
+        if (leftFinal.length()) {
+            LCD.setCursor(0, row);
+            LCD.print(leftFinal);
+        }
+        if (rightFinal.length()) {
+            LCD.setCursor(20 - rightFinal.length(), row);
+            LCD.print(rightFinal);
+        }
+    };
+
+    // Row 2: First and second player
+    String p1 = game.getPlayerCount() >= 1 ? game.getPlayerAt(0).getName() : "";
+    String p2 = game.getPlayerCount() >= 2 ? game.getPlayerAt(1).getName() : "";
+    fitAndPrint(p1, p2, 2);
+
+    // Row 3: Third and fourth player
+    String p3 = game.getPlayerCount() >= 3 ? game.getPlayerAt(2).getName() : "";
+    String p4 = game.getPlayerCount() >= 4 ? game.getPlayerAt(3).getName() : "";
+    fitAndPrint(p3, p4, 3);
 }

@@ -22,6 +22,15 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
 </head>
 <body>
+    <!-- Device Status Overlay -->
+    <div id="deviceStatusOverlay" class="device-status-overlay visible">
+        <div class="device-status-content">
+            <div class="spinner"></div>
+            <h3 id="deviceStatusTitle">Gerät wird verbunden...</h3>
+            <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
+        </div>
+    </div>
+
     <div id="toastContainer" class="toast-container"></div>
 
     <header>

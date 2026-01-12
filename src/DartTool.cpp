@@ -71,16 +71,25 @@ void DartTool::loop()
     static DartGameStatus lastDisplayedStatus = DartGameStatus::unknown;
     static uint8_t lastDisplayedThrow = 0;
     static uint8_t lastDisplayedPlayer = 0;
+    static String lastDisplayedMode = "";
+    static uint16_t lastDisplayedPoints = 0;
+
+    String currentMode = game.getGameModeName();
+    uint16_t currentPoints = game.getGamePoints();
 
     // Update display when game state, player, or throw count changes
     if (game.getStatus() != lastDisplayedStatus ||
         game.getThrowCounter() != lastDisplayedThrow ||
-        game.getCurrentPlayerIndex() != lastDisplayedPlayer) {
+        game.getCurrentPlayerIndex() != lastDisplayedPlayer ||
+        currentMode != lastDisplayedMode ||
+        currentPoints != lastDisplayedPoints) {
 
         displayGameState(game);
         lastDisplayedStatus = game.getStatus();
         lastDisplayedThrow = game.getThrowCounter();
         lastDisplayedPlayer = game.getCurrentPlayerIndex();
+        lastDisplayedMode = currentMode;
+        lastDisplayedPoints = currentPoints;
     }
 
     // Poll external service for game state updates

@@ -87,9 +87,13 @@ class PlayerManager
         std::vector<Player> getPlayersByIds(const std::vector<String>& ids)
         {
             std::vector<Player> selected;
-            for (Player& p : players) {
-                if (std::find(ids.begin(), ids.end(), p.getId()) != ids.end()) {
-                    selected.push_back(p);
+            // Iterate through IDs in order to maintain selection order
+            for (const String& id : ids) {
+                for (Player& p : players) {
+                    if (p.getId() == id) {
+                        selected.push_back(p);
+                        break;  // Found this player, move to next ID
+                    }
                 }
             }
             return selected;
@@ -116,7 +120,7 @@ class PlayerManager
             return Player();
         }
 
-        void getAllPlayers(JsonArray& outArray)
+        void serializeAllPlayers(JsonArray& outArray)
         {
             for (Player& player : players) {
                 JsonObject obj = outArray.add<JsonObject>();

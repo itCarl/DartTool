@@ -21,6 +21,7 @@ const isPage = (...paths) => {
   const current = window.location.pathname.replace(/\/+$/, '');
   return paths.some(path => current === path.replace(/\/+$/, ''));
 };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Settings-related globals
 const host = 'http://192.168.178.53';
@@ -36,6 +37,11 @@ var lastPlayerFetch = null;
 var gameState = "unknown";
 let latestGameSnapshot = null;
 
+// Device status globals
+let deviceReady = false;
+const deviceCheckInterval = 2000; // Check every 2 seconds
+let deviceCheckTimeoutId = null;
+
 window.addEventListener('load', onLoad);
 
 // ============================================================================
@@ -46,7 +52,82 @@ let reconnectAttempts = 0;
 const maxReconnectDelay = 30000; // 30 seconds max
 
 function onLoad(event) {
-    initWebSocket();
+    // Check device availability on all pages before showing content
+    checkDeviceAvailability();
+}
+
+function checkDeviceAvailability() {
+    console.log('Checking device availability...');
+    updateDeviceStatus('Gerät wird verbunden...', 'Bitte warten Sie während das Gerät initialisiert wird.');
+
+    // Try to ping the device using direct fetch
+    fetch(`${host}/ping`, { method: 'GET', timeout: 5000 })
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            // return response.json();
+        })
+        .then(async () => {
+            console.log('Device is available');
+            deviceReady = true;
+            initWebSocket();
+            await sleep(500);
+            showMainContent();
+        })
+        .catch((error) => {
+            console.warn('Device not available, retrying...', error);
+            // Retry after interval
+            deviceCheckTimeoutId = setTimeout(checkDeviceAvailability, deviceCheckInterval);
+        });
+}
+
+function updateDeviceStatus(title, message) {
+    const titleEl = d.getElementById('deviceStatusTitle');
+    const msgEl = d.getElementById('deviceStatusMessage');
+    if(titleEl) titleEl.textContent = title;
+    if(msgEl) msgEl.textContent = message;
+}
+
+function showMainContent() {
+    const overlay = d.getElementById('deviceStatusOverlay');
+    const mainContent = d.getElementById('mainContent');
+
+    if(overlay) {
+        overlay.classList.remove('visible');
+        // Remove display block after animation completes
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+
+    if(mainContent) {
+        mainContent.style.display = 'block';
+    }
+}
+
+function hideMainContent() {
+    const overlay = d.getElementById('deviceStatusOverlay');
+    const mainContent = d.getElementById('mainContent');
+
+    if(overlay) {
+        overlay.style.display = 'flex';
+        overlay.classList.add('visible');
+    }
+
+    if(mainContent) {
+        mainContent.style.display = 'none';
+    }
+
+    deviceReady = false;
+    // Start checking again
+    if(!deviceCheckTimeoutId) {
+        checkDeviceAvailability();
+    }
+}
+
+function setNavCompact(isCompact) {
+    const body = d.body;
+    if (!body) return;
+    body.classList.toggle('game-running', !!isCompact);
 }
 
 function initWebSocket() {
@@ -74,20 +155,13 @@ function onOpen(event) {
     console.log('Connection opened');
     reconnectAttempts = 0; // Reset reconnect counter on successful connection
 
-    if(isPage('/data/players.html', '/players')) {
-        // Request local players (backend handles external service sync)
-        sendMessage({
-            cmd: "getAllPlayer"
-        });
-    }
-
     if(isPage('/data/game.html', '/game')) {
         // Request local players (backend handles external service sync)
         sendMessage({
             cmd: "getAllPlayer"
         });
         sendMessage({
-            cmd: "getGameStatus"
+            cmd: "getGame"
         });
     }
 
@@ -106,6 +180,8 @@ function onClose(event) {
     if(isPage('/data/debug.html', '/debug')) {
         updateStatus('Verbindung getrennt - Reconnect...', 'error');
     }
+    // Show device unavailable status on all pages
+    hideMainContent();
     scheduleReconnect();
 }
 
@@ -215,34 +291,10 @@ function onMessage(event) {
     }
 
     // Handle players list
-    if(data.players) {
+    if(data.cmd === 'getAllPlayer') {
         let players = data.players;
         lastPlayerFetch = players;
-
-        if(isPage('/data/players.html', '/players', '/data/game.html', '/game')) {
-            renderPlayersList(players);
-        }
-
-        if(isPage('/data/game.html', '/game')) {
-            const list = byId('addPlayersList');
-            if (list) {
-                list.innerHTML = '';
-
-                players.filter(player => !selectedPlayerList.includes(player.id)).forEach((player, index) => {
-                    const item = document.createElement('li');
-                    item.id = player.id;
-                    item.innerHTML = `
-                        <label class="checkbox">
-                            <input type="checkbox" name="selectedPlayers" value="${player.id}">
-                            <span></span>
-                        </label>
-                        <i class="fa-solid fa-user"></i>
-                        <div class='max'>${player.name}</div>
-                    `;
-                    list.appendChild(item);
-                });
-            }
-        }
+        renderPlayersList(players);
     }
 
     // Handle game status
@@ -258,7 +310,8 @@ function onMessage(event) {
 
         hide('spinner');
 
-        if(state == "unknown" || state == "initialised" || state == "aborted") {
+        if(state == "unknown" || state == "aborted") {
+            setNavCompact(false);
             show('viewSetup');
             show('viewPlayerManagement');
             show('io');
@@ -266,7 +319,21 @@ function onMessage(event) {
             if (state == "aborted") {
                 showStatus('Game aborted - Ready for new game', 'info');
             }
+
+        } else if(state == "initialised") {
+            setNavCompact(false);
+            show('viewSetup');
+            show('viewPlayerManagement');
+            show('io');
+            hide('doneActions');
+
+            selectedPlayerList = g.players.map(p => p.id);
+            renderPlayersList(lastPlayerFetch);
+            updateSelectablePlayersUI();
+            updateSelectedPlayersUI();
+
         } else if(state == "running" || state == "done") {
+            setNavCompact(state === "running");
             hide('viewPlayerManagement');
             showGameInfo();
             updateGameInfo(g);
@@ -274,13 +341,12 @@ function onMessage(event) {
                 populatePlayers(g);
             }
             if (state == 'done') {
+                setNavCompact(false);
                 // Hide numpad and abort; show post-game actions
                 hide('io');
-                hide('abortGameBtn');
                 show('doneActions');
             } else {
                 show('io');
-                show('abortGameBtn');
                 hide('doneActions');
             }
         }
@@ -323,6 +389,7 @@ function renderPlayersList(players) {
 
     players.forEach((player) => {
         const article = document.createElement('article');
+        article.style.setProperty('--_padding', '0.1rem');
         const isSelected = selectedPlayerList.includes(player.id);
         article.innerHTML = `
         <ul class="list no-space border">
@@ -335,15 +402,6 @@ function renderPlayersList(players) {
                 ${isGamePage ? `<div class="player-select-indicator" aria-hidden="true">
                     <i class="fa-solid fa-check"></i>
                 </div>` : ''}
-                <div class="player-buttons">
-                    <button class="secondary remove-btn"
-                            data-ui="#confirmModal"
-                            data-id="${player.id}"
-                            data-name="${escapeHtml(player.name)}"
-                            aria-label="Remove ${escapeHtml(player.name)}">
-                        Remove
-                    </button>
-                </div>
             </li>
         </ul>
         `;
@@ -407,17 +465,110 @@ function updateSelectedPlayersUI() {
         return;
     }
 
-    lastPlayerFetch
-        .filter(player => selectedPlayerList.includes(player.id))
-        .forEach(player => {
-            const item = document.createElement('li');
-            item.id = player.id;
-            item.innerHTML = `
-                <i class="fa-solid fa-user"></i>
-                <div class='max'>${player.name}</div>
-            `;
-            list.appendChild(item);
+    // Create a map of player IDs to player objects for quick lookup
+    const playerMap = {};
+    lastPlayerFetch.forEach(p => playerMap[p.id] = p);
+
+    // Display players in the order they appear in selectedPlayerList
+    selectedPlayerList.forEach((playerId, index) => {
+        const player = playerMap[playerId];
+        if (!player) return;
+
+        const item = document.createElement('li');
+        item.id = `selected-player-${playerId}`;
+        item.draggable = true;
+        item.className = 'selected-player-item';
+        item.innerHTML = `
+            <i class="fa-solid fa-grip-vertical" style="cursor: move; color: #999;"></i>
+            <i class="fa-solid fa-user"></i>
+            <div class='max'>${player.name}</div>
+            <div class="order-controls">
+                ${index > 0 ? `<button class="tiny secondary move-up-btn" aria-label="Move up"><i class="fa-solid fa-chevron-up"></i></button>` : '<span style="width: 32px;"></span>'}
+                ${index < selectedPlayerList.length - 1 ? `<button class="tiny secondary move-down-btn" aria-label="Move down"><i class="fa-solid fa-chevron-down"></i></button>` : '<span style="width: 32px;"></span>'}
+            </div>
+        `;
+        list.appendChild(item);
+
+        // Add drag event listeners
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', item.innerHTML);
+            item.style.opacity = '0.5';
         });
+
+        item.addEventListener('dragend', (e) => {
+            item.style.opacity = '1';
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            item.style.backgroundColor = '#f5f5f5';
+        });
+
+        item.addEventListener('dragleave', (e) => {
+            item.style.backgroundColor = '';
+        });
+
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.style.backgroundColor = '';
+            const sourceId = e.dataTransfer.getData('text/html');
+            const draggedItem = document.querySelector('[style*="opacity: 0.5"]');
+            if (draggedItem && draggedItem !== item) {
+                reorderPlayers(draggedItem.id.replace('selected-player-', ''), playerId);
+            }
+        });
+
+        // Add button listeners for up/down controls
+        const moveUpBtn = item.querySelector('.move-up-btn');
+        const moveDownBtn = item.querySelector('.move-down-btn');
+
+        if (moveUpBtn) {
+            moveUpBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (index > 0) {
+                    // Swap with previous
+                    [selectedPlayerList[index - 1], selectedPlayerList[index]] = [selectedPlayerList[index], selectedPlayerList[index - 1]];
+                    updateSelectedPlayersUI();
+                    sendPlayerOrder();
+                }
+            });
+        }
+
+        if (moveDownBtn) {
+            moveDownBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (index < selectedPlayerList.length - 1) {
+                    // Swap with next
+                    [selectedPlayerList[index], selectedPlayerList[index + 1]] = [selectedPlayerList[index + 1], selectedPlayerList[index]];
+                    updateSelectedPlayersUI();
+                    sendPlayerOrder();
+                }
+            });
+        }
+    });
+}
+
+function reorderPlayers(draggedId, targetId) {
+    const draggedIndex = selectedPlayerList.indexOf(draggedId);
+    const targetIndex = selectedPlayerList.indexOf(targetId);
+
+    if (draggedIndex > -1 && targetIndex > -1) {
+        // Remove dragged item
+        const [draggedItem] = selectedPlayerList.splice(draggedIndex, 1);
+        // Insert at new position
+        selectedPlayerList.splice(targetIndex, 0, draggedItem);
+        updateSelectedPlayersUI();
+        sendPlayerOrder();
+    }
+}
+
+function sendPlayerOrder() {
+    sendMessage({
+        cmd: 'selectPlayers',
+        playerIds: selectedPlayerList
+    });
 }
 
 function updateSelectablePlayersUI() {
@@ -571,9 +722,9 @@ function populatePlayers(data) {
         }
 
         item.innerHTML = `
-            <div class="grid no-space" style="${isCurrentPlayer ? 'border: 3px solid gold;' : ''}">
+            <div class="grid no-space" style="${isCurrentPlayer ? 'outline: 3px solid gold;' : ''}">
                 <div class="s4 center-align">
-                    <h4 class="currentPoints" style="padding:.5rem;"><b>${remainingPoints}</b></h4>
+                    <h4 class="currentPoints" style="padding:.25rem;"><b>${remainingPoints}</b></h4>
                     <div style="padding:.5rem;">${player.name}</div>
                 </div>
                 <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
@@ -615,10 +766,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
 
     // Page-specific initialization
-    if(isPage('/data/players.html', '/players')) {
-        initPlayersPage();
-    }
-
     if(isPage('/data/game.html', '/game')) {
         initPlayersPage();
         initGamePage();
@@ -709,6 +856,31 @@ function initGamePage() {
 
     let pendingMultiplier = 1;
 
+    const getSelectedGameMode = () => {
+        const selectedMode = document.querySelector('input[name="radio5_"]:checked');
+        const rawMode = selectedMode?.value || '301';
+
+        if (/^\d+$/.test(rawMode)) {
+            return { mode: 'X01', points: parseInt(rawMode, 10) };
+        }
+
+        return { mode: rawMode, points: 0 };
+    };
+
+    const gameModeRadios = document.querySelectorAll('input[name="radio5_"]');
+    if (gameModeRadios?.length) {
+        gameModeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                const { mode, points } = getSelectedGameMode();
+                sendMessage({
+                    cmd: 'setGameMode',
+                    mode,
+                    points
+                });
+            });
+        });
+    }
+
     const startGame = byId('startGame');
     if (startGame) {
         startGame.addEventListener('click', e => {
@@ -720,30 +892,13 @@ function initGamePage() {
                 return;
             }
 
-            // Get game name
-            const gameNameInput = document.querySelector('input[type="text"]');
-            const gameName = gameNameInput?.value.trim() || 'Game';
-
-            // Get selected game mode
-            const selectedMode = document.querySelector('input[name="radio5_"]:checked');
-            const rawMode = selectedMode?.value || '301';
-
-            let mode = 'X01';
-            let points = 501;
-            if (/^\d+$/.test(rawMode)) {
-                points = parseInt(rawMode, 10);
-                mode = 'X01';
-            } else {
-                mode = rawMode;
-                points = 0;
-            }
+            const { mode, points } = getSelectedGameMode();
 
             sendMessage({
                 cmd: 'startGame',
-                name: gameName,
                 mode: mode,
                 points: points,
-                playerIds: selectedPlayerList
+                // playerIds: selectedPlayerList
             });
         });
     }
@@ -776,23 +931,6 @@ function initGamePage() {
                     pendingMultiplier = 1;
                 }
             });
-        });
-    }
-
-    // Abort/Restart game button
-    const abortGameBtn = byId('abortGameBtn');
-    if (abortGameBtn) {
-        abortGameBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to abort this game? Progress will be lost.')) {
-                sendMessage({
-                    cmd: 'abortGame'
-                });
-                // Reset game state
-                selectedPlayerList = [];
-                updateSelectablePlayersUI();
-                updateSelectedPlayersUI();
-                // Display will update when game status response is received
-            }
         });
     }
 
@@ -853,7 +991,6 @@ function startNewGame() {
     show('io');
     hide('doneActions');
     show('numpad');
-    show('abortGameBtn');
 }
 
 // ============================================================================

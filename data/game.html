@@ -23,6 +23,15 @@
 
 </head>
 <body>
+    <!-- Device Status Overlay -->
+    <div id="deviceStatusOverlay" class="device-status-overlay visible">
+        <div class="device-status-content">
+            <div class="spinner"></div>
+            <h3 id="deviceStatusTitle">Gerät wird verbunden...</h3>
+            <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
+        </div>
+    </div>
+
     <header>
         <nav>
             <button data-ui="#navigation-drawer" class="circle transparent">
@@ -114,7 +123,6 @@
                             <span>Around the Clock</span>
                         </label>
                     </nav>
-                    <span class="helper">Choose a Gamemode</span>
                 </div>
                 <button id="startGame" class="responsive margin">
                     <i class="fa-solid fa-play"></i>
@@ -127,7 +135,7 @@
             <div id="activePlayerList">
             </div>
             <div id="io">
-                <div id="infoMsg" style="padding: 1rem; background-color: #f5f5f5; border-radius: 4px; margin-bottom: 1rem; font-weight: bold; text-align: center;">
+                <div id="infoMsg" style="padding: 1rem; font-weight: bold; text-align: center;">
                     Loading game...
                 </div>
                 <div id="numpad">
@@ -156,12 +164,6 @@
                     <div class="double">double</div>
                     <div class="tripple">tripple</div>
                     <div class="back">back</div>
-                </div>
-                <div class="mt-1 text-center">
-                        <button id="abortGameBtn" class="outline btn-wide">
-                        <i class="fa-solid fa-stop"></i>
-                        <span>Abort Game</span>
-                    </button>
                 </div>
                 <div id="doneActions" class="mt-1 text-center" style="display:none; gap:.5rem;">
                     <button id="exportJsonBtn" class="outline btn-wide">

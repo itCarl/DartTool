@@ -10,7 +10,8 @@ struct CommandEntry {
     WsCommandHandler handler;
 };
 
-bool handleGetGameStatus(JsonDocument& doc);
+bool handleGetGame(JsonDocument& doc);
+bool handleSetGameModeSelection(JsonDocument& doc);
 bool handleSelectPlayers(JsonDocument& doc);
 bool handleGetAllPlayer(JsonDocument& doc);
 bool handleAddPlayer(JsonDocument& doc);
@@ -28,17 +29,61 @@ bool handleGetModeConfig(JsonDocument& doc);
 bool handleSetModeConfig(JsonDocument& doc);
 bool handleGetSystemInfo(JsonDocument& doc);
 
+static String resolveGameModeType(const char* gameModeParam, uint16_t& points)
+{
+    String gameModeType = "X01";
+
+    auto isNumeric = [](const String& value) {
+        if (value.isEmpty()) return false;
+        for (size_t i = 0; i < value.length(); ++i) {
+            if (!isDigit(value.charAt(i))) return false;
+        }
+        return true;
+    };
+
+    if (gameModeParam) {
+        String modeStr(gameModeParam);
+        String normalized = modeStr;
+        normalized.toLowerCase();
+
+        if (isNumeric(modeStr)) {
+            points = modeStr.toInt();
+            gameModeType = "X01";
+        } else if (normalized == "x01") {
+            gameModeType = "X01";
+        } else if (normalized == "cricket") {
+            gameModeType = "Cricket";
+        } else if (normalized == "aroundtheclock" || normalized == "around_the_clock" || normalized == "atc") {
+            gameModeType = "AroundTheClock";
+        } else {
+            gameModeType = modeStr;
+        }
+    }
+
+    return gameModeType;
+}
+
+static std::vector<Player> snapshotCurrentPlayers()
+{
+    std::vector<Player> currentPlayers;
+    for (size_t i = 0; i < game.getPlayerCount(); ++i) {
+        currentPlayers.push_back(game.getPlayerAt(i));
+    }
+    return currentPlayers;
+}
+
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
         return true;
     }},
-    { "getGameStatus", handleGetGameStatus },
+    { "getGame", handleGetGame },
     { "setGameStatus", [](JsonDocument& doc) {
         String newStatus = doc["s"].as<String>();
         game.setStatus(game.stringToStatus(newStatus));
 
-        return handleGetGameStatus(doc);
+        return handleGetGame(doc);
     }},
+    { "setGameMode", handleSetGameModeSelection },
     { "startGame", [](JsonDocument& doc) {
         // Validate that players are selected
         if (game.getPlayerCount() == 0) {
@@ -50,33 +95,10 @@ CommandEntry commandTable[] = {
         }
 
         // Extract game configuration from frontend
-        const char* gameName = doc["name"].as<const char*>();
         const char* gameModeParam = doc["mode"].as<const char*>();
         uint16_t points = doc["points"].is<uint16_t>() ? doc["points"].as<uint16_t>() : 501;
-        String gameModeType = "X01";  // Default game mode type
-
-        auto isNumeric = [](const String& value) {
-            if (value.isEmpty()) return false;
-            for (size_t i = 0; i < value.length(); ++i) {
-                if (!isDigit(value.charAt(i))) return false;
-            }
-            return true;
-        };
-
-        if (gameModeParam) {
-            String modeStr(gameModeParam);
-            if (isNumeric(modeStr)) {
-                points = modeStr.toInt();
-                gameModeType = "X01";
-            } else if (modeStr.equalsIgnoreCase("cricket")) {
-                gameModeType = "Cricket";
-            } else if (modeStr.equalsIgnoreCase("aroundtheclock") || modeStr.equalsIgnoreCase("around_the_clock") || modeStr.equalsIgnoreCase("atc")) {
-                gameModeType = "AroundTheClock";
-            } else {
-                // Fall back to provided mode string and let factory decide
-                gameModeType = modeStr;
-            }
-        }
+        std::vector<Player> existingPlayers = snapshotCurrentPlayers();
+        String gameModeType = resolveGameModeType(gameModeParam, points);
 
         // Create the game mode using the factory
         auto newGameMode = GameModeFactory::createGameMode(gameModeType, points);
@@ -91,9 +113,12 @@ CommandEntry commandTable[] = {
         // Set the new game mode
         game.setGameMode(std::move(newGameMode));
 
-        DEBUG_PRINT("[Game] Starting game: ");
-        DEBUG_PRINT(gameName ? gameName : "Unnamed Game");
-        DEBUG_PRINT(" Mode: ");
+        // Re-attach selected players to the new mode
+        if (!existingPlayers.empty()) {
+            game.setPlayers(existingPlayers);
+        }
+
+        DEBUG_PRINT("[Game] Starting game with mode: ");
         DEBUG_PRINT(game.getGameModeName());
         if (game.getGameModeName() == "X01") {
             DEBUG_PRINT(" (");
@@ -108,7 +133,7 @@ CommandEntry commandTable[] = {
         game.setStatus(DartGameStatus::running);
         doc["cmd"] = "getGameStatus";
 
-        return handleGetGameStatus(doc);
+        return handleGetGame(doc);
     }},
     { "abortGame", [](JsonDocument& doc) {
         game.setStatus(DartGameStatus::aborted);
@@ -120,7 +145,6 @@ CommandEntry commandTable[] = {
     { "addPlayer", handleAddPlayer },
     { "deletePlayer", handleDeletePlayer },
     { "fetchExternalPlayers", handleFetchExternalPlayers },
-    { "rstCntlr", handleAddPlayer },
     { "dartThrow", handleDartThrow },
     { "dartUndo", handleDartUndo },
     { "setServo", handleSetServo },
@@ -731,18 +755,54 @@ void cleanupWs()
         wsLastLiveTime = millis();
     }
 }
-bool handleGetGameStatus(JsonDocument& doc)
+
+bool handleGetGame(JsonDocument& doc)
 {
     JsonObject resp = doc["game"].to<JsonObject>();
     resp["status"] = game.getStatusString();
-
-    // Serialize game state for display when game is active
-    if(game.getStatus() == DartGameStatus::running || game.getStatus() == DartGameStatus::done)
-    {
-        game.serializeForDisplay(resp);
-    }
+    game.serializeForDisplay(resp);
 
     return true;
+}
+
+bool handleSetGameModeSelection(JsonDocument& doc)
+{
+    const char* gameModeParam = doc["mode"].as<const char*>();
+    uint16_t points = doc["points"].is<uint16_t>() ? doc["points"].as<uint16_t>() : 501;
+
+    if (game.getStatus() == DartGameStatus::running) {
+        doc["cmd"] = "setGameModeResponse";
+        doc["success"] = false;
+        doc["msg"] = "Cannot change game mode while a game is running";
+        return true;
+    }
+
+    std::vector<Player> existingPlayers = snapshotCurrentPlayers();
+    String gameModeType = resolveGameModeType(gameModeParam, points);
+
+    auto newGameMode = GameModeFactory::createGameMode(gameModeType, points);
+    if (!newGameMode) {
+        doc["cmd"] = "setGameModeResponse";
+        doc["success"] = false;
+        doc["msg"] = "Failed to create game mode: " + gameModeType;
+        DEBUG_PRINTLN("[Game] Failed to preview game mode");
+        return true;
+    }
+
+    game.setGameMode(std::move(newGameMode));
+
+    if (!existingPlayers.empty()) {
+        game.setPlayers(existingPlayers);
+    }
+
+    game.setStatus(DartGameStatus::initialised);
+
+    doc["cmd"] = "setGameModeResponse";
+    doc["success"] = true;
+    doc["mode"] = game.getGameModeName();
+    doc["points"] = game.getGamePoints();
+
+    return handleGetGame(doc);
 }
 
 bool handleSelectPlayers(JsonDocument& doc)
@@ -765,10 +825,16 @@ bool handleSelectPlayers(JsonDocument& doc)
 
     if (selectedPlayers.empty()) {
         doc["msg"] = "No valid players found with provided IDs.";
+        // Clear display when no players selected
+        printCentered("No players selected", 2);
         return true;
     }
 
     game.setPlayers(selectedPlayers);
+
+    // Display selected players on LCD
+    displaySelectedPlayers(selectedPlayers);
+
     doc["msg"] = "Players selected successfully.";
     return true;
 }
@@ -776,7 +842,8 @@ bool handleSelectPlayers(JsonDocument& doc)
 bool handleGetAllPlayer(JsonDocument& doc)
 {
     JsonArray players = doc["players"].to<JsonArray>();
-    PlayerManager::instance().getAllPlayers(players);
+    PlayerManager::instance().serializeAllPlayers(players);
+
     return true;
 }
 
@@ -957,9 +1024,7 @@ bool handleDartThrow(JsonDocument& doc)
         }
     }
 
-    // Return updated game status with full player data (including throws)
-    // This is handled by handleGetGameStatus which calls game.serialize()
-    return handleGetGameStatus(doc);
+    return handleGetGame(doc);
 }
 
 bool handleDartUndo(JsonDocument& doc)
@@ -970,8 +1035,7 @@ bool handleDartUndo(JsonDocument& doc)
     doc["success"] = undone;
     doc["msg"] = undone ? "Last dart throw undone" : "No throw to undo";
 
-    // Return updated game status to sync clients
-    return handleGetGameStatus(doc);
+    return handleGetGame(doc);
 }
 
 bool handleFetchExternalPlayers(JsonDocument& doc)

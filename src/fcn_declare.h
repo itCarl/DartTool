@@ -5,6 +5,7 @@
 #include "DartTool.h"
 
 class DartGame;
+class Player;
 
 // display.cpp
 void initLCD();
@@ -22,6 +23,8 @@ void printSpaceBetween(String left, String right);
 void printCentered(String text, uint8_t row);
 void drawBigNumber(uint16_t number, uint8_t col, uint8_t row);
 void displayGameState(DartGame& game);
+void displaySelectedPlayers(const std::vector<Player>& players);
+void displaySelectedPlayers(DartGame& game);
 
 // storage.cpp
 void initStorage();
