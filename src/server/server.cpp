@@ -72,6 +72,14 @@ static std::vector<Player> snapshotCurrentPlayers()
     return currentPlayers;
 }
 
+static void resetPlayersForNewGame()
+{
+    GameMode* mode = game.getGameMode();
+    if (mode) {
+        mode->reset();
+    }
+}
+
 CommandEntry commandTable[] = {
     { "upt", [](JsonDocument& doc) {
         return true;
@@ -79,7 +87,19 @@ CommandEntry commandTable[] = {
     { "getGame", handleGetGame },
     { "setGameStatus", [](JsonDocument& doc) {
         String newStatus = doc["s"].as<String>();
-        game.setStatus(game.stringToStatus(newStatus));
+        DartGameStatus parsedStatus = game.stringToStatus(newStatus);
+
+        if (parsedStatus == DartGameStatus::initialised) {
+            resetPlayersForNewGame();
+        }
+
+        game.setStatus(parsedStatus);
+
+        // When game is finished, reset it for a new game
+        if (parsedStatus == DartGameStatus::done) {
+            game.reset();
+            game.setStatus(DartGameStatus::initialised);
+        }
 
         return handleGetGame(doc);
     }},
@@ -97,6 +117,7 @@ CommandEntry commandTable[] = {
         // Extract game configuration from frontend
         const char* gameModeParam = doc["mode"].as<const char*>();
         uint16_t points = doc["points"].is<uint16_t>() ? doc["points"].as<uint16_t>() : 501;
+        resetPlayersForNewGame();
         std::vector<Player> existingPlayers = snapshotCurrentPlayers();
         String gameModeType = resolveGameModeType(gameModeParam, points);
 
@@ -777,6 +798,7 @@ bool handleSetGameModeSelection(JsonDocument& doc)
         return true;
     }
 
+    resetPlayersForNewGame();
     std::vector<Player> existingPlayers = snapshotCurrentPlayers();
     String gameModeType = resolveGameModeType(gameModeParam, points);
 

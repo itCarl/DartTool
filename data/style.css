@@ -176,7 +176,7 @@ body.dark {
 }
 
 #numpad {
-    background-color: rgba(255, 255, 255, .05);
+    background-color: transparent;
     padding: .5rem;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
@@ -186,24 +186,59 @@ body.dark {
         "one two three four five six seven"
         "eight nine ten eleven twelve thirteen fourtee"
         "fifteen sixteen seventeen eighteen nineteen twenty twentyfive"
-        "zero double double tripple tripple back back";
+        "zero double double triple triple back back";
     text-transform: uppercase;
 }
 
 #numpad > * {
-    background-color: rgba(0, 0, 0, .5);
+    background-color: var(--surface-container-high);
+    color: var(--on-surface);
     height: 4rem;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     border-radius: .35rem;
+    border: 1px solid var(--outline-variant);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.1s ease;
+    cursor: pointer;
 }
 
-#numpad > div:hover {
-    color: #000;
-    background-color: rgba(255, 255, 255, .7);
-    cursor: pointer;
+@media (hover: hover) and (pointer: fine) {
+    #numpad > div:hover {
+        background-color: var(--primary);
+        color: var(--on-primary);
+        transform: scale(1.02);
+    }
+}
+
+#numpad > div:active {
+    background-color: var(--primary);
+    color: var(--on-primary);
+    transform: scale(0.98);
+}
+
+/* Multiplier buttons with enhanced visual feedback */
+#numpad > .double {
+    font-weight: bold;
+    font-size: 0.9rem;
+    background-color: #4CAF50 !important;
+    color: white !important;
+}
+
+#numpad > .triple {
+    font-weight: bold;
+    font-size: 0.9rem;
+    background-color: #ff784f !important;
+    color: white !important;
+}
+
+#numpad > .zero {
+    background-color: #212121 !important;
+    color: white !important;
 }
 
 .one { grid-area: one; }
@@ -229,7 +264,7 @@ body.dark {
 .twentyfive { grid-area: twentyfive; }
 .zero { grid-area: zero; }
 .double { grid-area: double; }
-.tripple { grid-area: tripple; }
+.triple { grid-area: triple; }
 .back { grid-area: back; }
 
 /* DartTool Styles - Combined */
@@ -300,10 +335,6 @@ body.game-running header nav img {
     display: none;
 }
 
-#viewSetup > .center-align {
-    margin: 2rem 0;
-}
-
 #viewGame {
     display: none;
 }
@@ -311,7 +342,7 @@ body.game-running header nav img {
 /* ==================== Players Page Styles ==================== */
 
 .players-header {
-    margin: 2rem 0;
+    margin-top: 0;
 }
 
 #playersList li {
@@ -443,27 +474,40 @@ body.game-running header nav img {
     display: flex !important;
     align-items: center;
     gap: 12px;
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.selected-player-item.dragging {
+    opacity: 0.5;
+}
+
+.selected-player-item.drag-over {
+    background-color: var(--primary-container) !important;
+    border-color: var(--primary) !important;
 }
 
 .selected-player-item i.fa-grip-vertical {
     flex-shrink: 0;
     margin-right: 4px;
+    cursor: grab;
+    touch-action: none;
 }
 
-.order-controls {
-    display: flex;
-    gap: 4px;
+.selected-player-item i.fa-grip-vertical:active {
+    cursor: grabbing;
+}
+
+.selected-player-item .remove-player-btn {
     flex-shrink: 0;
+    color: var(--error);
 }
 
-.order-controls button {
-    padding: 4px 8px !important;
-    min-width: auto !important;
-}
-
-.order-controls span {
-    width: 32px;
+.selected-player-item .remove-player-btn:hover {
+    background-color: var(--error-container);
 }
 /* Device Status Overlay */
 .device-status-overlay {
@@ -493,7 +537,7 @@ body.game-running header nav img {
 
 .device-status-content {
     text-align: center;
-    padding: 40px;
+    padding: 2rem 1.75rem;
     background: var(--surface);
     border-radius: 16px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -528,4 +572,196 @@ body.game-running header nav img {
     font-size: 14px;
     line-height: 1.5;
     margin: 0;
+}
+/* ==================== Gamemode Selection Styles ==================== */
+
+.gamemode-section {
+    margin: 1rem 0;
+    padding: 0;
+}
+
+.gamemode-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.gamemode-header span:first-child {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.gamemode-header span#selectedGameModeText {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+#changeGameModeBtn.icon-button {
+    padding: 0.5rem;
+    min-width: auto;
+    width: auto;
+    height: auto;
+    border-radius: 50%;
+}
+
+.gamemode-option {
+    margin-top: 1rem;
+}
+
+.gamemode-option label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.gamemode-option select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--outline-variant);
+    border-radius: 4px;
+    background-color: var(--surface);
+    color: var(--on-surface);
+    font-size: 1rem;
+}
+
+.gamemode-option .helper {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Gamemode Modal Grid */
+#gameModeModal {
+    min-width: 90vw;
+    max-width: 600px;
+}
+
+#gameModeModalTitle {
+    margin-bottom: 1.5rem;
+}
+
+.gamemode-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.gamemode-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border: 2px solid var(--outline-variant);
+    border-radius: 8px;
+    background-color: var(--surface-container);
+    color: var(--on-surface);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 140px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.gamemode-button:hover {
+    border-color: var(--primary);
+    background-color: var(--surface-container-high);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.gamemode-button:active {
+    transform: translateY(0);
+}
+
+.gamemode-button i {
+    font-size: 2rem;
+    color: var(--primary);
+}
+
+.gamemode-button span {
+    font-weight: 600;
+}
+
+.gamemode-button small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    text-align: center;
+}
+
+/* ==================== Modal Styles ==================== */
+
+#addPlayerModal,
+#playerSelectionModal,
+#gameModeModal {
+    min-width: 90vw;
+    max-height: 80vh;
+    padding: 0.75rem !important;
+}
+
+#addPlayerModal h5,
+#playerSelectionModal h5,
+#gameModeModal h5 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+#addPlayerModal nav,
+#playerSelectionModal nav,
+#gameModeModal nav {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+/* Players list container in modal */
+.players-list-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+    border-radius: 0;
+}
+
+.player-selection-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.player-selection-item:hover {
+    background-color: var(--surface-container-high);
+}
+
+.player-selection-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.player-selection-item .player-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.player-selection-item .player-info i {
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.player-selection-item .player-name {
+    font-weight: 500;
 }

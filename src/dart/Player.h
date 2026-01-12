@@ -117,6 +117,9 @@ class Player
 
         size_t getThrowCount() const
         {
+            if(this->turns.empty())
+                return 0;
+
             size_t count = 0;
             for(const Turn& turn : turns) {
                 count += turn.throwCount;
@@ -132,7 +135,7 @@ class Player
         // Undo the last throw (from the current/last turn)
         bool undoLastThrow()
         {
-            if (turns.empty() || turns.back().throwCount == 0) {
+            if (this->turns.empty() || this->turns.back().throwCount == 0) {
                 return false;
             }
             turns.back().throwCount--;
@@ -154,11 +157,20 @@ class Player
             turns.clear();
         }
 
+        // Reset all per-game state so the player can start a new match
+        void resetGameState()
+        {
+            points = 0;
+            winPos = 0;
+            clearTurns();
+        }
+
         void serialize(JsonObject& obj) {
-            obj["id"] = id;
-            obj["name"] = name;
-            obj["winPos"] = winPos;
-            obj["points"] = getPoints();
+            obj["id"] = this->id;
+            obj["name"] = this->name;
+            obj["winPos"] = this->winPos;
+            obj["points"] = this->getPoints();
+            obj["totalThrows"] = this->getThrowCount();
 
             // Serialize turns array with turn numbers
             JsonArray turnsArray = obj["turns"].to<JsonArray>();

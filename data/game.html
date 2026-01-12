@@ -12,75 +12,46 @@
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <!-- Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <!-- scripts -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
 
+    <!-- Styles -->
+    <link href="/beercss/beer.min.css" rel="stylesheet" /> <!-- <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet"> -->
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <!-- scripts -->
+    <script type="module" src="/beercss/beer.min.js"></script> <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script> -->
+    <script type="module" src="/beercss/material-dynamic-colors.min.js"></script> <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script> -->
 </head>
 <body>
     <!-- Device Status Overlay -->
     <div id="deviceStatusOverlay" class="device-status-overlay visible">
         <div class="device-status-content">
             <div class="spinner"></div>
-            <h3 id="deviceStatusTitle">Gerät wird verbunden...</h3>
+            <h3 id="deviceStatusTitle">Daten werden abgerufen...</h3>
             <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
         </div>
     </div>
 
     <header>
         <nav>
-            <button data-ui="#navigation-drawer" class="circle transparent">
-                <i>menu</i>
-            </button>
-            <h6 class="max center-align">New Game</h6>
-            <div>
+            <div class="max center-align">
                 <img src="/assets/favicon.png" width="100px">
             </div>
         </nav>
     </header>
 
     <main class="container">
-        <!-- <div id="spinner" class="center-align p-4">
-            <progress class="circle"></progress>
-        </div> -->
-
-        <!-- Player Management Section -->
-        <div id="viewPlayerManagement">
-            <div class="center-align players-header">
-                <button class="small-round" data-ui="#addPlayerModal" aria-label="Add new player">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Add player</span>
+        <div id="viewSetup">
+            <div class="right-align">
+                <button class="small-round" data-ui="#playerSelectionModal" aria-label="Select players">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Select Players</span>
                 </button>
             </div>
-
-            <div id="playersListContainer" class="players-list-container">
-                <div id="playersList" class="center-align p-4" role="list" aria-label="Players list">
-                    <progress class="circle" aria-label="Loading players"></progress>
-                </div>
-                <div id="playersError" class="center-align p-4" style="display: none;" role="alert">
-                    <p class="error-message">Failed to load players. Please try again.</p>
-                    <button class="small-round" onclick="window.location.reload()">
-                        <i class="fa-solid fa-refresh"></i>
-                        <span>Retry</span>
-                    </button>
-                </div>
-                <div id="playersEmpty" class="center-align p-4" style="display: none;">
-                    <p class="empty-message">No players yet. Add your first player to get started!</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="viewSetup">
-            <div class="center-align players-header">
-                <p class="helper">Tap a player in the list above to add or remove them.</p>
-            </div>
             <form class="center-align">
-                <article>
+                <article style="--_padding: 0.1rem">
                     <ul id="selectedPlayerList" class="list border">
                         <li>
                             <div class="max">
@@ -92,38 +63,40 @@
 
                 <hr class="large">
 
-                <div class="field middle-align">
-                    <nav>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="201">
-                            <span>201</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="301" checked>
-                            <span>301</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="401">
-                            <span>401</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="601">
-                            <span>601</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="801">
-                            <span>801</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="Cricket">
-                            <span>Cricket</span>
-                        </label>
-                        <label class="radio">
-                            <input type="radio" name="radio5_" value="AroundTheClock">
-                            <span>Around the Clock</span>
-                        </label>
-                    </nav>
+                <!-- Gamemode Selection Section -->
+                <div class="gamemode-section">
+                    <div class="gamemode-header">
+                        <span>Game Mode</span>
+                        <span id="selectedGameModeText">501 Points</span>
+                        <button type="button" data-ui="#gameModeModal" class="icon-button">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+
+                    <!-- X01 Mode Options -->
+                    <div id="x01Options" class="gamemode-option" style="display: none;">
+                        <label>Points</label>
+                        <select id="x01PointsSelect">
+                            <option value="201">201</option>
+                            <option value="301">301</option>
+                            <option value="401">401</option>
+                            <option value="501" selected>501</option>
+                            <option value="601">601</option>
+                            <option value="801">801</option>
+                        </select>
+                    </div>
+
+                    <!-- Cricket Mode Options -->
+                    <div id="cricketOptions" class="gamemode-option" style="display: none;">
+                        <p class="helper">No additional options for Cricket mode</p>
+                    </div>
+
+                    <!-- Around The Clock Mode Options -->
+                    <div id="aroundTheClockOptions" class="gamemode-option" style="display: none;">
+                        <p class="helper">No additional options for Around the Clock mode</p>
+                    </div>
                 </div>
+
                 <button id="startGame" class="responsive margin">
                     <i class="fa-solid fa-play"></i>
                     <span>Start Game</span>
@@ -138,52 +111,23 @@
                 <div id="infoMsg" style="padding: 1rem; font-weight: bold; text-align: center;">
                     Loading game...
                 </div>
-                <div id="numpad">
-                    <div class="one">1</div>
-                    <div class="two">2</div>
-                    <div class="three">3</div>
-                    <div class="four">4</div>
-                    <div class="five">5</div>
-                    <div class="six">6</div>
-                    <div class="seven">7</div>
-                    <div class="eight">8</div>
-                    <div class="nine">9</div>
-                    <div class="ten">10</div>
-                    <div class="eleven">11</div>
-                    <div class="twelve">12</div>
-                    <div class="thirteen">13</div>
-                    <div class="fourtee">14</div>
-                    <div class="fifteen">15</div>
-                    <div class="sixteen">16</div>
-                    <div class="seventeen">17</div>
-                    <div class="eighteen">18</div>
-                    <div class="nineteen">19</div>
-                    <div class="twenty">20</div>
-                    <div class="twentyfive">25</div>
-                    <div class="zero">0</div>
-                    <div class="double">double</div>
-                    <div class="tripple">tripple</div>
-                    <div class="back">back</div>
-                </div>
-                <div id="doneActions" class="mt-1 text-center" style="display:none; gap:.5rem;">
-                    <button id="exportJsonBtn" class="outline btn-wide">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Download JSON</span>
+                <div id="numpad"></div>
+                <div id="doneActions" class="mt-1 column" style="display:none;">
+                    <button id="finishGameBtn" class="responsive">
+                        <span>Finish Game</span>
                     </button>
-                    <button id="syncGameBtn" class="outline btn-wide">
-                        <i class="fa-solid fa-cloud-upload"></i>
-                        <span>Sync External</span>
+                    <button id="exportJsonBtn" class="responsive" style="margin-top: 1rem;">
+                        <span>Download Data</span>
                     </button>
-                    <button id="newGameBtn" class="fill btn-wide">
-                        <i class="fa-solid fa-rotate-right"></i>
-                        <span>Start New Game</span>
+                    <button id="newGameBtn" class="fill responsive" style="margin-top: 1rem; margin-bottom: 1rem;">
+                        <span>New Game</span>
                     </button>
                 </div>
             </div>
         </div>
     </main>
 
-    <div class="overlay blur"></div>
+    <!-- Add Player Modal -->
     <dialog id="addPlayerModal" aria-labelledby="addPlayerModalTitle">
         <h5 id="addPlayerModalTitle">Add New Player</h5>
         <form id="addPlayerForm">
@@ -193,20 +137,58 @@
                 <span class="helper">Enter player name (1-50 characters)</span>
             </div>
             <nav class="right-align no-space">
-                <button type="button" class="transparent link" data-ui="#addPlayerModal">Cancel</button>
                 <button type="submit" class="transparent link">Add</button>
             </nav>
         </form>
     </dialog>
 
-    <div class="overlay blur"></div>
-    <dialog id="confirmModal" aria-labelledby="confirmModalTitle">
-        <h5 id="confirmModalTitle">Confirm Removal</h5>
-        <div>Are you sure you want to remove <strong id="playerToRemoveName"></strong>?</div>
-        <nav class="right-align no-space">
-            <button id="cancelRemove" class="transparent link" data-ui="#confirmModal">Cancel</button>
-            <button id="confirmRemove" class="transparent link" data-ui="#confirmModal">Confirm</button>
+    <!-- Player Selection Modal -->
+    <dialog id="playerSelectionModal" aria-labelledby="playerSelectionModalTitle">
+        <h5 id="playerSelectionModalTitle">Select Players</h5>
+        <div id="playersListContainer" class="players-list-container">
+            <div id="playersList" class="center-align p-4" role="list" aria-label="Players list">
+                <progress class="circle" aria-label="Loading players"></progress>
+            </div>
+            <div id="playersError" class="center-align p-4" style="display: none;" role="alert">
+                <p class="error-message">Failed to load players. Please try again.</p>
+                <button class="small-round" onclick="window.location.reload()">
+                    <i class="fa-solid fa-refresh"></i>
+                    <span>Retry</span>
+                </button>
+            </div>
+            <div id="playersEmpty" class="center-align p-4" style="display: none;">
+                <p class="empty-message">No players yet. Add your first player to get started!</p>
+            </div>
+        </div>
+        <nav class="space no-space">
+            <button type="button" id="addNewPlayerFromModal" class="transparent link" data-ui="#addPlayerModal">
+                <i class="fa-solid fa-plus"></i>
+                <span>Add New Player</span>
+            </button>
+            <button type="button" id="addPlayersBtn" class="transparent link">Add</button>
         </nav>
+    </dialog>
+
+    <!-- Game Mode Modal -->
+    <dialog id="gameModeModal" aria-labelledby="gameModeModalTitle">
+        <h5 id="gameModeModalTitle">Select Game Mode</h5>
+        <div id="gameModeGrid" class="gamemode-grid">
+            <button type="button" class="gamemode-button" data-mode="X01" data-points="501">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>X01</span>
+                <small>501 Points</small>
+            </button>
+            <button type="button" class="gamemode-button" data-mode="Cricket">
+                <i class="fa-solid fa-target"></i>
+                <span>Cricket</span>
+                <small>Scoring Variant</small>
+            </button>
+            <button type="button" class="gamemode-button" data-mode="AroundTheClock">
+                <i class="fa-solid fa-circle-notch"></i>
+                <span>Around the Clock</span>
+                <small>Hit All Numbers</small>
+            </button>
+        </div>
     </dialog>
 
     <div class="overlay"></div>
@@ -242,6 +224,7 @@
             </div>
         </nav>
     </dialog>
+
     <script src="app.js"></script>
 </body>
 </html>

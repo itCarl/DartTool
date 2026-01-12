@@ -15,13 +15,9 @@ X01GameMode::X01GameMode(uint16_t startingPoints)
 
 void X01GameMode::reset()
 {
-    status = DartGameStatus::unknown;
-    players.clear();
-    currentPlayerIndex = 0;
-    throwCounter = 0;
-    winCount = 0;
-    points = 501;  // Default X01 starting points
-    turn = 0;
+    status = DartGameStatus::initialised;
+    resetPlayersState();
+    // Keep configured starting points as-is
     DEBUG_PRINTLN("[DT] X01GameMode reset");
 }
 
@@ -47,6 +43,7 @@ String X01GameMode::getStatusString()
     switch(this->getStatus()) {
         case DartGameStatus::initialised: return "initialised"; break;
         case DartGameStatus::running:   return "running"; break;
+        case DartGameStatus::playerWon: return "playerWon"; break;
         case DartGameStatus::done:      return "done"; break;
         case DartGameStatus::aborted:   return "aborted"; break;
         case DartGameStatus::error:     return "error"; break;
@@ -59,6 +56,7 @@ DartGameStatus X01GameMode::stringToStatus(String statusString)
 {
     if (statusString == "initialised")    return DartGameStatus::initialised;
     else if (statusString == "running")   return DartGameStatus::running;
+    else if (statusString == "playerWon") return DartGameStatus::playerWon;
     else if (statusString == "done")      return DartGameStatus::done;
     else if (statusString == "aborted")   return DartGameStatus::aborted;
     else if (statusString == "error")     return DartGameStatus::error;
@@ -153,7 +151,7 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier)
         // }
 
         currentPlayer.setWinPos(1);  // Mark as winner
-        status = DartGameStatus::done;
+        status = DartGameStatus::playerWon;
         result.hasWon = true;
         result.winner = currentPlayer.getName();
         result.winnerId = currentPlayer.getId();
@@ -233,6 +231,7 @@ void X01GameMode::serializeForDisplay(JsonObject& obj)
         player["id"] = p.getId();
         player["name"] = p.getName();
         player["remainingPoints"] = points - p.getPoints();  // Points needed to reach target
+        player["averagePoints"] = p.getThrowCount() > 0 ? p.getPoints() / p.getThrowCount() : 0;
         player["winPos"] = p.hasWon() ? 1 : 0;  // Simple win indicator
 
         // Include throws from last turn for current round display

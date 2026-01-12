@@ -39,6 +39,17 @@ void GameMode::setPlayers(std::vector<Player>& selectedPlayers)
     currentPlayerIndex = 0;
 }
 
+void GameMode::resetPlayersState()
+{
+    for (auto& player : players) {
+        player.resetGameState();
+    }
+    currentPlayerIndex = 0;
+    throwCounter = 0;
+    winCount = 0;
+    turn = 0;
+}
+
 bool GameMode::addThrowToCurrentPlayer(const Throw& dartThrow)
 {
     return addThrowToPlayer(getCurrentPlayer().getId(), dartThrow);

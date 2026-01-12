@@ -40,6 +40,8 @@ class GameMode
         std::vector<Player> players;
         static const uint8_t THROWS_PER_TURN = 3;
 
+        void resetPlayersState();
+
         Player& getCurrentPlayer();
         void nextPlayer();
         bool isPlayerTurnComplete();

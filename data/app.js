@@ -13,10 +13,15 @@ var ws;
 const s = t => t/1000;
 const isEmpty = str => !str?.length;
 const byId = id => d.getElementById(id);
-const upt = (id, val) => { if(byId(id)?.innerHTML?.trim() != val) byId(id).innerHTML = val };
-const onClick = (id, cb) => byId(id)?.addEventListener('click', cb);
-const hide = (id) => { if(byId(id)) byId(id).style.display = 'none'; };
-const show = (id) => { if(byId(id)) byId(id).style.display = 'block'; };
+const upt = (id, val) => { const el = byId(id); if(el?.innerHTML?.trim() != val && el) el.innerHTML = val };
+const onClick = (id, cb) => { const el = byId(id); if(el) el.addEventListener('click', cb); };
+const hide = (id) => { const el = byId(id); if(el) el.style.display = 'none'; };
+const show = (id) => { const el = byId(id); if(el) el.style.display = (id === 'numpad' ? 'grid' : 'block'); };
+const addClass = (el, cls) => el?.classList.add(cls);
+const removeClass = (el, cls) => el?.classList.remove(cls);
+const hasClass = (el, cls) => el?.classList.contains(cls);
+const on = (el, evt, cb, capture = true) => el?.addEventListener(evt, cb, capture);
+const off = (el, evt, cb, capture = true) => el?.removeEventListener(evt, cb, capture);
 const isPage = (...paths) => {
   const current = window.location.pathname.replace(/\/+$/, '');
   return paths.some(path => current === path.replace(/\/+$/, ''));
@@ -28,21 +33,26 @@ const host = 'http://192.168.178.53';
 let dartThrowQueue = [];
 let dataSyncEnabled = false;
 let operationMode = 'display';
-let externalHost = '';
 
 // Game-related globals
 var selectedPlayerId = null;
 var selectedPlayerList = [];
+var tempModalSelections = [];
 var lastPlayerFetch = null;
 var gameState = "unknown";
 let latestGameSnapshot = null;
+let pendingPlayerToSelect = null; // Track newly added player to auto-select
 
 // Device status globals
 let deviceReady = false;
 const deviceCheckInterval = 2000; // Check every 2 seconds
 let deviceCheckTimeoutId = null;
 
-window.addEventListener('load', onLoad);
+// ============================================================================
+// MODAL HELPERS
+// ============================================================================
+
+on(window, 'load', onLoad);
 
 // ============================================================================
 // WEBSOCKET FUNCTIONS
@@ -58,7 +68,7 @@ function onLoad(event) {
 
 function checkDeviceAvailability() {
     console.log('Checking device availability...');
-    updateDeviceStatus('Gerät wird verbunden...', 'Bitte warten Sie während das Gerät initialisiert wird.');
+    updateDeviceStatus('Daten werden abgerufen...', 'Bitte warten Sie während das Gerät initialisiert wird.');
 
     // Try to ping the device using direct fetch
     fetch(`${host}/ping`, { method: 'GET', timeout: 5000 })
@@ -71,7 +81,7 @@ function checkDeviceAvailability() {
             deviceReady = true;
             initWebSocket();
             await sleep(500);
-            showMainContent();
+            // showMainContent();
         })
         .catch((error) => {
             console.warn('Device not available, retrying...', error);
@@ -92,7 +102,7 @@ function showMainContent() {
     const mainContent = d.getElementById('mainContent');
 
     if(overlay) {
-        overlay.classList.remove('visible');
+        removeClass(overlay, 'visible');
         // Remove display block after animation completes
         setTimeout(() => {
             overlay.style.display = 'none';
@@ -110,7 +120,7 @@ function hideMainContent() {
 
     if(overlay) {
         overlay.style.display = 'flex';
-        overlay.classList.add('visible');
+        addClass(overlay, 'visible');
     }
 
     if(mainContent) {
@@ -122,12 +132,6 @@ function hideMainContent() {
     if(!deviceCheckTimeoutId) {
         checkDeviceAvailability();
     }
-}
-
-function setNavCompact(isCompact) {
-    const body = d.body;
-    if (!body) return;
-    body.classList.toggle('game-running', !!isCompact);
 }
 
 function initWebSocket() {
@@ -236,16 +240,6 @@ function onMessage(event) {
         return;
     }
 
-    // Handle external player fetch responses
-    if (data.cmd === 'fetchExternalPlayers') {
-        if (data.status === 'success') {
-            console.log('External players fetched and cached successfully:', data.msg);
-        } else {
-            console.warn('Failed to fetch external players:', data.msg);
-        }
-        // Continue to handle players list if present
-    }
-
     // Handle mode config responses
     if (data.cmd === 'getModeConfigResponse') {
         if (data.success) {
@@ -295,6 +289,21 @@ function onMessage(event) {
         let players = data.players;
         lastPlayerFetch = players;
         renderPlayersList(players);
+
+        // Auto-select newly added player if pending
+        if (pendingPlayerToSelect && players) {
+            const newPlayer = players.find(p => p.name === pendingPlayerToSelect);
+            if (newPlayer && !selectedPlayerList.includes(newPlayer.id)) {
+                selectedPlayerList.push(newPlayer.id);
+                updateSelectablePlayersUI();
+                updateSelectedPlayersUI();
+                sendMessage({
+                    cmd: 'selectPlayers',
+                    playerIds: selectedPlayerList
+                });
+            }
+            pendingPlayerToSelect = null; // Clear after processing
+        }
     }
 
     // Handle game status
@@ -303,28 +312,28 @@ function onMessage(event) {
         // Keep a full snapshot for export if provided, else use display data
         latestGameSnapshot = data.gameFull || g;
         var state = g?.status || 'unknown';
-        d.querySelectorAll('#gameStateSelector button.active')?.forEach(btn => {
-            btn.classList.remove('active');
-        });
-        byId(`state${state.charAt(0).toUpperCase() + state.slice(1)}`)?.classList.add('active');
+        const activeBtns = d.querySelectorAll('#gameStateSelector button.active');
+        activeBtns?.forEach(btn => removeClass(btn, 'active'));
+        const stateBtn = byId(`state${state.charAt(0).toUpperCase() + state.slice(1)}`);
+        if(stateBtn) addClass(stateBtn, 'active');
 
         hide('spinner');
 
         if(state == "unknown" || state == "aborted") {
-            setNavCompact(false);
             show('viewSetup');
             show('viewPlayerManagement');
-            show('io');
+            hide('viewGame');
+            hide('io');
             hide('doneActions');
             if (state == "aborted") {
                 showStatus('Game aborted - Ready for new game', 'info');
             }
 
         } else if(state == "initialised") {
-            setNavCompact(false);
             show('viewSetup');
             show('viewPlayerManagement');
-            show('io');
+            hide('viewGame');
+            hide('io');
             hide('doneActions');
 
             selectedPlayerList = g.players.map(p => p.id);
@@ -332,23 +341,34 @@ function onMessage(event) {
             updateSelectablePlayersUI();
             updateSelectedPlayersUI();
 
-        } else if(state == "running" || state == "done") {
-            setNavCompact(state === "running");
+        // Running state
+        } else if(state == "running") {
             hide('viewPlayerManagement');
+            hide('show');
+            show('io');
+            show('numpad');
+            hide('doneActions');
+
             showGameInfo();
             updateGameInfo(g);
             if (g && g.players) {
                 populatePlayers(g);
             }
-            if (state == 'done') {
-                setNavCompact(false);
-                // Hide numpad and abort; show post-game actions
-                hide('io');
-                show('doneActions');
-            } else {
-                show('io');
-                hide('doneActions');
+
+        } else if(state == "playerWon") {
+            hide('viewPlayerManagement');
+            hide('numpad');
+            show('io');
+            show('doneActions');
+
+            showGameInfo();
+            updateGameInfo(g);
+            if (g && g.players) {
+                populatePlayers(g);
             }
+
+        } else if(state == "done") {
+            console.log("Game is done");
         }
     }
 }
@@ -421,7 +441,7 @@ function renderPlayersList(players) {
 
     // Add event listeners to remove buttons
     document.querySelectorAll('.remove-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
+        on(button, 'click', (e) => {
             e.stopPropagation();
             const id = e.currentTarget.dataset.id;
             const name = e.currentTarget.dataset.name;
@@ -478,73 +498,116 @@ function updateSelectedPlayersUI() {
         item.id = `selected-player-${playerId}`;
         item.draggable = true;
         item.className = 'selected-player-item';
+        item.dataset.playerId = playerId;
         item.innerHTML = `
-            <i class="fa-solid fa-grip-vertical" style="cursor: move; color: #999;"></i>
+            <i class="fa-solid fa-grip-vertical drag-handle" style="cursor: move; color: #999;" aria-label="Drag to reorder"></i>
             <i class="fa-solid fa-user"></i>
             <div class='max'>${player.name}</div>
-            <div class="order-controls">
-                ${index > 0 ? `<button class="tiny secondary move-up-btn" aria-label="Move up"><i class="fa-solid fa-chevron-up"></i></button>` : '<span style="width: 32px;"></span>'}
-                ${index < selectedPlayerList.length - 1 ? `<button class="tiny secondary move-down-btn" aria-label="Move down"><i class="fa-solid fa-chevron-down"></i></button>` : '<span style="width: 32px;"></span>'}
-            </div>
+            <button class="circle transparent small remove-player-btn" data-player-id="${playerId}" aria-label="Remove ${player.name}">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         `;
         list.appendChild(item);
 
-        // Add drag event listeners
-        item.addEventListener('dragstart', (e) => {
+        // Add drag event listeners for desktop
+        on(item, 'dragstart', (e) => {
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', item.innerHTML);
-            item.style.opacity = '0.5';
+            e.dataTransfer.setData('text/plain', playerId);
+            addClass(item, 'dragging');
         });
 
-        item.addEventListener('dragend', (e) => {
-            item.style.opacity = '1';
+        on(item, 'dragend', (e) => {
+            removeClass(item, 'dragging');
+            // Remove all drag-over classes
+            document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
         });
 
-        item.addEventListener('dragover', (e) => {
+        on(item, 'dragover', (e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            item.style.backgroundColor = '#f5f5f5';
-        });
-
-        item.addEventListener('dragleave', (e) => {
-            item.style.backgroundColor = '';
-        });
-
-        item.addEventListener('drop', (e) => {
-            e.preventDefault();
-            item.style.backgroundColor = '';
-            const sourceId = e.dataTransfer.getData('text/html');
-            const draggedItem = document.querySelector('[style*="opacity: 0.5"]');
-            if (draggedItem && draggedItem !== item) {
-                reorderPlayers(draggedItem.id.replace('selected-player-', ''), playerId);
+            const draggingItem = document.querySelector('.dragging');
+            if (draggingItem && draggingItem !== item) {
+                addClass(item, 'drag-over');
             }
         });
 
-        // Add button listeners for up/down controls
-        const moveUpBtn = item.querySelector('.move-up-btn');
-        const moveDownBtn = item.querySelector('.move-down-btn');
+        on(item, 'dragleave', (e) => {
+            removeClass(item, 'drag-over');
+        });
 
-        if (moveUpBtn) {
-            moveUpBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (index > 0) {
-                    // Swap with previous
-                    [selectedPlayerList[index - 1], selectedPlayerList[index]] = [selectedPlayerList[index], selectedPlayerList[index - 1]];
-                    updateSelectedPlayersUI();
-                    sendPlayerOrder();
-                }
-            });
+        on(item, 'drop', (e) => {
+            e.preventDefault();
+            removeClass(item, 'drag-over');
+            const draggedId = e.dataTransfer.getData('text/plain');
+            if (draggedId && draggedId !== playerId) {
+                reorderPlayers(draggedId, playerId);
+            }
+        });
+
+        // Add touch event listeners for mobile
+        let touchStartY = 0;
+        let touchStartX = 0;
+        let isDragging = false;
+        let clone = null;
+
+        const dragHandle = item.querySelector('.drag-handle');
+        if (dragHandle) {
+            dragHandle.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+                touchStartX = e.touches[0].clientX;
+                isDragging = true;
+
+                // Create visual feedback
+                item.style.opacity = '0.5';
+            }, { passive: true });
         }
 
-        if (moveDownBtn) {
-            moveDownBtn.addEventListener('click', (e) => {
+        item.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+
+            const touch = e.touches[0];
+            const deltaY = touch.clientY - touchStartY;
+
+            // Find the item under the touch point
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const targetItem = elementBelow?.closest('.selected-player-item');
+
+            if (targetItem && targetItem !== item && targetItem.dataset.playerId) {
+                // Visual feedback
+                document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
+                addClass(targetItem, 'drag-over');
+            }
+        }, { passive: true });
+
+        item.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            item.style.opacity = '1';
+
+            const touch = e.changedTouches[0];
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const targetItem = elementBelow?.closest('.selected-player-item');
+
+            // Remove visual feedback
+            document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
+
+            if (targetItem && targetItem !== item && targetItem.dataset.playerId) {
+                reorderPlayers(playerId, targetItem.dataset.playerId);
+            }
+        }, { passive: true });
+
+        // Add remove button listener
+        const removeBtn = item.querySelector('.remove-player-btn');
+        if (removeBtn) {
+            on(removeBtn, 'click', (e) => {
                 e.stopPropagation();
-                if (index < selectedPlayerList.length - 1) {
-                    // Swap with next
-                    [selectedPlayerList[index], selectedPlayerList[index + 1]] = [selectedPlayerList[index + 1], selectedPlayerList[index]];
-                    updateSelectedPlayersUI();
-                    sendPlayerOrder();
-                }
+                const playerIdToRemove = removeBtn.dataset.playerId;
+                selectedPlayerList = selectedPlayerList.filter(id => id !== playerIdToRemove);
+                updateSelectedPlayersUI();
+                sendMessage({
+                    cmd: 'selectPlayers',
+                    playerIds: selectedPlayerList
+                });
             });
         }
     });
@@ -576,7 +639,8 @@ function updateSelectablePlayersUI() {
     const rows = d.querySelectorAll('#playersList li[role="listitem"]');
     rows.forEach(row => {
         const isSelected = selectedPlayerList.includes(row.id);
-        row.classList.toggle('selected-player', isSelected);
+        if(isSelected) addClass(row, 'selected-player');
+        else removeClass(row, 'selected-player');
         row.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     });
 }
@@ -599,47 +663,6 @@ function togglePlayerSelection(playerId) {
         cmd: 'selectPlayers',
         playerIds: selectedPlayerList
     });
-}
-
-function handleExternalPlayers(externalPlayers) {
-    // Transform external player format to match our internal format
-    const transformedPlayers = externalPlayers.map(p => ({
-        id: p.id || p.player_id || generateLocalId(),
-        name: p.name || p.player_name || 'Unknown'
-    }));
-
-    // Update lastPlayerFetch for consistency
-    lastPlayerFetch = transformedPlayers;
-
-    // Update the players list on the page
-    if (isPage('/data/players.html', '/players', '/data/game.html', '/game')) {
-        renderPlayersList(transformedPlayers);
-    }
-
-    // Also update for game page if needed
-    if (isPage('/data/game.html', '/game')) {
-        const list = byId('addPlayersList');
-        if (list) {
-            list.innerHTML = '';
-
-            transformedPlayers.filter(player => !selectedPlayerList.includes(player.id)).forEach((player) => {
-                const item = document.createElement('li');
-                item.id = player.id;
-                item.innerHTML = `
-                    <label class="checkbox">
-                        <input type="checkbox" name="selectedPlayers" value="${player.id}">
-                        <span></span>
-                    </label>
-                    <i class="fa-solid fa-user"></i>
-                    <div class='max'>${player.name}</div>
-                `;
-                list.appendChild(item);
-            });
-        }
-
-        updateSelectablePlayersUI();
-        updateSelectedPlayersUI();
-    }
 }
 
 function generateLocalId() {
@@ -697,13 +720,12 @@ function populatePlayers(data) {
     data.players.forEach((player, index) => {
         const item = document.createElement('article');
         item.id = player.id;
-        item.classList.add('playerCard');
+        addClass(item, 'playerCard');
 
         // Calculate remaining points and statistics
         const remainingPoints = player.remainingPoints !== undefined ? player.remainingPoints : 0;
-        const totalThrows = player.throwCounter !== undefined ? player.throwCounter : 0;
-        const roundThrow = totalThrows % 3; // Current throw in round (0, 1, or 2)
-        const averagePoints = totalThrows > 0 ? Math.round(remainingPoints / totalThrows) : 0;
+        const totalThrows = player.throws !== undefined ? player.throws.reduce((partialSum, a) => partialSum + a.points, 0) : 0;
+        const roundThrow = player.throws.length; // Current throw in round (0, 1, or 2)
         const isCurrentPlayer = data.currentPlayerId === player.id;
 
         // Get the last 3 throws (current round)
@@ -747,7 +769,7 @@ function populatePlayers(data) {
                     <div class="s4 center-align" style="flex: 1;">
                         <div>
                             &Oslash;
-                            <span class="averagePoints">${averagePoints}</span>
+                            <span class="averagePoints">${player.averagePoints ?? 0}</span>
                         </div>
                     </div>
                 </div>
@@ -761,7 +783,7 @@ function populatePlayers(data) {
 // NAVIGATION AND PAGE-SPECIFIC SETUP
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+on(document, 'DOMContentLoaded', () => {
     // Setup navigation active state
     setupNavigation();
 
@@ -787,9 +809,9 @@ function setupNavigation() {
         const currentPath = window.location.pathname;
 
         if (linkPath === currentPath) {
-            link.classList.add("active");
+            addClass(link, "active");
         } else {
-            link.classList.remove("active");
+            removeClass(link, "active");
         }
     });
 }
@@ -799,40 +821,11 @@ function setupNavigation() {
 // ============================================================================
 
 function initPlayersPage() {
-    const addPlayerForm = byId('addPlayerForm');
-    if (addPlayerForm) {
-        addPlayerForm.addEventListener('submit', e => {
-            e.preventDefault();
-
-            const nameInput = document.getElementById('newPlayerName');
-            const name = nameInput?.value.trim();
-
-            if (!isEmpty(name)) {
-                // Send add player command
-                sendMessage({
-                    cmd: "addPlayer",
-                    name: name
-                });
-
-                // Clear input
-                nameInput.value = '';
-
-                // Request updated player list
-                sendMessage({
-                    cmd: "getAllPlayer"
-                });
-
-                // Show success feedback
-                console.log(`Player "${name}" added successfully`);
-            } else {
-                console.error('Player name is required');
-            }
-        });
-    }
+    // Add player functionality moved to modal handler
 
     const confirmRemove = byId('confirmRemove');
     if (confirmRemove) {
-        confirmRemove.addEventListener('click', () => {
+        on(confirmRemove, 'click', () => {
             if (selectedPlayerId) {
                 sendMessage({
                     cmd: "deletePlayer",
@@ -847,43 +840,86 @@ function initPlayersPage() {
     }
 }
 
+function initAddPlayerModal() {
+    const form = byId('addPlayerForm');
+    if (form) {
+        on(form, 'submit', (e) => {
+            e.preventDefault();
+            addNewPlayer();
+        });
+    }
+}
+
+function addNewPlayer() {
+    const nameInput = byId('newPlayerName');
+    const name = nameInput?.value.trim();
+
+    if (!isEmpty(name)) {
+        // Store the player name to auto-select after getAllPlayer response
+        pendingPlayerToSelect = name;
+
+        sendMessage({
+            cmd: "addPlayer",
+            name: name
+        });
+
+        sendMessage({
+            cmd: "getAllPlayer"
+        });
+
+        // Close addPlayerModal and reopen playerSelectionModal
+        if (window.ui) {
+            window.ui('#addPlayerModal'); // Close add player modal
+        }
+
+        // Clear the input
+        if (nameInput) nameInput.value = '';
+
+        console.log(`Player "${name}" added successfully`);
+    } else {
+        console.error('Player name is required');
+    }
+}
+
 // ============================================================================
 // GAME PAGE
 // ============================================================================
 
+// Global game mode state
+let currentGameMode = 'X01';
+let currentGameModePoints = 501;
+
 function initGamePage() {
     updateSelectedPlayersUI();
+    initGameModeSelection();
+    initPlayerSelectionModal();
+    initAddPlayerModal();
 
-    let pendingMultiplier = 1;
-
-    const getSelectedGameMode = () => {
-        const selectedMode = document.querySelector('input[name="radio5_"]:checked');
-        const rawMode = selectedMode?.value || '301';
-
-        if (/^\d+$/.test(rawMode)) {
-            return { mode: 'X01', points: parseInt(rawMode, 10) };
-        }
-
-        return { mode: rawMode, points: 0 };
-    };
-
-    const gameModeRadios = document.querySelectorAll('input[name="radio5_"]');
-    if (gameModeRadios?.length) {
-        gameModeRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                const { mode, points } = getSelectedGameMode();
-                sendMessage({
-                    cmd: 'setGameMode',
-                    mode,
-                    points
-                });
+    // Setup game mode modal button listeners
+    const gameModeModal = byId('gameModeModal');
+    if (gameModeModal) {
+        const gameModeButtons = document.querySelectorAll('.gamemode-button');
+        gameModeButtons.forEach(button => {
+            on(button, 'click', (e) => {
+                e.preventDefault();
+                const mode = button.dataset.mode;
+                const points = parseInt(button.dataset.points, 10);
+                selectGameMode(mode, points);
+                if (window.ui) window.ui(gameModeModal);
             });
         });
     }
 
+    let pendingMultiplier = 1;
+    let activeMultiplier = null; // Track which multiplier button is active (null, 'double', or 'triple')
+
+    const getSelectedGameMode = () => {
+        return { mode: currentGameMode, points: currentGameModePoints };
+    };
+
     const startGame = byId('startGame');
     if (startGame) {
-        startGame.addEventListener('click', e => {
+        on(startGame, 'click', e => {
             e.preventDefault();
 
             // Validate players are selected
@@ -906,29 +942,147 @@ function initGamePage() {
     // Setup numpad input handlers for dart score entry
     const numpad = byId('numpad');
     if (numpad) {
+        // Build numpad dynamically
+        const numpadConfig = [
+            { class: 'one', value: '1' },
+            { class: 'two', value: '2' },
+            { class: 'three', value: '3' },
+            { class: 'four', value: '4' },
+            { class: 'five', value: '5' },
+            { class: 'six', value: '6' },
+            { class: 'seven', value: '7' },
+            { class: 'eight', value: '8' },
+            { class: 'nine', value: '9' },
+            { class: 'ten', value: '10' },
+            { class: 'eleven', value: '11' },
+            { class: 'twelve', value: '12' },
+            { class: 'thirteen', value: '13' },
+            { class: 'fourtee', value: '14' },
+            { class: 'fifteen', value: '15' },
+            { class: 'sixteen', value: '16' },
+            { class: 'seventeen', value: '17' },
+            { class: 'eighteen', value: '18' },
+            { class: 'nineteen', value: '19' },
+            { class: 'twenty', value: '20' },
+            { class: 'twentyfive', value: '25' },
+            { class: 'zero', value: '0' },
+            { class: 'double', value: 'double' },
+            { class: 'triple', value: 'triple' },
+            { class: 'back', value: 'undo' }
+        ];
+
+        // Create buttons
+        numpadConfig.forEach(config => {
+            const div = document.createElement('div');
+            div.className = config.class;
+            div.textContent = config.value;
+            numpad.appendChild(div);
+        });
+
         const numberDivs = numpad.querySelectorAll('div');
+
+        // Store original values for number buttons
+        const originalValues = {};
+        numpadConfig.forEach(config => {
+            const numericValue = parseInt(config.value, 10);
+            if (!isNaN(numericValue)) {
+                originalValues[config.value] = numericValue;
+            }
+        });
+
+        const updateMultiplierUI = () => {
+            // Update visual state of double/triple buttons
+            const doubleBtn = numpad.querySelector('.double');
+            const tripleBtn = numpad.querySelector('.triple');
+
+            if (doubleBtn) {
+                if (activeMultiplier === 'double') {
+                    doubleBtn.style.backgroundColor = 'var(--primary)';
+                    doubleBtn.style.color = 'var(--on-primary)';
+                } else {
+                    doubleBtn.style.backgroundColor = '';
+                    doubleBtn.style.color = '';
+                }
+            }
+
+            if (tripleBtn) {
+                if (activeMultiplier === 'triple') {
+                    tripleBtn.style.backgroundColor = 'var(--primary)';
+                    tripleBtn.style.color = 'var(--on-primary)';
+                } else {
+                    tripleBtn.style.backgroundColor = '';
+                    tripleBtn.style.color = '';
+                }
+            }
+
+            // Update number button displays
+            numpadConfig.forEach(config => {
+                const numericValue = parseInt(config.value, 10);
+
+                if (!isNaN(numericValue)) {
+                    const button = numpad.querySelector('.' + config.class);
+                    if (button) {
+                        // 25 cannot have triple multiplier
+                        if (numericValue === 25 && activeMultiplier === 'triple') {
+                            // Don't show 25 multiplied by 3
+                            button.textContent = numericValue;
+                        } else if (activeMultiplier === 'double') {
+                            button.textContent = numericValue * 2;
+                        } else if (activeMultiplier === 'triple') {
+                            button.textContent = numericValue * 3;
+                        } else {
+                            button.textContent = numericValue;
+                        }
+                    }
+                }
+            });
+        };
+
         numberDivs.forEach(div => {
-            div.addEventListener('click', () => {
+            on(div, 'click', () => {
                 const value = div.textContent.trim();
+                const displayedValue = parseInt(value, 10);
+
+                // Calculate original value based on active multiplier
+                let originalValue = displayedValue;
+                if (activeMultiplier === 'double' && !isNaN(displayedValue)) {
+                    originalValue = displayedValue / 2;
+                } else if (activeMultiplier === 'triple' && !isNaN(displayedValue)) {
+                    originalValue = displayedValue / 3;
+                }
 
                 if (value === 'back') {
                     // Handle backspace
                     sendMessage({
                         cmd: 'dartUndo'
                     });
+                    activeMultiplier = null;
                     pendingMultiplier = 1;
-                } else if (value === 'double' || value === 'tripple') {
-                    // Handle multiplier selection for the next dart
-                    pendingMultiplier = value === 'double' ? 2 : 3;
-                } else if (value !== '') {
-                    // Handle number input
-                    const score = parseInt(value, 10);
+                    updateMultiplierUI();
+                } else if (value === 'double' || value === 'triple') {
+                    // Handle multiplier selection - toggle or persist until number is pressed
+                    if (activeMultiplier === value) {
+                        // Clicking same multiplier again deactivates it
+                        activeMultiplier = null;
+                        pendingMultiplier = 1;
+                    } else {
+                        // Activate this multiplier
+                        activeMultiplier = value;
+                        pendingMultiplier = value === 'double' ? 2 : 3;
+                    }
+                    updateMultiplierUI();
+                } else if (!isNaN(originalValue)) {
+                    // Handle number input (0-25)
+                    const score = originalValue;
                     sendMessage({
                         cmd: 'dartThrow',
                         score: score,
                         multiplier: pendingMultiplier
                     });
+                    // Reset multiplier after throwing
+                    activeMultiplier = null;
                     pendingMultiplier = 1;
+                    updateMultiplierUI();
                 }
             });
         });
@@ -936,18 +1090,29 @@ function initGamePage() {
 
     // Post-game actions
     const exportJsonBtn = byId('exportJsonBtn');
-    if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportGameAsJson);
+    if (exportJsonBtn) on(exportJsonBtn, 'click', exportGameAsJson);
 
     const syncGameBtn = byId('syncGameBtn');
-    if (syncGameBtn) syncGameBtn.addEventListener('click', syncGameNow);
+    if (syncGameBtn) on(syncGameBtn, 'click', syncGameNow);
 
     const newGameBtn = byId('newGameBtn');
-    if (newGameBtn) newGameBtn.addEventListener('click', startNewGame);
+    if (newGameBtn) on(newGameBtn, 'click', startNewGame);
 
-    ['unknown','initialised','running','done','aborted','error'].forEach(e => {
+    // In-game finish action
+    const finishGameBtn = byId('finishGameBtn');
+    if (finishGameBtn) {
+        on(finishGameBtn, 'click', () => {
+            sendMessage({
+                cmd: 'setGameStatus',
+                s: 'done'
+            });
+        });
+    }
+
+    ['unknown','initialised','running','playerWon','done','aborted','error'].forEach(e => {
         const btn = byId(`state${e.charAt(0).toUpperCase() + e.slice(1)}`);
         if (btn) {
-            btn.addEventListener('click', item => {
+            on(btn, 'click', item => {
                 sendMessage({
                     cmd: 'setGameStatus',
                     s: e
@@ -956,6 +1121,212 @@ function initGamePage() {
         }
     });
 }
+
+function initGameModeSelection() {
+    // Initialize X01 points dropdown
+    const x01PointsSelect = byId('x01PointsSelect');
+    if (x01PointsSelect) {
+        on(x01PointsSelect, 'change', (e) => {
+            const points = parseInt(e.target.value, 10);
+            if (currentGameMode === 'X01') {
+                currentGameModePoints = points;
+                updateGameModeDisplay();
+                sendMessage({
+                    cmd: 'setGameMode',
+                    mode: 'X01',
+                    points: points
+                });
+            }
+        });
+    }
+
+    // Set initial gamemode display
+    updateGameModeDisplay();
+}
+
+function selectGameMode(mode, points = 0) {
+    currentGameMode = mode;
+
+    if (mode === 'X01') {
+        currentGameModePoints = points;
+    } else {
+        currentGameModePoints = 0;
+    }
+
+    // Send message to device
+    sendMessage({
+        cmd: 'setGameMode',
+        mode: mode,
+        points: currentGameModePoints
+    });
+
+    updateGameModeDisplay();
+}
+
+function updateGameModeDisplay() {
+    const displayEl = byId('selectedGameModeText');
+    const x01Options = byId('x01Options');
+    const cricketOptions = byId('cricketOptions');
+    const aroundTheClockOptions = byId('aroundTheClockOptions');
+
+    // Hide all option groups first
+    if (x01Options) x01Options.style.display = 'none';
+    if (cricketOptions) cricketOptions.style.display = 'none';
+    if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'none';
+
+    if (currentGameMode === 'X01') {
+        if (displayEl) displayEl.textContent = `${currentGameModePoints} Points`;
+        if (x01Options) x01Options.style.display = 'block';
+
+        // Update select value
+        const x01Select = byId('x01PointsSelect');
+        if (x01Select) x01Select.value = currentGameModePoints.toString();
+    } else if (currentGameMode === 'Cricket') {
+        if (displayEl) displayEl.textContent = 'Cricket';
+        if (cricketOptions) cricketOptions.style.display = 'block';
+    } else if (currentGameMode === 'AroundTheClock') {
+        if (displayEl) displayEl.textContent = 'Around the Clock';
+        if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'block';
+    }
+}
+
+function initPlayerSelectionModal() {
+    // Add button in modal
+    const addBtn = byId('addPlayersBtn');
+    if (addBtn) {
+        on(addBtn, 'click', (e) => {
+            e.preventDefault();
+            applyPlayerSelection();
+            if (window.ui) window.ui('#playerSelectionModal');
+        });
+    }
+
+    // Listen to modal show event to refresh player list
+    const modal = byId('playerSelectionModal');
+    if (modal) {
+        on(modal, 'show', () => {
+            populatePlayerSelectionModal();
+        });
+    }
+
+    // Populate when the modal trigger button is clicked
+    const openModalBtn = document.querySelector('[data-ui="#playerSelectionModal"]');
+    if (openModalBtn) {
+        on(openModalBtn, 'click', () => {
+            populatePlayerSelectionModal();
+        });
+    }
+
+    // Handle "Add New Player" button - close current modal first
+    const addNewPlayerBtn = byId('addNewPlayerFromModal');
+    if (addNewPlayerBtn) {
+        on(addNewPlayerBtn, 'click', (e) => {
+            if (window.ui) {
+                window.ui('#playerSelectionModal'); // Close player selection modal
+            }
+        });
+    }
+}
+function populatePlayerSelectionModal() {
+    if (!lastPlayerFetch) return;
+
+    // Filter out already-selected players
+    const availablePlayers = lastPlayerFetch.filter(player => !selectedPlayerList.includes(player.id));
+
+    // Reset temporary selections
+    tempModalSelections = [];
+
+    // Render only available players
+    renderPlayersListForModal(availablePlayers);
+}
+
+function renderPlayersListForModal(players) {
+    const list = byId('playersList');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    if (!players || players.length === 0) {
+        hide('playersList');
+        show('playersEmpty');
+        const emptyEl = byId('playersEmpty');
+        if (emptyEl) {
+            const msgEl = emptyEl.querySelector('.empty-message');
+            if (msgEl) msgEl.textContent = 'All players are already selected for this game!';
+        }
+        return;
+    }
+
+    show('playersList');
+    hide('playersEmpty');
+    hide('playersError');
+
+    players.forEach((player) => {
+        const article = document.createElement('article');
+        article.style.setProperty('--_padding', '0.1rem');
+        const isSelected = tempModalSelections.includes(player.id);
+        article.innerHTML = `
+        <ul class="list no-space border">
+            <li id="modal-${player.id}" role="listitem" class="${isSelected ? 'selected-player' : ''}" aria-pressed="${isSelected}">
+                <i class="fa-solid fa-user" aria-hidden="true"></i>
+                <div class='max'>
+                    <div>${escapeHtml(player.name)}</div>
+                    <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
+                </div>
+                <div class="player-select-indicator" aria-hidden="true">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+            </li>
+        </ul>
+        `;
+        list.appendChild(article);
+
+        const row = article.querySelector('li');
+        if (row) {
+            row.classList.add('selectable-player');
+            row.addEventListener('click', e => {
+                if (e.target.closest('.player-buttons')) return;
+                toggleModalPlayerSelection(player.id);
+            });
+        }
+    });
+}
+
+function toggleModalPlayerSelection(playerId) {
+    if (tempModalSelections.includes(playerId)) {
+        tempModalSelections = tempModalSelections.filter(id => id !== playerId);
+    } else {
+        tempModalSelections = [...tempModalSelections, playerId];
+    }
+
+    // Update UI for this player
+    const row = byId(`modal-${playerId}`);
+    if (row) {
+        const isSelected = tempModalSelections.includes(playerId);
+        if (isSelected) {
+            addClass(row, 'selected-player');
+        } else {
+            removeClass(row, 'selected-player');
+        }
+        row.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    }
+}
+
+function applyPlayerSelection() {
+    // Add temporary selections to the actual selected players list
+    selectedPlayerList = [...selectedPlayerList, ...tempModalSelections];
+
+    // Clear temp selections
+    tempModalSelections = [];
+
+    updateSelectedPlayersUI();
+
+    sendMessage({
+        cmd: 'selectPlayers',
+        playerIds: selectedPlayerList
+    });
+}
+
 
 function exportGameAsJson() {
     try {
@@ -1004,42 +1375,42 @@ function initSettingsPage() {
 
     const saveExternalHostBtn = byId('saveExternalHostBtn');
     if (saveExternalHostBtn) {
-        saveExternalHostBtn.addEventListener('click', saveExternalHostSettings);
+        on(saveExternalHostBtn, 'click', saveExternalHostSettings);
     }
 
     const form = byId('wifiSettingsForm');
     if (form) {
-        form.addEventListener('submit', saveSettings);
+        on(form, 'submit', saveSettings);
     }
 
     const modeScoreboardRadio = byId('modeScoreboard');
     const modeDisplayRadio = byId('modeDisplay');
-    if (modeScoreboardRadio) modeScoreboardRadio.addEventListener('change', updateModeUI);
-    if (modeDisplayRadio) modeDisplayRadio.addEventListener('change', updateModeUI);
+    if (modeScoreboardRadio) on(modeScoreboardRadio, 'change', updateModeUI);
+    if (modeDisplayRadio) on(modeDisplayRadio, 'change', updateModeUI);
 
     const saveModeSettingsBtn = byId('saveModeSettingsBtn');
     if (saveModeSettingsBtn) {
-        saveModeSettingsBtn.addEventListener('click', saveOperationMode);
+        on(saveModeSettingsBtn, 'click', saveOperationMode);
     }
 
     const dataSyncToggle = byId('dataSyncToggle');
     if (dataSyncToggle) {
-        dataSyncToggle.addEventListener('change', updateDataSyncUI);
+        on(dataSyncToggle, 'change', updateDataSyncUI);
     }
 
     const saveSyncSettingsBtn = byId('saveSyncSettingsBtn');
     if (saveSyncSettingsBtn) {
-        saveSyncSettingsBtn.addEventListener('click', saveDataSyncSettings);
+        on(saveSyncSettingsBtn, 'click', saveDataSyncSettings);
     }
 
     const syncNowBtn = byId('syncNowBtn');
     if (syncNowBtn) {
-        syncNowBtn.addEventListener('click', syncNow);
+        on(syncNowBtn, 'click', syncNow);
     }
 
     const rebootBtn = byId('rebootBtn');
     if (rebootBtn) {
-        rebootBtn.addEventListener('click', rebootDevice);
+        on(rebootBtn, 'click', rebootDevice);
     }
 
     setInterval(loadSystemInfo, 5000);
@@ -1139,32 +1510,28 @@ function formatUptime(ms) {
 }
 
 function showToast(message, type = 'info') {
-    const toastContainer = byId('toastContainer');
-    if (!toastContainer) {
-        console.warn('[Toast] Container not found');
-        return;
+    // Create or get the snackbar element
+    let snackbar = byId('appSnackbar');
+    if (!snackbar) {
+        snackbar = document.createElement('div');
+        snackbar.id = 'appSnackbar';
+        snackbar.className = 'snackbar';
+        document.body.appendChild(snackbar);
     }
 
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.setAttribute('role', 'alert');
-    toast.innerHTML = `
-        <div class="toast-content">
-            <span>${escapeHtml(message)}</span>
-        </div>
-    `;
+    // Update the snackbar content and style
+    const iconMap = {
+        success: 'check_circle',
+        error: 'error',
+        info: 'info'
+    };
+    const icon = iconMap[type] || 'info';
 
-    toastContainer.appendChild(toast);
+    snackbar.innerHTML = `<i>${icon}</i><span>${escapeHtml(message)}</span>`;
 
-    // Animate in
-    setTimeout(() => toast.classList.add('toast-show'), 10);
-
-    // Auto remove
+    // Use BeerCSS ui() to show the snackbar
     const duration = type === 'error' ? 5000 : 3000;
-    setTimeout(() => {
-        toast.classList.remove('toast-show');
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
+    if (window.ui) window.ui(snackbar, duration);
 }
 
 function showStatus(message, type) {

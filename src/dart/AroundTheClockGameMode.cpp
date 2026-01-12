@@ -83,14 +83,13 @@ void AroundTheClockGameMode::recomputeTurnTracking()
 
 void AroundTheClockGameMode::reset()
 {
-    status = DartGameStatus::unknown;
-    players.clear();
-    currentPlayerIndex = 0;
-    throwCounter = 0;
-    winCount = 0;
+    status = DartGameStatus::initialised;
+    resetPlayersState();
     points = 0;
-    turn = 0;
     progress.clear();
+    for (Player& p : players) {
+        initProgressForPlayer(p.getId());
+    }
     history.clear();
     DEBUG_PRINTLN("[DT] AroundTheClockGameMode reset");
 }
@@ -121,6 +120,7 @@ String AroundTheClockGameMode::getStatusString()
     switch(status) {
         case DartGameStatus::initialised: return "initialised";
         case DartGameStatus::running:     return "running";
+        case DartGameStatus::playerWon:   return "playerWon";
         case DartGameStatus::done:        return "done";
         case DartGameStatus::aborted:     return "aborted";
         case DartGameStatus::error:       return "error";
@@ -133,6 +133,7 @@ DartGameStatus AroundTheClockGameMode::stringToStatus(String statusString)
 {
     if (statusString == "initialised")    return DartGameStatus::initialised;
     else if (statusString == "running")   return DartGameStatus::running;
+    else if (statusString == "playerWon") return DartGameStatus::playerWon;
     else if (statusString == "done")      return DartGameStatus::done;
     else if (statusString == "aborted")   return DartGameStatus::aborted;
     else if (statusString == "error")     return DartGameStatus::error;
@@ -188,7 +189,7 @@ DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t 
 
     if (hasPlayerFinished(currentPlayer.getId())) {
         currentPlayer.setWinPos(1);
-        status = DartGameStatus::done;
+        status = DartGameStatus::playerWon;
         result.hasWon = true;
         result.winner = currentPlayer.getName();
         result.winnerId = currentPlayer.getId();
@@ -230,7 +231,7 @@ bool AroundTheClockGameMode::undoLastThrow()
     rebuildFromHistory();
     recomputeTurnTracking();
 
-    if (status == DartGameStatus::done) {
+    if (status == DartGameStatus::done || status == DartGameStatus::playerWon) {
         status = DartGameStatus::running;
     }
 

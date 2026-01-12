@@ -290,7 +290,7 @@ void displayGameState(DartGame& game)
         return;
     }
 
-    if (game.getStatus() == DartGameStatus::done) {
+    if (game.getStatus() == DartGameStatus::playerWon) {
         printCentered("Game Over!", 1);
         Player& winner = game.getPlayerAt(0);
         // Find actual winner
