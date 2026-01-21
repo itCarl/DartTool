@@ -7,6 +7,7 @@
 // ============================================================================
 // GLOBAL VARIABLES AND UTILITIES
 // ============================================================================
+import '@dartbot/dartboard/dartboard.js';
 
 var d = document;
 var ws;
@@ -64,6 +65,27 @@ const maxReconnectDelay = 30000; // 30 seconds max
 function onLoad(event) {
     // Check device availability on all pages before showing content
     checkDeviceAvailability();
+
+    const board = document.querySelector('dartbot-dartboard');
+    board.hits = [
+        { radius: 147, angle: 0.2595 },
+        { radius: 149, angle: 0.1368 },
+    ];
+
+    // board.addEventListener('click', (event) => {
+    //     const board = event.currentTarget;
+    //     const { offsetX, offsetY } = event;
+    //     const point = board.translatePoint(offsetX, offsetY);
+    //     const { radius, angle } = point.polar;
+    //     const hit = { radius, angle };
+    //     board.hits = [...board.hits, hit];
+    // });
+
+    board.addEventListener('dartboard-click', (event) => {
+        const { radius, angle } = event.detail.polar;
+        const hit = { radius, angle };
+        board.hits = [...board.hits, hit];
+    });
 }
 
 function checkDeviceAvailability() {
@@ -346,7 +368,7 @@ function onMessage(event) {
             hide('viewPlayerManagement');
             hide('show');
             show('io');
-            show('numpad');
+            // show('numpad');
             hide('doneActions');
 
             showGameInfo();
@@ -1015,23 +1037,27 @@ function initGamePage() {
                 }
             }
 
-            // Update number button displays
+            // Update number button displays - gray out invalid fields
             numpadConfig.forEach(config => {
                 const numericValue = parseInt(config.value, 10);
 
                 if (!isNaN(numericValue)) {
                     const button = numpad.querySelector('.' + config.class);
                     if (button) {
-                        // 25 cannot have triple multiplier
-                        if (numericValue === 25 && activeMultiplier === 'triple') {
-                            // Don't show 25 multiplied by 3
-                            button.textContent = numericValue;
-                        } else if (activeMultiplier === 'double') {
-                            button.textContent = numericValue * 2;
-                        } else if (activeMultiplier === 'triple') {
-                            button.textContent = numericValue * 3;
+                        // Always show the original value
+                        button.textContent = numericValue;
+
+                        // Gray out invalid combinations
+                        const shouldGrayOut =
+                            (numericValue === 25 && activeMultiplier === 'triple') || // 25 cannot be triple
+                            (numericValue === 0 && (activeMultiplier === 'double' || activeMultiplier === 'triple')); // 0 cannot be double or triple
+
+                        if (shouldGrayOut) {
+                            button.style.opacity = '0.4';
+                            button.style.cursor = 'not-allowed';
                         } else {
-                            button.textContent = numericValue;
+                            button.style.opacity = '1';
+                            button.style.cursor = 'pointer';
                         }
                     }
                 }
@@ -1043,13 +1069,8 @@ function initGamePage() {
                 const value = div.textContent.trim();
                 const displayedValue = parseInt(value, 10);
 
-                // Calculate original value based on active multiplier
-                let originalValue = displayedValue;
-                if (activeMultiplier === 'double' && !isNaN(displayedValue)) {
-                    originalValue = displayedValue / 2;
-                } else if (activeMultiplier === 'triple' && !isNaN(displayedValue)) {
-                    originalValue = displayedValue / 3;
-                }
+                // Since we no longer multiply the displayed value, the original value is the same as displayed
+                const originalValue = displayedValue;
 
                 if (value === 'back') {
                     // Handle backspace
@@ -1072,6 +1093,16 @@ function initGamePage() {
                     }
                     updateMultiplierUI();
                 } else if (!isNaN(originalValue)) {
+                    // Check if this is a valid combination
+                    const isInvalid =
+                        (originalValue === 25 && activeMultiplier === 'triple') || // 25 cannot be triple
+                        (originalValue === 0 && (activeMultiplier === 'double' || activeMultiplier === 'triple')); // 0 cannot be double or triple
+
+                    if (isInvalid) {
+                        // Don't process invalid combinations
+                        return;
+                    }
+
                     // Handle number input (0-25)
                     const score = originalValue;
                     sendMessage({
@@ -1361,7 +1392,7 @@ function startNewGame() {
     show('viewPlayerManagement');
     show('io');
     hide('doneActions');
-    show('numpad');
+    // show('numpad');
 }
 
 // ============================================================================

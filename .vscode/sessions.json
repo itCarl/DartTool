@@ -1,0 +1,41 @@
+{
+  "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
+  "theme": "tribe",
+  "active": "default",
+  "activateOnStartup": true,
+  "keepExistingTerminals": false,
+  "sessions": {
+    "default": [
+      [
+        {
+          "name": "[Server] Dev Node Server",
+          "autoExecuteCommands": true,
+          "joinOperator": ";",
+          "icon": "server-process",
+          "color": "terminal.ansiBrightBlue",
+          "commands": [
+            "node scripts/dev-server.js"
+          ]
+        }
+      ],
+      {
+        "name": "Terminal",
+        "autoExecuteCommands": true,
+        "joinOperator": ";",
+        "icon": "server-process",
+        "color": "terminal.ansiGreen",
+        "commands": [
+          "echo Ready!!!"
+        ]
+      }
+    ],
+    "saved-session": [
+      {
+        "name": "connect",
+        "commands": [
+          ""
+        ]
+      }
+    ]
+  }
+}
