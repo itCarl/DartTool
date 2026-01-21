@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
     --app-primary: #4caf50;
     --primary: var(--app-primary);

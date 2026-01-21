@@ -8,13 +8,35 @@
     "default": [
       [
         {
-          "name": "[Server] Dev Node Server",
+          "name": "[Server] Dev Server",
           "autoExecuteCommands": true,
           "joinOperator": ";",
           "icon": "server-process",
           "color": "terminal.ansiBrightBlue",
           "commands": [
-            "node scripts/dev-server.js"
+            "npm run build", "npm run dev"
+          ]
+        }
+      ],
+            [
+        {
+          "name": "[Build] CSS",
+          "autoExecuteCommands": true,
+          "joinOperator": ";",
+          "icon": "server-process",
+          "color": "terminal.ansiBlue",
+          "commands": [
+            "npm run watch:css"
+          ]
+        },
+        {
+          "name": "[Build] Javascript",
+          "autoExecuteCommands": true,
+          "joinOperator": ";",
+          "icon": "server-process",
+          "color": "terminal.ansiRed",
+          "commands": [
+            "npm run watch:js"
           ]
         }
       ],

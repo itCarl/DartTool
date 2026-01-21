@@ -8,24 +8,27 @@
     "main": "data/app.js",
     "scripts": {
         "clean": "rimraf dist",
-        "build:js": "esbuild data/app.js --bundle --sourcemap --minify --format=esm --outfile=dist/app.js",
-        "build:assets": "cpy \"data/**/*\" dist --cwd=. --parents --filter=\"**/*.{html,css,svg,png,json}\"",
-        "build": "npm run clean && npm run build:assets && npm run build:js",
-
-        "watch": "esbuild data/app.js --bundle --sourcemap --format=esm --outfile=dist/app.js --watch",
-
-        "start": "node data/server.js",
-        "start:dev": "node scripts/dev-server.js",
-        "start:prod": "NODE_ENV=production node data/server.js"
+        "build:css": "tailwindcss -i data/css/styles.css -o dist/styles.css --minify",
+        "build:js": "esbuild data/js/app.js --bundle --sourcemap --minify --format=esm --outfile=dist/app.js",
+        "build:assets": "cpy \"data/**/*\" \"!data/js/**\" dist --cwd=. --parents --filter=\"**/*.{html,css,svg,png,json}\"",
+        "build": "npm run clean && npm run build:css && npm run build:assets && npm run build:js",
+        "check:fs": "node scripts/fs-size.js",
+        "watch:css": "tailwindcss -i data/css/styles.css -o dist/styles.css --watch",
+        "watch:js": "esbuild data/js/app.js --bundle --sourcemap --format=esm --outfile=dist/app.js --watch",
+        "dev": "node scripts/dev-server.js",
+        "prod": "NODE_ENV=production node data/server.js"
     },
     "dependencies": {
         "@dartbot/dartboard": "^0.4.0",
-        "nodemon": "^3.1.11"
+        "@tailwindcss/cli": "^4.1.18"
     },
     "devDependencies": {
+        "autoprefixer": "^10.4.23",
         "cpy-cli": "^6.0.0",
         "esbuild": "^0.27.2",
+        "postcss": "^8.5.6",
         "rimraf": "^6.1.2",
+        "tailwindcss": "^4.1.18",
         "tslib": "^2.8.1"
     }
 }
