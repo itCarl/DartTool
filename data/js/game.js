@@ -111,6 +111,7 @@ function populatePlayers(data) {
 }
 
 function initGameModeSelection() {
+    // X01 Points option
     const x01PointsSelect = byId('x01PointsSelect');
     if (x01PointsSelect) {
         on(x01PointsSelect, 'change', (e) => {
@@ -122,6 +123,66 @@ function initGameModeSelection() {
                     cmd: 'setGameMode',
                     mode: 'X01',
                     points: points
+                });
+            }
+        });
+    }
+
+    // X01 Check Out option
+    const x01CheckOutSelect = byId('x01CheckOutSelect');
+    if (x01CheckOutSelect) {
+        on(x01CheckOutSelect, 'change', (e) => {
+            if (currentGameMode === 'X01') {
+                sendMessage({
+                    cmd: 'setGameModeOption',
+                    mode: 'X01',
+                    option: 'checkout',
+                    value: e.target.value
+                });
+            }
+        });
+    }
+
+    // Cricket Hits per field option
+    const cricketHitsSelect = byId('cricketHitsSelect');
+    if (cricketHitsSelect) {
+        on(cricketHitsSelect, 'change', (e) => {
+            if (currentGameMode === 'Cricket') {
+                sendMessage({
+                    cmd: 'setGameModeOption',
+                    mode: 'Cricket',
+                    option: 'hitsPerField',
+                    value: parseInt(e.target.value, 10)
+                });
+            }
+        });
+    }
+
+    // Around The Clock Bull option
+    const aroundTheClockBullCheckbox = byId('aroundTheClockBullCheckbox');
+    if (aroundTheClockBullCheckbox) {
+        on(aroundTheClockBullCheckbox, 'change', (e) => {
+            if (currentGameMode === 'AroundTheClock') {
+                sendMessage({
+                    cmd: 'setGameModeOption',
+                    mode: 'AroundTheClock',
+                    option: 'includeBull',
+                    value: e.target.checked
+                });
+            }
+        });
+    }
+
+    // Highscore Rounds option
+    const highscoreRoundsInput = byId('highscoreRoundsInput');
+    if (highscoreRoundsInput) {
+        on(highscoreRoundsInput, 'change', (e) => {
+            if (currentGameMode === 'Highscore') {
+                sendMessage({
+                    cmd: 'setGameModeOption',
+                    mode: 'Highscore',
+                    option: 'rounds',
+                    value: parseInt(e.target.value, 10)
                 });
             }
         });
@@ -153,10 +214,16 @@ function updateGameModeDisplay() {
     const x01Options = byId('x01Options');
     const cricketOptions = byId('cricketOptions');
     const aroundTheClockOptions = byId('aroundTheClockOptions');
+    const golfOptions = byId('golfOptions');
+    const tennisOptions = byId('tennisOptions');
+    const highscoreOptions = byId('highscoreOptions');
 
     if (x01Options) x01Options.style.display = 'none';
     if (cricketOptions) cricketOptions.style.display = 'none';
     if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'none';
+    if (golfOptions) golfOptions.style.display = 'none';
+    if (tennisOptions) tennisOptions.style.display = 'none';
+    if (highscoreOptions) highscoreOptions.style.display = 'none';
 
     if (currentGameMode === 'X01') {
         if (displayEl) displayEl.textContent = `${currentGameModePoints} Points`;
@@ -170,25 +237,31 @@ function updateGameModeDisplay() {
     } else if (currentGameMode === 'AroundTheClock') {
         if (displayEl) displayEl.textContent = 'Around the Clock';
         if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'block';
+    } else if (currentGameMode === 'Golf') {
+        if (displayEl) displayEl.textContent = 'Golf';
+        if (golfOptions) golfOptions.style.display = 'block';
+    } else if (currentGameMode === 'Tennis') {
+        if (displayEl) displayEl.textContent = 'Tennis';
+        if (tennisOptions) tennisOptions.style.display = 'block';
+    } else if (currentGameMode === 'Highscore') {
+        if (displayEl) displayEl.textContent = 'Highscore';
+        if (highscoreOptions) highscoreOptions.style.display = 'block';
     }
 }
 
 function initGamePage(selectedPlayerList) {
     initGameModeSelection();
 
-    const gameModeModal = byId('gameModeModal');
-    if (gameModeModal) {
-        const gameModeButtons = document.querySelectorAll('.gamemode-button');
-        gameModeButtons.forEach(button => {
-            on(button, 'click', (e) => {
-                e.preventDefault();
-                const mode = button.dataset.mode;
-                const points = parseInt(button.dataset.points, 10);
+    const gameModeButtons = document.querySelectorAll('.gamemode-button');
+    gameModeButtons.forEach(button => {
+        on(button, 'change', (e) => {
+            if (e.target.checked) {
+                const mode = e.target.value;
+                const points = parseInt(e.target.dataset.points || '0', 10);
                 selectGameMode(mode, points);
-                if (window.ui) window.ui(gameModeModal);
-            });
+            }
         });
-    }
+    });
 
     let pendingMultiplier = 1;
     let activeMultiplier = null;

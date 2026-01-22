@@ -9,247 +9,246 @@
 
     <meta name="description" content="Settings for Dart-Tool device." />
 
+    <script type="module" src="/js/app.js"></script>
+
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
     <!-- Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <!-- scripts -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
 <body>
     <!-- Device Status Overlay -->
-    <div id="deviceStatusOverlay" class="device-status-overlay visible">
-        <div class="device-status-content">
-            <div class="spinner"></div>
-            <h3 id="deviceStatusTitle">Daten werden abgerufen...</h3>
-            <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
+    <div id="deviceStatusOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center max-w-md mx-4">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mb-4"></div>
+            <h3 id="deviceStatusTitle" class="text-xl font-semibold mb-2">Daten werden abgerufen...</h3>
+            <p id="deviceStatusMessage" class="text-gray-600 dark:text-gray-300">Bitte warten Sie während das Gerät initialisiert wird.</p>
         </div>
     </div>
 
-    <div id="toastContainer" class="toast-container"></div>
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-    <header>
-        <nav>
-            <button data-ui="#navigation-drawer" class="circle transparent">
-                <i>menu</i>
+    <header class="bg-primary text-white shadow-md">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <button onclick="window.ui('#navigation-drawer')" class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
+                <i class="fas fa-bars"></i>
             </button>
-            <h6 class="max center-align">Settings</h6>
-            <div>
-                <img src="/assets/favicon.png" width="100px">
+            <h1 class="text-2xl font-bold flex-1 text-center">Settings</h1>
+            <div class="flex items-center gap-2">
+                <button data-toggle-dark-mode class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors" aria-label="Toggle dark mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <img src="/assets/favicon.png" width="100px" alt="Dart-Tool">
             </div>
         </nav>
     </header>
 
-    <main class="container p-4">
-        <article>
-            <header>
-                <h6>Externe Verbindung</h6>
-                <p>Konfigurieren Sie die Verbindung zu externen Servern</p>
+    <main class="container mx-auto px-4 py-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Externe Verbindung</h2>
+                <p class="text-gray-600 dark:text-gray-400">Konfigurieren Sie die Verbindung zu externen Servern</p>
             </header>
 
-            <div class="field outline">
-                <input type="url" id="externalHost" name="externalHost" placeholder=" ">
-                <label for="externalHost">Externer Host</label>
+            <div class="mb-4">
+                <label for="externalHost" class="block text-sm font-medium mb-2">Externer Host</label>
+                <input type="url" id="externalHost" name="externalHost" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
             </div>
 
-            <div class="field outline">
-                <input type="password" id="externalToken" name="externalToken" placeholder=" ">
-                <label for="externalToken">Externer API Token</label>
+            <div class="mb-4">
+                <label for="externalToken" class="block text-sm font-medium mb-2">Externer API Token</label>
+                <input type="password" id="externalToken" name="externalToken" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
             </div>
 
-            <div class="space"></div>
-            <button id="saveExternalHostBtn" class="outline">
+            <button id="saveExternalHostBtn" class="w-full mt-4 px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2">
                 <i>save</i>
                 <span>Host & Token speichern</span>
             </button>
-        </article>
+        </div>
 
-        <article>
-            <header>
-                <h6>Anzeigemodus</h6>
-                <p>Wählen Sie, wie die Anzeige arbeitet</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Anzeigemodus</h2>
+                <p class="text-gray-600 dark:text-gray-400">Wählen Sie, wie die Anzeige arbeitet</p>
             </header>
 
-            <div class="field middle-align">
-                <nav class="group connected">
-                    <label class="button outline">
-                        <input type="radio" name="operationMode" value="scoreboard" id="modeScoreboard">
+            <div class="mb-4">
+                <div class="flex gap-2">
+                    <label class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                        <input type="radio" name="operationMode" value="scoreboard" id="modeScoreboard" class="mr-2">
                         <span>Scoreboard (Standalone)</span>
                     </label>
-                    <label class="button outline">
-                        <input type="radio" name="operationMode" value="display" id="modeDisplay">
+                    <label class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors">
+                        <input type="radio" name="operationMode" value="display" id="modeDisplay" class="mr-2">
                         <span>Remote-Anzeige</span>
                     </label>
-                </nav>
-            </div>
-
-            <div id="displayModeSettings">
-                <h6>Remote-Anzeige Einstellungen</h6>
-
-                <div class="field outline">
-                    <input type="text" id="gameEndpoint" name="gameEndpoint" placeholder=" ">
-                    <label for="gameEndpoint">Game Endpoint</label>
-                </div>
-
-                <div class="field outline">
-                    <input type="number" id="refreshInterval" name="refreshInterval" min="1" max="60" placeholder=" " value="5">
-                    <label for="refreshInterval">Aktualisierungsintervall (Sekunden)</label>
                 </div>
             </div>
 
-            <div class="space"></div>
-            <button id="saveModeSettingsBtn" class="outline">
+            <div id="displayModeSettings" class="mt-4">
+                <h3 class="text-lg font-semibold mb-4">Remote-Anzeige Einstellungen</h3>
+
+                <div class="mb-4">
+                    <label for="gameEndpoint" class="block text-sm font-medium mb-2">Game Endpoint</label>
+                    <input type="text" id="gameEndpoint" name="gameEndpoint" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
+                </div>
+
+                <div class="mb-4">
+                    <label for="refreshInterval" class="block text-sm font-medium mb-2">Aktualisierungsintervall (Sekunden)</label>
+                    <input type="number" id="refreshInterval" name="refreshInterval" min="1" max="60" value="5" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
+                </div>
+            </div>
+
+            <button id="saveModeSettingsBtn" class="w-full mt-4 px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2">
                 <i>save</i>
                 <span>Anzeigemodus speichern</span>
             </button>
-        </article>
+        </div>
 
-        <article>
-            <header>
-                <h6>WiFi Einstellungen</h6>
-                <p>Konfigurieren Sie die WiFi-Verbindung des Geräts</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">WiFi Einstellungen</h2>
+                <p class="text-gray-600 dark:text-gray-400">Konfigurieren Sie die WiFi-Verbindung des Geräts</p>
             </header>
 
             <form id="wifiSettingsForm">
-                <div class="field outline">
-                    <input type="text" id="ssid" name="ssid" required placeholder=" ">
-                    <label for="ssid">SSID (Netzwerkname)</label>
+                <div class="mb-4">
+                    <label for="ssid" class="block text-sm font-medium mb-2">SSID (Netzwerkname)</label>
+                    <input type="text" id="ssid" name="ssid" required class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
                 </div>
 
-                <div class="field outline">
-                    <input type="password" id="password" name="password" placeholder=" ">
-                    <label for="password">Passwort</label>
+                <div class="mb-4">
+                    <label for="password" class="block text-sm font-medium mb-2">Passwort</label>
+                    <input type="password" id="password" name="password" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
                 </div>
 
-                <div class="field outline">
-                    <input type="text" id="hostname" name="hostname" placeholder=" ">
-                    <label for="hostname">Hostname</label>
+                <div class="mb-4">
+                    <label for="hostname" class="block text-sm font-medium mb-2">Hostname</label>
+                    <input type="text" id="hostname" name="hostname" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
                 </div>
 
-                <div class="space"></div>
-
-                <div class="space"></div>
-                <button type="submit" class="fill">
+                <button type="submit" class="w-full mt-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2">
                     <i>save</i>
                     <span>Speichern</span>
                 </button>
             </form>
-        </article>
+        </div>
 
-        <article id="dataSyncSection">
-            <header>
-                <h6>Daten Synchronisation</h6>
-                <p>Konfigurieren Sie die externe Daten-Sync Schnittstelle</p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6" id="dataSyncSection">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Daten Synchronisation</h2>
+                <p class="text-gray-600 dark:text-gray-400">Konfigurieren Sie die externe Daten-Sync Schnittstelle</p>
             </header>
 
-            <div class="field outline">
-                <input type="text" id="syncEndpoint" name="syncEndpoint" placeholder=" ">
-                <label for="syncEndpoint">Sync Endpoint</label>
+            <div class="mb-4">
+                <label for="syncEndpoint" class="block text-sm font-medium mb-2">Sync Endpoint</label>
+                <input type="text" id="syncEndpoint" name="syncEndpoint" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary" placeholder=" ">
             </div>
 
-            <div class="field middle-align">
-                <label class="switch">
-                    <input type="checkbox" id="dataSyncToggle">
-                    <span></span>
+            <div class="flex items-center gap-3 mb-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="dataSyncToggle" class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
                 </label>
-                <label for="dataSyncToggle">Daten Synchronisation aktivieren</label>
+                <label for="dataSyncToggle" class="text-sm font-medium">Daten Synchronisation aktivieren</label>
             </div>
 
-            <div id="dataSyncStatus">
-                <p><strong>Queue Status:</strong></p>
-                <p id="queueInfo">Warteschlange leer</p>
+            <div id="dataSyncStatus" class="mb-4">
+                <p class="font-semibold">Queue Status:</p>
+                <p id="queueInfo" class="text-gray-600 dark:text-gray-400">Warteschlange leer</p>
             </div>
 
-            <div class="space"></div>
-            <button id="syncNowBtn" class="fill">
+            <button id="syncNowBtn" class="w-full mb-4 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2">
                 <i>cloud_upload</i>
                 <span>Jetzt synchronisieren</span>
             </button>
 
-            <div class="space"></div>
-            <button id="saveSyncSettingsBtn" class="outline">
+            <button id="saveSyncSettingsBtn" class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2">
                 <i>save</i>
                 <span>Sync-Einstellungen speichern</span>
             </button>
-        </article>
+        </div>
 
-        <article>
-            <header>
-                <h6>System Informationen</h6>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">System Informationen</h2>
             </header>
 
-            <div class="row">
-                <div class="col s6">
-                    <strong>Firmware Version:</strong>
-                    <p id="version">Lädt...</p>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <strong class="block mb-1">Firmware Version:</strong>
+                    <p id="version" class="text-gray-600 dark:text-gray-400">Lädt...</p>
                 </div>
-                <div class="col s6">
-                    <strong>Build Zeit:</strong>
-                    <p id="buildTime">Lädt...</p>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col s6">
-                    <strong>Free Heap:</strong>
-                    <p id="freeHeap">Lädt...</p>
-                </div>
-                <div class="col s6">
-                    <strong>Uptime:</strong>
-                    <p id="uptime">Lädt...</p>
+                <div>
+                    <strong class="block mb-1">Build Zeit:</strong>
+                    <p id="buildTime" class="text-gray-600 dark:text-gray-400">Lädt...</p>
                 </div>
             </div>
 
-            <div class="space"></div>
-            <button id="rebootBtn" class="outline">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <strong class="block mb-1">Free Heap:</strong>
+                    <p id="freeHeap" class="text-gray-600 dark:text-gray-400">Lädt...</p>
+                </div>
+                <div>
+                    <strong class="block mb-1">Uptime:</strong>
+                    <p id="uptime" class="text-gray-600 dark:text-gray-400">Lädt...</p>
+                </div>
+            </div>
+
+            <button id="rebootBtn" class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2">
                 <i>power_settings_new</i>
                 <span>Neu starten</span>
             </button>
-        </article>
+        </div>
     </main>
 
-    <div class="overlay"></div>
-    <dialog class="left no-padding" id="navigation-drawer">
-        <nav class="drawer">
-            <header>
-                <nav class="center-align space nav-header">
-                    <div class="max">
-                        <img src="/assets/favicon.png" width="150px">
+    <!-- Navigation Drawer (Side Modal) -->
+    <div id="navigation-drawer" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+        <div class="fixed left-0 top-0 h-full w-80 max-w-full bg-white dark:bg-gray-800 shadow-xl transform transition-all">
+            <nav class="flex flex-col h-full">
+                <header class="border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex-1 text-center">
+                            <img src="/assets/favicon.png" width="150px" alt="Dart-Tool" class="mx-auto">
+                        </div>
+                        <button class="modal-close p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <button class="transparent circle large" data-ui="#navigation-drawer">
-                        <i>close</i>
-                    </button>
-                </nav>
-            </header>
-            <a href="/game">
-                <i class="fa-solid fa-gear"></i>
-                <span>Game</span>
-            </a>
-            <a href="/settings">
-                <i class="fa-solid fa-gear"></i>
-                <span>Settings</span>
-            </a>
-            <hr>
-            <label>State</label>
-            <div id="gameStateSelector">
-                <nav class="group connected">
-                    <button id="stateUnknown" class="left-round">unkown</button>
-                    <button id="stateInitialised" class="no-round">initialised</button>
-                    <button id="stateRunning"class="right-round">running</button>
-                </nav>
-                <nav class="group connected">
-                    <button id="stateDone" class="left-round">done</button>
-                    <button id="stateAborted" class="no-round">aborted</button>
-                    <button id="stateError" class="right-round">error</button>
-                </nav>
-            </div>
-        </nav>
-    </dialog>
+                </header>
+                <a href="/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-gamepad"></i>
+                    <span>Game</span>
+                </a>
+                <a href="/settings" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </a>
+                <hr class="border-gray-200 dark:border-gray-700">
+                <label class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400">State</label>
+                <div id="gameStateSelector" class="px-4 pb-4">
+                    <div class="flex mb-2">
+                        <button id="stateUnknown" class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-lg hover:bg-gray-100 dark:hover:bg-gray-700">unkown</button>
+                        <button id="stateInitialised" class="flex-1 px-3 py-2 text-sm border-t border-b border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">initialised</button>
+                        <button id="stateRunning" class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-100 dark:hover:bg-gray-700">running</button>
+                    </div>
+                    <div class="flex">
+                        <button id="stateDone" class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-l-lg hover:bg-gray-100 dark:hover:bg-gray-700">done</button>
+                        <button id="stateAborted" class="flex-1 px-3 py-2 text-sm border-t border-b border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">aborted</button>
+                        <button id="stateError" class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-100 dark:hover:bg-gray-700">error</button>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>

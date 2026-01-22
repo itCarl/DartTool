@@ -1,34 +1,32 @@
 {
     "name": "dart-tool",
-    "version": "1.0.0",
+    "private": true,
+    "version": "0.1.0",
     "description": "A Tool for playing Darts",
     "license": "MIT",
     "author": "itCarl",
     "type": "module",
     "main": "data/app.js",
     "scripts": {
-        "clean": "rimraf dist",
-        "build:css": "tailwindcss -i data/css/styles.css -o dist/styles.css --minify",
-        "build:js": "esbuild data/js/app.js --bundle --sourcemap --minify --format=esm --outfile=dist/app.js",
-        "build:assets": "cpy \"data/**/*\" \"!data/js/**\" dist --cwd=. --parents --filter=\"**/*.{html,css,svg,png,json}\"",
-        "build": "npm run clean && npm run build:css && npm run build:assets && npm run build:js",
         "check:fs": "node scripts/fs-size.js",
-        "watch:css": "tailwindcss -i data/css/styles.css -o dist/styles.css --watch",
-        "watch:js": "esbuild data/js/app.js --bundle --sourcemap --format=esm --outfile=dist/app.js --watch",
-        "dev": "node scripts/dev-server.js",
-        "prod": "NODE_ENV=production node data/server.js"
+        "clean": "rimraf dist",
+        "dev": "vite dev",
+        "prod": "vite build",
+        "preview": "vite preview"
     },
     "dependencies": {
         "@dartbot/dartboard": "^0.4.0",
         "@tailwindcss/cli": "^4.1.18"
     },
     "devDependencies": {
+        "@tailwindcss/vite": "^4.1.18",
         "autoprefixer": "^10.4.23",
         "cpy-cli": "^6.0.0",
         "esbuild": "^0.27.2",
         "postcss": "^8.5.6",
         "rimraf": "^6.1.2",
         "tailwindcss": "^4.1.18",
-        "tslib": "^2.8.1"
+        "tslib": "^2.8.1",
+        "vite": "^7.3.1"
     }
 }

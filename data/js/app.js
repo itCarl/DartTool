@@ -6,8 +6,11 @@
 
 import '@dartbot/dartboard/dartboard.js';
 
+// Import modal initialization
+import './modal.js';
+
 import {
-    d, byId, on, hide, show, addClass, removeClass, isPage, showStatus
+    d, byId, on, hide, show, addClass, removeClass, isPage, showStatus, formatUptime
 } from './utils.js';
 
 import {
@@ -234,10 +237,10 @@ on(document, 'DOMContentLoaded', () => {
     setupNavigation();
 
     // Make utilities globally available
-    window.utils = { formatUptime: require('./utils.js').formatUptime };
+    window.utils = { formatUptime };
 
     // Page-specific initialization
-    if(isPage('/data/game.html', '/game')) {
+    if(isPage('/data/index.html', '/', '/index')) {
         initPlayersPage();
         initGamePage(selectedPlayerList);
     }

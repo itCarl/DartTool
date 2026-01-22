@@ -1,88 +1,11 @@
-@tailwind base;
-@tailwind components;
+@import "tailwindcss";
 @tailwind utilities;
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-    --app-primary: #4caf50;
-    --primary: var(--app-primary);
-    --on-primary: #ffffff;
 
-    /* Static theme palette (light) */
-    --primary-container: #def6e5;
-    --on-primary-container: #0c2f17;
-    --secondary: #4f6354;
-    --on-secondary: #ffffff;
-    --secondary-container: #d2e8d6;
-    --on-secondary-container: #0d1f13;
-    --tertiary: #3a6472;
-    --on-tertiary: #ffffff;
-    --tertiary-container: #c0e9fa;
-    --on-tertiary-container: #001f29;
-    --error: #ba1a1a;
-    --on-error: #ffffff;
-    --error-container: #ffdad6;
-    --on-error-container: #410002;
-    --background: #fdfdf6;
-    --on-background: #1a1c18;
-    --surface: #fdfdf6;
-    --on-surface: #1a1c18;
-    --surface-variant: #dfe4db;
-    --on-surface-variant: #43483f;
-    --outline: #73796f;
-    --outline-variant: #c3c8be;
-    --shadow: #000000;
-    --scrim: #000000;
-    --inverse-surface: #2f312c;
-    --inverse-on-surface: #f1f1ea;
-    --inverse-primary: #9bd3af;
-    --surface-dim: #dedfd8;
-    --surface-bright: #fdfdf6;
-    --surface-container-lowest: #ffffff;
-    --surface-container-low: #f7f8f1;
-    --surface-container: #f1f2eb;
-    --surface-container-high: #e9ebe4;
-    --surface-container-highest: #e3e4dd;
 }
 
-/* Optional dark mode static palette override */
-body.dark {
-    --primary: #9bd3af;
-    --on-primary: #0c2f17;
-    --primary-container: #0f4926;
-    --on-primary-container: #def6e5;
-    --secondary: #b6ccb9;
-    --on-secondary: #223526;
-    --secondary-container: #384b3c;
-    --on-secondary-container: #d2e8d6;
-    --tertiary: #a5cde0;
-    --on-tertiary: #053544;
-    --tertiary-container: #214c5a;
-    --on-tertiary-container: #c0e9fa;
-    --error: #ffb4ab;
-    --on-error: #690005;
-    --error-container: #93000a;
-    --on-error-container: #ffdad6;
-    --background: #11140f;
-    --on-background: #e3e3dc;
-    --surface: #11140f;
-    --on-surface: #e3e3dc;
-    --surface-variant: #43483f;
-    --on-surface-variant: #c3c8be;
-    --outline: #8d9388;
-    --outline-variant: #43483f;
-    --shadow: #000000;
-    --scrim: #000000;
-    --inverse-surface: #e3e3dc;
-    --inverse-on-surface: #2f312c;
-    --inverse-primary: #4caf50;
-    --surface-dim: #11140f;
-    --surface-bright: #373a35;
-    --surface-container-lowest: #0c0f0a;
-    --surface-container-low: #191c17;
-    --surface-container: #1c1f1a;
-    --surface-container-high: #272b25;
-    --surface-container-highest: #32362f;
-}
 
 .withIcon {
     display: flex;
@@ -97,7 +20,7 @@ body.dark {
 }
 
 .withIcon > i {
-    /* Override BeerCSS icon sizing (BeerCSS uses --_size custom prop) */
+    /* Icon sizing using custom property */
     --_size: 3rem;
     font-size: 3rem;
     line-height: 1;
@@ -195,15 +118,15 @@ body.dark {
 }
 
 #numpad > * {
-    background-color: var(--surface-container-high);
-    color: var(--on-surface);
+    background-color: #e5e7e0;
+    color: #1a1a1a;
     height: 4rem;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
     border-radius: .35rem;
-    border: 1px solid var(--outline-variant);
+    border: 1px solid #c3c8be;
     user-select: none;
     -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -211,17 +134,23 @@ body.dark {
     cursor: pointer;
 }
 
+.dark #numpad > * {
+    background-color: #2a2e2a;
+    color: #e8e8e1;
+    border-color: #4a4f47;
+}
+
 @media (hover: hover) and (pointer: fine) {
     #numpad > div:hover {
-        background-color: var(--primary);
-        color: var(--on-primary);
+        background-color: rgb(var(--color-primary));
+        color: white;
         transform: scale(1.02);
     }
 }
 
 #numpad > div:active {
-    background-color: var(--primary);
-    color: var(--on-primary);
+    background-color: rgb(var(--color-primary));
+    color: white;
     transform: scale(0.98);
 }
 
@@ -329,6 +258,11 @@ body.game-running header nav img {
     color: white;
 }
 
+.dark #dataSyncStatus {
+    background-color: #1976D2;
+    color: white;
+}
+
 #syncNowBtn {
     display: none;
 }
@@ -365,20 +299,24 @@ body.game-running header nav img {
     height: 1.5rem;
     border-radius: 50%;
     border: 2px solid transparent;
-    color: var(--primary);
+    color: rgb(var(--color-primary));
     opacity: 0;
     transition: opacity 0.2s ease, border-color 0.2s ease;
 }
 
 #playersList li.selected-player {
-    border: 2px solid var(--primary);
+    border: 2px solid rgb(var(--color-primary));
     border-radius: 8px;
     background-color: rgba(76, 175, 80, 0.08);
 }
 
+.dark #playersList li.selected-player {
+    background-color: rgba(76, 175, 80, 0.15);
+}
+
 #playersList li.selected-player .player-select-indicator {
     opacity: 1;
-    border-color: var(--primary);
+    border-color: rgb(var(--color-primary));
 }
 
 /* ==================== Index Page Styles ==================== */
@@ -392,11 +330,17 @@ body.game-running header nav img {
 .hidden { display: none !important; }
 .info-box {
     padding: 1rem;
-    background-color: #f5f5f5;
+    background-color: #e8e8e8;
+    color: #1a1a1a;
     border-radius: 4px;
     margin-bottom: 1rem;
     font-weight: bold;
     text-align: center;
+}
+
+.dark .info-box {
+    background-color: #2a2a2a;
+    color: #e8e8e8;
 }
 .mt-1 { margin-top: 1rem; }
 .btn-wide { padding: 0.75rem 1.5rem; }
@@ -404,74 +348,15 @@ body.game-running header nav img {
 .text-center { text-align: center; }
 
 /* Toast Notifications */
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    max-width: 400px;
-    pointer-events: none;
-}
-
 .toast {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    background-color: #323232;
-    color: #ffffff;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
     opacity: 0;
-    transform: translateX(400px);
+    transform: translateX(100%);
     transition: all 0.3s ease;
-    pointer-events: auto;
-    min-width: 250px;
-    max-width: 100%;
-    word-wrap: break-word;
 }
 
 .toast.toast-show {
     opacity: 1;
     transform: translateX(0);
-}
-
-.toast-success {
-    background-color: #4caf50;
-}
-
-.toast-error {
-    background-color: #f44336;
-}
-
-.toast-info {
-    background-color: #2196f3;
-}
-
-.toast-content {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    gap: 12px;
-}
-
-.toast-content span {
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-@media (max-width: 600px) {
-    .toast-container {
-        left: 10px;
-        right: 10px;
-        top: 10px;
-    }
-
-    .toast {
-        min-width: auto;
-        max-width: 100%;
-    }
 }
 /* Player reorder controls */
 .selected-player-item {
@@ -490,8 +375,12 @@ body.game-running header nav img {
 }
 
 .selected-player-item.drag-over {
-    background-color: var(--primary-container) !important;
-    border-color: var(--primary) !important;
+    background-color: rgba(76, 175, 80, 0.1) !important;
+    border-color: rgb(var(--color-primary)) !important;
+}
+
+.dark .selected-player-item.drag-over {
+    background-color: rgba(76, 175, 80, 0.2) !important;
 }
 
 .selected-player-item i.fa-grip-vertical {
@@ -507,135 +396,19 @@ body.game-running header nav img {
 
 .selected-player-item .remove-player-btn {
     flex-shrink: 0;
-    color: var(--error);
+    color: #ba1a1a;
+}
+
+.dark .selected-player-item .remove-player-btn {
+    color: #ffb4ab;
 }
 
 .selected-player-item .remove-player-btn:hover {
-    background-color: var(--error-container);
-}
-/* Device Status Overlay */
-.device-status-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, var(--surface-container-high) 0%, var(--surface-container) 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    opacity: 1;
-    transition: opacity 0.3s ease;
+    background-color: rgba(186, 26, 26, 0.1);
 }
 
-.device-status-overlay.visible {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.device-status-overlay:not(.visible) {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.device-status-content {
-    text-align: center;
-    padding: 2rem 1.75rem;
-    background: var(--surface);
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-    width: 90%;
-}
-
-.spinner {
-    width: 50px;
-    height: 50px;
-    margin: 0 auto 24px;
-    border: 4px solid var(--outline-variant);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-#deviceStatusTitle {
-    color: var(--on-surface);
-    margin: 16px 0 8px;
-    font-size: 20px;
-}
-
-#deviceStatusMessage {
-    color: var(--on-surface-variant);
-    font-size: 14px;
-    line-height: 1.5;
-    margin: 0;
-}
-/* ==================== Gamemode Selection Styles ==================== */
-
-.gamemode-section {
-    margin: 1rem 0;
-    padding: 0;
-}
-
-.gamemode-header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
-}
-
-.gamemode-header span:first-child {
-    font-size: 0.875rem;
-    opacity: 0.7;
-    text-transform: uppercase;
-    font-weight: 500;
-}
-
-.gamemode-header span#selectedGameModeText {
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-
-#changeGameModeBtn.icon-button {
-    padding: 0.5rem;
-    min-width: auto;
-    width: auto;
-    height: auto;
-    border-radius: 50%;
-}
-
-.gamemode-option {
-    margin-top: 1rem;
-}
-
-.gamemode-option label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    font-size: 0.875rem;
-}
-
-.gamemode-option select {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--outline-variant);
-    border-radius: 4px;
-    background-color: var(--surface);
-    color: var(--on-surface);
-    font-size: 1rem;
-}
-
-.gamemode-option .helper {
-    font-size: 0.875rem;
-    margin: 0;
+.dark .selected-player-item .remove-player-btn:hover {
+    background-color: rgba(255, 180, 171, 0.15);
 }
 
 /* Gamemode Modal Grid */
@@ -646,57 +419,6 @@ body.game-running header nav img {
 
 #gameModeModalTitle {
     margin-bottom: 1.5rem;
-}
-
-.gamemode-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.gamemode-button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    border: 2px solid var(--outline-variant);
-    border-radius: 8px;
-    background-color: var(--surface-container);
-    color: var(--on-surface);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    min-height: 140px;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.gamemode-button:hover {
-    border-color: var(--primary);
-    background-color: var(--surface-container-high);
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
-}
-
-.gamemode-button:active {
-    transform: translateY(0);
-}
-
-.gamemode-button i {
-    font-size: 2rem;
-    color: var(--primary);
-}
-
-.gamemode-button span {
-    font-weight: 600;
-}
-
-.gamemode-button small {
-    font-size: 0.75rem;
-    opacity: 0.7;
-    text-align: center;
 }
 
 /* ==================== Modal Styles ==================== */
@@ -736,15 +458,23 @@ body.game-running header nav img {
     align-items: center;
     gap: 1rem;
     padding: 0.75rem;
-    border: 1px solid var(--outline-variant);
+    border: 1px solid #c3c8be;
     border-radius: 8px;
     margin-bottom: 0.5rem;
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
 
+.dark .player-selection-item {
+    border-color: #4a4f47;
+}
+
 .player-selection-item:hover {
-    background-color: var(--surface-container-high);
+    background-color: #e9ebe4;
+}
+
+.dark .player-selection-item:hover {
+    background-color: #2e332e;
 }
 
 .player-selection-item input[type="checkbox"] {
@@ -762,7 +492,7 @@ body.game-running header nav img {
 }
 
 .player-selection-item .player-info i {
-    color: var(--primary);
+    color: rgb(var(--color-primary));
     font-size: 1.25rem;
 }
 

@@ -30,25 +30,50 @@ function escapeHtml(text) {
 }
 
 function showToast(message, type = 'info') {
-    let snackbar = byId('appSnackbar');
-    if (!snackbar) {
-        snackbar = document.createElement('div');
-        snackbar.id = 'appSnackbar';
-        snackbar.className = 'snackbar';
-        document.body.appendChild(snackbar);
-    }
+    const container = byId('toastContainer') || (() => {
+        const el = document.createElement('div');
+        el.id = 'toastContainer';
+        el.className = 'fixed top-4 right-4 z-50 space-y-2';
+        document.body.appendChild(el);
+        return el;
+    })();
+
+    const toast = document.createElement('div');
+    toast.className = 'toast flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white min-w-64 max-w-sm';
+
+    const colorClasses = {
+        success: 'bg-green-600',
+        error: 'bg-red-600',
+        info: 'bg-blue-600'
+    };
+    toast.classList.add(colorClasses[type] || colorClasses.info);
 
     const iconMap = {
-        success: 'check_circle',
-        error: 'error',
-        info: 'info'
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle'
     };
-    const icon = iconMap[type] || 'info';
+    const icon = iconMap[type] || iconMap.info;
 
-    snackbar.innerHTML = `<i>${icon}</i><span>${escapeHtml(message)}</span>`;
+    toast.innerHTML = `
+        <i class="fas ${icon} text-xl"></i>
+        <span class="flex-1">${escapeHtml(message)}</span>
+    `;
+
+    container.appendChild(toast);
 
     const duration = type === 'error' ? 5000 : 3000;
-    if (window.ui) window.ui(snackbar, duration);
+
+    // Animate in
+    setTimeout(() => toast.classList.add('toast-show'), 10);
+
+    // Animate out and remove
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 
 function showStatus(message, type) {
@@ -91,5 +116,5 @@ export {
     escapeHtml,
     showToast,
     showStatus,
-    formatUptime
+    formatUptime,
 };

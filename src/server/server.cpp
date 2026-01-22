@@ -214,11 +214,6 @@ void initServer()
 
     server.serveStatic("/", LittleFS, "/"); // /fs
 
-    server.on("/game", HTTP_GET, [](AsyncWebServerRequest *request) {
-        if(handleFileRead(request, "/game.html")) return;
-        request->send(LittleFS, "/game.html", "text/html");
-    });
-
     server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
         if(handleFileRead(request, "/settings.html")) return;
         request->send(LittleFS, "/settings.html", "text/html");

@@ -26,7 +26,7 @@ const ROOT = path.resolve(__dirname, '../dist');
 
 const routes = {
     '/': 'index.html',
-    '/game': 'game.html',
+    '/game': 'index.html',
     '/settings': 'settings.html',
     '/debug': 'debug.html',
     '/captivePortal': 'captivePortal.html',
@@ -189,7 +189,7 @@ server.listen(PORT, () => {
     console.log(`[dev-server] Listening on http://localhost:${PORT}`);
     console.log(`[dev-server] ROOT: ${ROOT}`);
     console.log(`[dev-server] Proxying /api/* to http://${DEVICE_HOST}`);
-    console.log('[dev-server] Routes: /, /game, /settings, /debug, /captivePortal');
+    console.log('[dev-server] Routes: /, /settings, /debug, /captivePortal (note: /game redirects to /)');
     console.log(
         `[dev-server] Set DEVICE_HOST env var to change device address (default: ${DEVICE_HOST})`
     );

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -9,60 +9,220 @@
 
     <meta name="description" content="A very cool little devices that is used for displaying and tracking a game of darts." />
 
+    <script type="module" src="/js/app.js"></script>
+
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
     <!-- Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <!-- scripts -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
-
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
-<body>
-    <div id="toastContainer" class="toast-container"></div>
-
+<body class="min-h-screen dark:bg-gray-900 dark:text-white">
     <!-- Device Status Overlay -->
-    <div id="deviceStatusOverlay" class="device-status-overlay visible">
-        <div class="device-status-content">
-            <div class="spinner"></div>
-            <h3 id="deviceStatusTitle">Daten werden abgerufen...</h3>
-            <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
+    <div id="deviceStatusOverlay" class="fixed inset-0 bg-black flex items-center justify-center z-40">
+        <div class="bg-white rounded-lg p-8 text-center max-w-md mx-4">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
+            <h3 id="deviceStatusTitle" class="text-xl font-semibold mb-2">
+                Daten werden abgerufen...
+            </h3>
+            <p id="deviceStatusMessage" class="text-gray-600 dark:text-gray-300">
+                Bitte warten Sie während das Gerät initialisiert wird.
+            </p>
         </div>
     </div>
 
-    <header>
-        <nav>
-            <h6 class="max center-align">Dart-Tool</h6>
+    <header class="dark:bg-gray-700 w-full">
+        <nav class="container mx-auto py-3 px-2 flex items-center justify-center relative">
+            <div class="text-center">
+                <img src="/assets/favicon.png" width="110px" alt="Dart-Tool" class="mx-auto">
+            </div>
+            <a href="/settings" class="absolute right-2 p-2 rounded-md hover:bg-gray-600 transition-colors">
+                <i class="fas fa-gear fa-xl"></i>
+            </a>
         </nav>
     </header>
 
-    <main class="container" id="mainContent" style="display: none;">
-        <div class="center-align p-4">
-            <a href="/game" class="home-link">
-                <article id="newGameBtn" class="withIcon">
-                    <i class="fa-brands fa-dart-lang" aria-hidden="true"></i>
-                    <span>Neues Spiel</span>
-                </article>
-            </a>
-            <a href="/settings" class="home-link">
-                <article class="withIcon">
-                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
-                    <span>Einstellungen</span>
-                </article>
-            </a>
-            <a href="/debug" class="home-link">
-                <article class="withIcon">
-                    <i class="fa-solid fa-bug" aria-hidden="true"></i>
-                    <span>Debug</span>
-                </article>
-            </a>
+    <main class="container max-w-5xl w-full mx-auto">
+        <div id="viewSetup">
+            <div class="text-right mb-4">
+                <button id="openPlayerSelectionBtn" onclick="window.ui('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Select Players</span>
+                </button>
+            </div>
+            <div class="text-center">
+                <div class="bg-slate-950 shadow mb-3 p-2">
+                    <ul id="selectedPlayerList" class="list-none">
+                        <li>
+                            <p class="w-full p-4">
+                                Add players by pressing the "select Players" button
+                            </p>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-950 shadow mb-4 p-2">
+                    <fieldset id="gameModeGrid" class="grid grid-cols-3 gap-4 mb-6">
+                        <label class="gamemode-label py-5 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="X01" data-points="501">
+                            <span class="font-semibold">X01</span>
+                        </label>
+                        <label class="gamemode-label py-5 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Cricket">
+                            <span class="font-semibold">Cricket</span>
+                        </label>
+                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="AroundTheClock">
+                            <span class="font-semibold">ATC</span>
+                        </label>
+                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Golf">
+                            <span class="font-semibold">Golf</span>
+                        </label>
+                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Tennis">
+                            <span class="font-semibold">Tennis</span>
+                        </label>
+                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
+                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Highscore">
+                            <span class="font-semibold">Highscore</span>
+                        </label>
+                    </fieldset>
+
+                    <!-- X01 Mode Options -->
+                    <div id="x01Options" class="">
+                        <div class="flex items-center gap-4 mb-4">
+                            <label class="whitespace-nowrap">Points</label>
+                            <select id="x01PointsSelect" class="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                <option value="201">201</option>
+                                <option value="301">301</option>
+                                <option value="401">401</option>
+                                <option value="501" selected>501</option>
+                                <option value="601">601</option>
+                                <option value="801">801</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="whitespace-nowrap">Check Out</label>
+                            <select id="x01CheckOutSelect" class="w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                <option value="any">Any</option>
+                                <option value="double">Double</option>
+                                <option value="master" selected>Master</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Cricket Mode Options -->
+                    <div id="cricketOptions" style="display: none;">
+                        <div class="flex items-center gap-4">
+                            <label class="font-medium whitespace-nowrap">Hits per Field</label>
+                            <select id="cricketHitsSelect" class="w-20 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Around The Clock Mode Options -->
+                    <div id="aroundTheClockOptions" style="display: none;">
+                        <div class="flex items-center gap-4">
+                            <label class="font-medium whitespace-nowrap">Include Bull</label>
+                            <input id="aroundTheClockBullCheckbox" type="checkbox" class="w-4 h-4 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Golf Mode Options -->
+                    <div id="golfOptions" style="display: none;">
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">No options available for Golf mode</p>
+                    </div>
+
+                    <!-- Tennis Mode Options -->
+                    <div id="tennisOptions" style="display: none;">
+                        <p class="text-gray-500 dark:text-gray-400 text-sm">No options available for Tennis mode</p>
+                    </div>
+
+                    <!-- Highscore Mode Options -->
+                    <div id="highscoreOptions" style="display: none;">
+                        <div class="flex items-center gap-4">
+                            <label class="font-medium whitespace-nowrap">Number of Rounds</label>
+                            <input id="highscoreRoundsInput" type="number" min="1" max="20" value="3" class="w-16 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                        </div>
+                    </div>
+                </div>
+
+                <button id="startGame" class="fixed bottom-0 left-0 right-0 px-6 py-3 bg-purple-900 text-white hover:bg-opacity-90 flex items-center justify-center gap-2 ">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Start Game</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="viewGame">
+            <div id="activePlayerList">
+            </div>
+            <div id="io">
+                <div id="infoMsg" style="padding: 1rem; font-weight: bold; text-align: center;">
+                    Loading game...
+                </div>
+                <div>
+                    <dartbot-dartboard></dartbot-dartboard>
+                </div>
+                <div id="numpad" style="display:none"></div>
+                <div id="doneActions" class="mt-4 flex flex-col gap-4" style="display:none;">
+                    <button id="finishGameBtn" class="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all">
+                        <span>Finish Game</span>
+                    </button>
+                    <button id="exportJsonBtn" class="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all">
+                        <span>Download Data</span>
+                    </button>
+                    <button id="newGameBtn" class="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all">
+                        <span>New Game</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </main>
 
-    <script src="app.js"></script>
+    <!-- Add Player Modal -->
+    <div id="addPlayerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transform transition-all">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-semibold dark:text-white">Add New Player</h2>
+                <button class="modal-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6">
+                <form id="addPlayerForm">
+                    <div class="mb-4">
+                        <input type="text" id="newPlayerName" required minlength="1" maxlength="50" aria-label="Player name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Name" />
+                        <span class="block mt-1 text-sm text-gray-500 dark:text-gray-400">Enter player name (1-50 characters)</span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                <button class="modal-close px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition">Cancel</button>
+                <button type="submit" form="addPlayerForm" class="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition">Add Player</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player Selection Modal -->
+    <div id="playerSelectionModal" class="hidden">
+
+    </div>
 </body>
 </html>

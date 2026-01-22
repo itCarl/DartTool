@@ -15,212 +15,212 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <!-- Styles -->
-    <link href="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.css" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="style.css">
-    <!-- scripts -->
-    <script type="module" src="https://cdn.jsdelivr.net/npm/beercss@3.11.3/dist/cdn/beer.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="styles.css">
 
 </head>
 <body>
     <!-- Device Status Overlay -->
-    <div id="deviceStatusOverlay" class="device-status-overlay visible">
-        <div class="device-status-content">
-            <div class="spinner"></div>
-            <h3 id="deviceStatusTitle">Daten werden abgerufen...</h3>
-            <p id="deviceStatusMessage">Bitte warten Sie während das Gerät initialisiert wird.</p>
+    <div id="deviceStatusOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center max-w-md mx-4">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mb-4"></div>
+            <h3 id="deviceStatusTitle" class="text-xl font-semibold mb-2">Daten werden abgerufen...</h3>
+            <p id="deviceStatusMessage" class="text-gray-600 dark:text-gray-300">Bitte warten Sie während das Gerät initialisiert wird.</p>
         </div>
     </div>
 
-    <header>
-        <nav>
-            <button data-ui="#navigation-drawer" class="circle transparent">
-                <i>menu</i>
+    <header class="bg-primary text-white shadow-md">
+        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <button onclick="window.ui('#navigation-drawer')" class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
+                <i class="fas fa-bars"></i>
             </button>
-            <h6 class="max center-align">New Game</h6>
-            <div>
-                <img src="/assets/favicon.png" width="100px">
+            <h1 class="text-2xl font-bold flex-1 text-center">New Game</h1>
+            <div class="flex items-center gap-2">
+                <button data-toggle-dark-mode class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors" aria-label="Toggle dark mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <img src="/assets/favicon.png" width="100px" alt="Dart-Tool">
             </div>
         </nav>
     </header>
 
     <!-- Laser Control -->
-    <article class="mb-1">
-        <header>
-            <h6>Laser Kontrolle</h6>
-        </header>
-
-        <div class="grid">
-            <button class="small s6" id="laserOn">
-                <i>lightbulb</i>
-                <span>Laser EIN</span>
-            </button>
-            <button class="small outline s6" id="laserOff">
-                <i>lightbulb_outline</i>
-                <span>Laser AUS</span>
-            </button>
-        </div>
-
-        <div class="space"></div>
-        <p class="small text-secondary">Status: <strong id="laserStatus">AUS</strong></p>
-    </article>
-
-    <main class="container p-4">
-        <!-- Distance to Ground -->
-        <article class="mb-1">
-            <header>
-                <h6>Distance to ground</h6>
+    <div class="container mx-auto px-4 py-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Laser Kontrolle</h2>
             </header>
 
-            <div class="grid">
-                <div class="field label border small-round s6">
-                    <input type="number" id="height" min="0" max="500" value="100" step="1">
-                    <label for="height">Höhe (cm)</label>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center gap-2" id="laserOn">
+                    <i>lightbulb</i>
+                    <span>Laser EIN</span>
+                </button>
+                <button class="px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="laserOff">
+                    <i>lightbulb_outline</i>
+                    <span>Laser AUS</span>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-600 dark:text-gray-400">Status: <strong id="laserStatus">AUS</strong></p>
+        </div>
+    </div>
+
+    <main class="container mx-auto px-4 py-4">
+        <!-- Distance to Ground -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Distance to ground</h2>
+            </header>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="height" class="block text-sm font-medium mb-2">Höhe (cm)</label>
+                    <input type="number" id="height" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
                 </div>
-                <div class="field label border small-round s6">
-                    <input type="number" id="distance" min="0" max="500" value="100" step="1">
-                    <label for="distance">Distanz (cm)</label>
+                <div>
+                    <label for="distance" class="block text-sm font-medium mb-2">Distanz (cm)</label>
+                    <input type="number" id="distance" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
                 </div>
             </div>
 
-            <div class="space"></div>
-            <button class="outline" id="setDistance">
+            <button class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="setDistance">
                 <i>check</i>
                 <span>Distanz setzen</span>
             </button>
-        </article>
+        </div>
 
         <!-- Servo Position Control -->
-        <article class="mb-1">
-            <header>
-                <h6>Servo Position</h6>
-                <p>Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Servo Position</h2>
+                <p class="text-gray-600 dark:text-gray-400">Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
             </header>
 
-            <div class="field small-round">
-                <input type="range" id="servoSlider" min="0" max="180" value="90" step="1">
-                <label for="servoSlider">Position (0-180°)</label>
+            <div class="mb-4">
+                <label for="servoSlider" class="block text-sm font-medium mb-2">Position (0-180°)</label>
+                <input type="range" id="servoSlider" min="0" max="180" value="90" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
             </div>
 
-            <p class="small" id="servoSliderValue">Wert: 90°</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4" id="servoSliderValue">Wert: 90°</p>
 
-            <div class="space"></div>
-            <button class="outline" id="setServoBtn">
+            <button class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="setServoBtn">
                 <i>check</i>
                 <span>Position setzen</span>
             </button>
-        </article>
+        </div>
 
         <!-- Preset Positions -->
-        <article class="mb-1">
-            <header>
-                <h6>Vordefinierte Positionen</h6>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Vordefinierte Positionen</h2>
             </header>
 
-            <div class="grid">
-                <button class="small outline s2" id="servo0">
+            <div class="grid grid-cols-5 gap-2">
+                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo0">
                     <i>radio_button_checked</i>
                     <span>0°</span>
                 </button>
-                <button class="small outline s2" id="servo45">
+                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo45">
                     <i>radio_button_checked</i>
                     <span>45°</span>
                 </button>
-                <button class="small outline s2" id="servo90">
+                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo90">
                     <i>radio_button_checked</i>
                     <span>90°</span>
                 </button>
-                <button class="small outline s2" id="servo135">
+                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo135">
                     <i>radio_button_checked</i>
                     <span>135°</span>
                 </button>
-                <button class="small outline s2" id="servo180">
+                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo180">
                     <i>radio_button_checked</i>
                     <span>180°</span>
                 </button>
             </div>
-        </article>
+        </div>
 
         <!-- Test Sequences -->
-        <article class="mb-1">
-            <header>
-                <h6>Test Sequenzen</h6>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Test Sequenzen</h2>
             </header>
 
-            <div class="grid">
-                <button class="small s4" id="testSeq1">
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq1">
                     <i>play_arrow</i>
                     <span>Sequenz 1</span>
                 </button>
-                <button class="small s4" id="testSeq2">
+                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq2">
                     <i>play_arrow</i>
                     <span>Sequenz 2</span>
                 </button>
-                <button class="small s4" id="testSeq3">
+                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq3">
                     <i>play_arrow</i>
                     <span>Sequenz 3</span>
                 </button>
             </div>
 
-            <div class="space"></div>
-            <p class="small text-secondary">Sequenz 1: 0° → 180° → 0°</p>
-            <p class="small text-secondary">Sequenz 2: Langsame Bewegung 0° → 180°</p>
-            <p class="small text-secondary">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
-        </article>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 1: 0° → 180° → 0°</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 2: Langsame Bewegung 0° → 180°</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
+        </div>
 
         <!-- Init Sequence -->
-        <article class="mb-1">
-            <header>
-                <h6>Initialisierung</h6>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
+            <header class="mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Initialisierung</h2>
             </header>
 
-            <button class="outline" id="initServo">
+            <button class="w-full mb-4 px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="initServo">
                 <i>restart_alt</i>
                 <span>Servo initialisieren</span>
             </button>
 
-            <div class="space"></div>
-            <p class="small text-secondary">Führt die Standard-Initialisierungssequenz aus</p>
-        </article>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Führt die Standard-Initialisierungssequenz aus</p>
+        </div>
     </main>
 
-    <div class="overlay"></div>
-    <dialog class="left no-padding" id="navigation-drawer">
-        <nav class="drawer">
-            <header>
-                <nav class="center-align space nav-header">
-                    <div class="max">
-                        <img src="/assets/favicon.png"  width="150px">
+    <!-- Navigation Drawer (Side Modal) -->
+    <div id="navigation-drawer" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+        <div class="fixed left-0 top-0 h-full w-80 max-w-full bg-white dark:bg-gray-800 shadow-xl transform transition-all">
+            <nav class="flex flex-col h-full">
+                <header class="border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between p-4">
+                        <div class="flex-1 text-center">
+                            <img src="/assets/favicon.png" width="150px" alt="Dart-Tool" class="mx-auto">
+                        </div>
+                        <button class="modal-close p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-                    <button class="transparent circle large" data-ui="#navigation-drawer">
-                        <i>close</i>
-                    </button>
-                </nav>
-            </header>
-            <a href="/">
-                <i>home</i>
-                <span class="max">Menu</span>
-            </a>
-            <hr>
-            <a href="/game">
-                <i class="fa-brands fa-dart-lang"></i>
-                <span>New Game</span>
-            </a>
-            <a href="/players">
-                <i class="fa-solid fa-users"></i>
-                <span>Players</span>
-            </a>
-            <a href="/settings">
-                <i class="fa-solid fa-gear"></i>
-                <span>Settings</span>
-            </a>
-            <a href="/debug">
-                <i class="fa-solid fa-bug"></i>
-                <span>Debug</span>
-            </a>
-            <hr>
-        </nav>
-    </dialog>
+                </header>
+                <a href="/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-home"></i>
+                    <span class="flex-1">Menu</span>
+                </a>
+                <hr class="border-gray-200 dark:border-gray-700">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-gamepad"></i>
+                    <span>New Game</span>
+                </a>
+                <a href="/players" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Players</span>
+                </a>
+                <a href="/settings" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="/debug" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <i class="fa-solid fa-bug"></i>
+                    <span>Debug</span>
+                </a>
+                <hr class="border-gray-200 dark:border-gray-700">
+            </nav>
+        </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>

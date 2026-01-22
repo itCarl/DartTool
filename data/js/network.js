@@ -39,7 +39,7 @@ function onOpen(event) {
     console.log('Connection opened');
     reconnectAttempts = 0;
 
-    if(isPage('/data/game.html', '/game')) {
+    if(isPage('/data/index.html', '/', '/index')) {
         sendMessage({ cmd: "getAllPlayer" });
         sendMessage({ cmd: "getGame" });
     }

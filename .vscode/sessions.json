@@ -1,63 +1,51 @@
 {
-  "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
-  "theme": "tribe",
-  "active": "default",
-  "activateOnStartup": true,
-  "keepExistingTerminals": false,
-  "sessions": {
-    "default": [
-      [
-        {
-          "name": "[Server] Dev Server",
-          "autoExecuteCommands": true,
-          "joinOperator": ";",
-          "icon": "server-process",
-          "color": "terminal.ansiBrightBlue",
-          "commands": [
-            "npm run build", "npm run dev"
-          ]
-        }
-      ],
+    "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v11/terminal-keeper.json",
+    "theme": "tribe",
+    "active": "default",
+    "activateOnStartup": true,
+    "keepExistingTerminals": false,
+    "sessions": {
+        "default": [
             [
-        {
-          "name": "[Build] CSS",
-          "autoExecuteCommands": true,
-          "joinOperator": ";",
-          "icon": "server-process",
-          "color": "terminal.ansiBlue",
-          "commands": [
-            "npm run watch:css"
-          ]
-        },
-        {
-          "name": "[Build] Javascript",
-          "autoExecuteCommands": true,
-          "joinOperator": ";",
-          "icon": "server-process",
-          "color": "terminal.ansiRed",
-          "commands": [
-            "npm run watch:js"
-          ]
-        }
-      ],
-      {
-        "name": "Terminal",
-        "autoExecuteCommands": true,
-        "joinOperator": ";",
-        "icon": "server-process",
-        "color": "terminal.ansiGreen",
-        "commands": [
-          "echo Ready!!!"
+                {
+                    "name": "[Server] Dev Server",
+                    "autoExecuteCommands": true,
+                    "joinOperator": ";",
+                    "icon": "server-process",
+                    "color": "terminal.ansiBrightBlue",
+                    "commands": [
+                        "npm run dev"
+                    ]
+                }
+            ],
+            {
+                "name": "[QK] Check FS",
+                "autoExecuteCommands": true,
+                "joinOperator": ";",
+                "icon": "server-process",
+                "color": "terminal.ansiBlue",
+                "commands": [
+                    "npm run check:fs"
+                ]
+            },
+            {
+                "name": "Terminal",
+                "autoExecuteCommands": true,
+                "joinOperator": ";",
+                "icon": "server-process",
+                "color": "terminal.ansiGreen",
+                "commands": [
+                    "echo Ready!!!"
+                ]
+            }
+        ],
+        "saved-session": [
+            {
+                "name": "connect",
+                "commands": [
+                    ""
+                ]
+            }
         ]
-      }
-    ],
-    "saved-session": [
-      {
-        "name": "connect",
-        "commands": [
-          ""
-        ]
-      }
-    ]
-  }
+    }
 }

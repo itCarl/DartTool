@@ -14,7 +14,7 @@ let pendingPlayerToSelect = null;
 function renderPlayersList(players) {
     const list = byId('playersList');
     if (!list) return;
-    const isGamePage = isPage('/data/game.html', '/game');
+    const isGamePage = isPage('/data/index.html', '/', '/index');
 
     list.innerHTML = '';
 
@@ -86,9 +86,9 @@ function updateSelectedPlayersUI() {
     if (!selectedPlayerList.length || !lastPlayerFetch) {
         const emptyItem = document.createElement('li');
         emptyItem.innerHTML = `
-            <div class="max">
-                <p>no player selected.</p>
-            </div>
+            <p class="w-full p-4">
+                Add players by pressing the "Select Players" button
+            </p>
         `;
         list.appendChild(emptyItem);
         return;
@@ -233,7 +233,7 @@ function sendPlayerOrder() {
 }
 
 function updateSelectablePlayersUI() {
-    if (!isPage('/data/game.html', '/game')) return;
+    if (!isPage('/data/index.html', '/', '/index')) return;
     const rows = document.querySelectorAll('#playersList li[role="listitem"]');
     rows.forEach(row => {
         const isSelected = selectedPlayerList.includes(row.id);
@@ -336,7 +336,7 @@ function initPlayerSelectionModal() {
         });
     }
 
-    const openModalBtn = document.querySelector('[data-ui="#playerSelectionModal"]');
+    const openModalBtn = document.getElementById('openPlayerSelectionBtn');
     if (openModalBtn) {
         on(openModalBtn, 'click', () => {
             populatePlayerSelectionModal();
