@@ -233,15 +233,14 @@ on(document, 'DOMContentLoaded', () => {
     // Check device availability on all pages before showing content
     checkDeviceAvailability();
 
-    // Setup navigation active state
-    setupNavigation();
-
     // Make utilities globally available
     window.utils = { formatUptime };
 
     // Page-specific initialization
     if(isPage('/data/index.html', '/', '/index')) {
         initPlayersPage();
+        initAddPlayerModal();
+        initPlayerSelectionModal();
         initGamePage(selectedPlayerList);
     }
 
@@ -253,20 +252,6 @@ on(document, 'DOMContentLoaded', () => {
         initDebugPage();
     }
 });
-
-function setupNavigation() {
-    const navLinks = document.querySelectorAll('dialog#navigation-drawer a[href]');
-    navLinks.forEach(link => {
-        const linkPath = new URL(link.href).pathname;
-        const currentPath = window.location.pathname;
-
-        if (linkPath === currentPath) {
-            addClass(link, "active");
-        } else {
-            removeClass(link, "active");
-        }
-    });
-}
 
 function updateModeUI() {
     const displayModeSettings = byId('displayModeSettings');

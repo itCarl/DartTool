@@ -9,7 +9,7 @@
 
     <meta name="description" content="A very cool little devices that is used for displaying and tracking a game of darts." />
 
-    <script type="module" src="/js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 
     <!-- Fonts -->
     <link rel="dns-prefetch" href="//fonts.gstatic.com">
@@ -41,15 +41,15 @@
                 <img src="/assets/favicon.png" width="110px" alt="Dart-Tool" class="mx-auto">
             </div>
             <a href="/settings" class="absolute right-2 p-2 rounded-md hover:bg-gray-600 transition-colors">
-                <i class="fas fa-gear fa-xl"></i>
+                <i class="fas fa-gear text-xl"></i>
             </a>
         </nav>
     </header>
 
-    <main class="container max-w-5xl w-full mx-auto">
-        <div id="viewSetup">
+    <main class="container max-w-5xl w-full px-4 pb-14 mx-auto">
+        <div id="viewSetup" class="mt-4">
             <div class="text-right mb-4">
-                <button id="openPlayerSelectionBtn" onclick="window.ui('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer">
+                <button id="openPlayerSelectionBtn" onclick="window.toggleModal('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer rounded">
                     <i class="fa-solid fa-users"></i>
                     <span>Select Players</span>
                 </button>
@@ -164,13 +164,19 @@
         </div>
 
         <div id="viewGame">
-            <div id="activePlayerList">
+            <div id="activePlayerList" class="mt-4">
             </div>
             <div id="io">
                 <div id="infoMsg" style="padding: 1rem; font-weight: bold; text-align: center;">
                     Loading game...
                 </div>
-                <div>
+                <div class="mb-4 text-center">
+                    <button id="inputToggleBtn" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center gap-2">
+                        <i class="fas fa-keyboard"></i>
+                        <span>Switch to Numpad</span>
+                    </button>
+                </div>
+                <div id="dartboardContainer">
                     <dartbot-dartboard></dartbot-dartboard>
                 </div>
                 <div id="numpad" style="display:none"></div>
@@ -190,39 +196,54 @@
     </main>
 
     <!-- Add Player Modal -->
-    <div id="addPlayerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transform transition-all">
-            <!-- Header -->
-            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                <h2 class="text-xl font-semibold dark:text-white">Add New Player</h2>
-                <button class="modal-close text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Body -->
-            <div class="p-6">
-                <form id="addPlayerForm">
-                    <div class="mb-4">
-                        <input type="text" id="newPlayerName" required minlength="1" maxlength="50" aria-label="Player name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Name" />
-                        <span class="block mt-1 text-sm text-gray-500 dark:text-gray-400">Enter player name (1-50 characters)</span>
+    <dialog id="addPlayerModal" class="text-white inset-0 size-auto max-h-none max-w-none bg-transparent backdrop:bg-black/50">
+        <div class="flex min-h-full items-center justify-center focus:outline-none">
+            <div class="modal-panel relative transform rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all w-full max-w-md p-4">
+                <h2 class="text-lg text-heading mb-3">Add Player</h2>
+                <div id="addPlayerForm" class="space-y-4">
+                    <label class="block text-sm font-medium text-gray-200" for="playerName">Name</label>
+                    <input id="playerName" name="playerName" type="text" required
+                           class="w-full px-3 py-2 rounded-md bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="Enter player name" />
+                    <div class="flex gap-2 pt-2">
+                        <button id="savePlayerBtn" type="button" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">Save</button>
+                        <button type="button" onclick="window.toggleModal ? window.toggleModal('#addPlayerModal') : this.closest('dialog')?.close()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">Cancel</button>
                     </div>
-                </form>
-            </div>
-
-            <!-- Footer -->
-            <div class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
-                <button class="modal-close px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition">Cancel</button>
-                <button type="submit" form="addPlayerForm" class="px-4 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition">Add Player</button>
+                </div>
             </div>
         </div>
-    </div>
+    </dialog>
 
     <!-- Player Selection Modal -->
-    <div id="playerSelectionModal" class="hidden">
-
-    </div>
+    <dialog id="playerSelectionModal" class="text-white inset-0 size-auto max-h-none max-w-none bg-transparent backdrop:bg-black/50">
+        <div class="flex min-h-full items-center justify-center focus:outline-none">
+            <div class="modal-panel relative transform rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all w-full max-w-lg p-3 ">
+                <h2 class="text-lg text-heading mb-2">
+                    Select players
+                </h2>
+                <div id="playersList" class="overflow-y-auto max-h-[50vh] ">
+                    <!-- populated by js -->
+                </div>
+                <div id="playersEmpty" style="display: none;">
+                    <p class="empty-message text-gray-400 text-center py-4">
+                        No players available
+                    </p>
+                </div>
+                <div id="playersError" style="display: none;">
+                    <p class="error-message text-red-400 text-center py-4">
+                        Error loading players
+                    </p>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button id="addPlayersBtn" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                        Add Selected
+                    </button>
+                    <button id="addNewPlayer" onclick="window.toggleModal('#addPlayerModal')" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                        Add New Player
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
 </body>
 </html>

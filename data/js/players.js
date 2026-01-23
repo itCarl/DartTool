@@ -4,19 +4,35 @@
 
 import { byId, hide, show, addClass, removeClass, on, isPage, escapeHtml } from './utils.js';
 import { sendMessage } from './network.js';
+import Sortable from './libs/sortable.js';
 
 let selectedPlayerId = null;
 let selectedPlayerList = [];
 let tempModalSelections = [];
 let lastPlayerFetch = null;
 let pendingPlayerToSelect = null;
+let selectedListSortable = null;
+
+function createPlayerListItemHTML(player, isSelected, selectClasses, options = {}) {
+    const { isGamePage = false, isModal = false } = options;
+    const playerId = isModal ? `modal-${player.id}` : player.id;
+
+    return `
+        <li id="${playerId}" role="listitem" class="${isGamePage ? 'cursor-pointer transition-colors ' + selectClasses : ''}" aria-pressed="${isSelected}">
+            <div class='max'>
+                <div>${escapeHtml(player.name)}</div>
+                <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
+            </div>
+        </li>
+    `;
+}
 
 function renderPlayersList(players) {
-    const list = byId('playersList');
-    if (!list) return;
+    const container = byId('playersList');
+    if (!container) return;
     const isGamePage = isPage('/data/index.html', '/', '/index');
 
-    list.innerHTML = '';
+    container.innerHTML = '';
 
     if (!players || players.length === 0) {
         hide('playersList');
@@ -33,39 +49,27 @@ function renderPlayersList(players) {
     hide('playersEmpty');
     hide('playersError');
 
-    players.forEach((player) => {
-        const article = document.createElement('article');
-        article.style.setProperty('--_padding', '0.1rem');
-        const isSelected = selectedPlayerList.includes(player.id);
-        article.innerHTML = `
-        <ul class="list no-space border">
-            <li id="${player.id}" role="listitem" class="${isSelected ? 'selected-player' : ''}" aria-pressed="${isSelected}">
-                <i class="fa-solid fa-user" aria-hidden="true"></i>
-                <div class='max'>
-                    <div>${escapeHtml(player.name)}</div>
-                    <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
-                </div>
-                ${isGamePage ? `<div class="player-select-indicator" aria-hidden="true">
-                    <i class="fa-solid fa-check"></i>
-                </div>` : ''}
-            </li>
-        </ul>
-        `;
-        list.appendChild(article);
+    const ul = document.createElement('ul');
+    ul.className = 'list no-space divide-y divide-gray-700/60';
 
-        if (isGamePage) {
-            const row = article.querySelector('li');
-            if (row) {
-                row.classList.add('selectable-player');
-                row.addEventListener('click', e => {
-                    if (e.target.closest('.player-buttons')) return;
-                    togglePlayerSelection(player.id);
-                });
-            }
-        }
+    players.forEach((player) => {
+        const isSelected = selectedPlayerList.includes(player.id);
+        const selectClasses = isSelected
+            ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-500'
+            : 'hover:bg-purple-50 dark:hover:bg-purple-900/10';
+        ul.innerHTML += createPlayerListItemHTML(player, isSelected, selectClasses, { isGamePage });
     });
 
+    container.appendChild(ul);
+
     if (isGamePage) {
+        const rows = ul.querySelectorAll('li[role="listitem"]');
+        rows.forEach(row => {
+            row.addEventListener('click', e => {
+                if (e.target.closest('.player-buttons')) return;
+                togglePlayerSelection(row.id);
+            });
+        });
         updateSelectablePlayersUI();
         updateSelectedPlayersUI();
     }
@@ -103,20 +107,18 @@ function updateSelectedPlayersUI() {
 
         const item = document.createElement('li');
         item.id = `selected-player-${playerId}`;
-        item.draggable = true;
-        item.className = 'selected-player-item';
+        item.className = 'flex items-center gap-3 p-3 mb-2 bg-gray-100 dark:bg-gray-800 rounded-lg transition-all';
         item.dataset.playerId = playerId;
         item.innerHTML = `
-            <i class="fa-solid fa-grip-vertical drag-handle" style="cursor: move; color: #999;" aria-label="Drag to reorder"></i>
             <i class="fa-solid fa-user"></i>
             <div class='max'>${player.name}</div>
-            <button class="circle transparent small remove-player-btn" data-player-id="${playerId}" aria-label="Remove ${player.name}">
+            <span class="flex-1"></span>
+            <button class="circle transparent small remove-player-btn " data-player-id="${playerId}" >
                 <i class="fa-solid fa-xmark"></i>
             </button>
+            <i class="fa-solid fa-grip-vertical drag-handle cursor-move text-gray-400 ml-3"></i>
         `;
         list.appendChild(item);
-
-        setupDragHandlers(item, playerId);
 
         const removeBtn = item.querySelector('.remove-player-btn');
         if (removeBtn) {
@@ -132,96 +134,26 @@ function updateSelectedPlayersUI() {
             });
         }
     });
-}
 
-function setupDragHandlers(item, playerId) {
-    on(item, 'dragstart', (e) => {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', playerId);
-        addClass(item, 'dragging');
-    });
-
-    on(item, 'dragend', (e) => {
-        removeClass(item, 'dragging');
-        document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
-    });
-
-    on(item, 'dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const draggingItem = document.querySelector('.dragging');
-        if (draggingItem && draggingItem !== item) {
-            addClass(item, 'drag-over');
-        }
-    });
-
-    on(item, 'dragleave', (e) => {
-        removeClass(item, 'drag-over');
-    });
-
-    on(item, 'drop', (e) => {
-        e.preventDefault();
-        removeClass(item, 'drag-over');
-        const draggedId = e.dataTransfer.getData('text/plain');
-        if (draggedId && draggedId !== playerId) {
-            reorderPlayers(draggedId, playerId);
-        }
-    });
-
-    setupTouchHandlers(item, playerId);
-}
-
-function setupTouchHandlers(item, playerId) {
-    let touchStartY = 0;
-    let isDragging = false;
-
-    const dragHandle = item.querySelector('.drag-handle');
-    if (dragHandle) {
-        dragHandle.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-            isDragging = true;
-            item.style.opacity = '0.5';
-        }, { passive: true });
+    // Initialize Sortable for list reordering via drag handle
+    if (selectedListSortable) {
+        try { selectedListSortable.destroy(); } catch {}
+        selectedListSortable = null;
     }
-
-    item.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetItem = elementBelow?.closest('.selected-player-item');
-
-        if (targetItem && targetItem !== item && targetItem.dataset.playerId) {
-            document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
-            addClass(targetItem, 'drag-over');
-        }
-    }, { passive: true });
-
-    item.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        item.style.opacity = '1';
-
-        const touch = e.changedTouches[0];
-        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        const targetItem = elementBelow?.closest('.selected-player-item');
-
-        document.querySelectorAll('.drag-over').forEach(el => removeClass(el, 'drag-over'));
-
-        if (targetItem && targetItem !== item && targetItem.dataset.playerId) {
-            reorderPlayers(playerId, targetItem.dataset.playerId);
-        }
-    }, { passive: true });
-}
-
-function reorderPlayers(draggedId, targetId) {
-    const draggedIndex = selectedPlayerList.indexOf(draggedId);
-    const targetIndex = selectedPlayerList.indexOf(targetId);
-
-    if (draggedIndex > -1 && targetIndex > -1) {
-        const [draggedItem] = selectedPlayerList.splice(draggedIndex, 1);
-        selectedPlayerList.splice(targetIndex, 0, draggedItem);
-        updateSelectedPlayersUI();
-        sendPlayerOrder();
+    if (list && list.children.length > 0) {
+        selectedListSortable = new Sortable(list, {
+            handle: '.drag-handle',
+            placeholder: 'border border-purple-600 border-dashed rounded-lg',
+            draggingClass: 'opacity-50',
+            onSort: (newOrder) => {
+                const newIds = newOrder
+                    .map(o => o.element?.dataset?.playerId)
+                    .filter(Boolean);
+                // Update order and notify backend
+                selectedPlayerList = newIds;
+                sendPlayerOrder();
+            }
+        });
     }
 }
 
@@ -236,10 +168,21 @@ function updateSelectablePlayersUI() {
     if (!isPage('/data/index.html', '/', '/index')) return;
     const rows = document.querySelectorAll('#playersList li[role="listitem"]');
     rows.forEach(row => {
-        const isSelected = selectedPlayerList.includes(row.id);
-        if(isSelected) addClass(row, 'selected-player');
-        else removeClass(row, 'selected-player');
-        row.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+            const isSelected = selectedPlayerList.includes(row.id);
+
+            if(isSelected) {
+                addClass(row, 'bg-purple-100');
+                addClass(row, 'dark:bg-purple-900/30');
+                addClass(row, 'border-purple-500');
+                removeClass(row, 'hover:bg-purple-50');
+                removeClass(row, 'dark:hover:bg-purple-900/10');
+            } else {
+                removeClass(row, 'bg-purple-100');
+                removeClass(row, 'dark:bg-purple-900/30');
+                removeClass(row, 'border-purple-500');
+                addClass(row, 'hover:bg-purple-50');
+                addClass(row, 'dark:hover:bg-purple-900/10');
+            }
     });
 }
 
@@ -289,10 +232,18 @@ function initAddPlayerModal() {
             addNewPlayer();
         });
     }
+
+    const saveBtn = byId('savePlayerBtn');
+    if (saveBtn) {
+        on(saveBtn, 'click', (e) => {
+            e.preventDefault();
+            addNewPlayer();
+        });
+    }
 }
 
 function addNewPlayer() {
-    const nameInput = byId('newPlayerName');
+    const nameInput = byId('playerName');
     const name = nameInput?.value.trim();
 
     if (name && name.length > 0) {
@@ -300,7 +251,7 @@ function addNewPlayer() {
 
         sendMessage({
             cmd: "addPlayer",
-            name: name
+            name: name,
         });
 
         sendMessage({
@@ -312,6 +263,7 @@ function addNewPlayer() {
         }
 
         if (nameInput) nameInput.value = '';
+        if (colorInput) colorInput.value = '#9333ea';
 
         console.log(`Player "${name}" added successfully`);
     } else {
@@ -346,8 +298,10 @@ function initPlayerSelectionModal() {
     const addNewPlayerBtn = byId('addNewPlayerFromModal');
     if (addNewPlayerBtn) {
         on(addNewPlayerBtn, 'click', (e) => {
+            e.preventDefault();
             if (window.ui) {
-                window.ui('#playerSelectionModal');
+                window.ui('#playerSelectionModal'); // Close selection modal
+                window.ui('#addPlayerModal');        // Open add player modal
             }
         });
     }
@@ -362,10 +316,10 @@ function populatePlayerSelectionModal() {
 }
 
 function renderPlayersListForModal(players) {
-    const list = byId('playersList');
-    if (!list) return;
+    const container = byId('playersList');
+    if (!container) return;
 
-    list.innerHTML = '';
+    container.innerHTML = '';
 
     if (!players || players.length === 0) {
         hide('playersList');
@@ -382,34 +336,26 @@ function renderPlayersListForModal(players) {
     hide('playersEmpty');
     hide('playersError');
 
-    players.forEach((player) => {
-        const article = document.createElement('article');
-        article.style.setProperty('--_padding', '0.1rem');
-        const isSelected = tempModalSelections.includes(player.id);
-        article.innerHTML = `
-        <ul class="list no-space border">
-            <li id="modal-${player.id}" role="listitem" class="${isSelected ? 'selected-player' : ''}" aria-pressed="${isSelected}">
-                <i class="fa-solid fa-user" aria-hidden="true"></i>
-                <div class='max'>
-                    <div>${escapeHtml(player.name)}</div>
-                    <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
-                </div>
-                <div class="player-select-indicator" aria-hidden="true">
-                    <i class="fa-solid fa-check"></i>
-                </div>
-            </li>
-        </ul>
-        `;
-        list.appendChild(article);
+    const ul = document.createElement('ul');
+    ul.className = 'list no-space divide-y divide-gray-700/60';
 
-        const row = article.querySelector('li');
-        if (row) {
-            row.classList.add('selectable-player');
-            row.addEventListener('click', e => {
-                if (e.target.closest('.player-buttons')) return;
-                toggleModalPlayerSelection(player.id);
-            });
-        }
+    players.forEach((player) => {
+        const isSelected = tempModalSelections.includes(player.id);
+        const selectClasses = isSelected
+            ? 'bg-purple-100 dark:bg-purple-900/30 border-purple-500'
+            : 'hover:bg-purple-50 dark:hover:bg-purple-900/10';
+        ul.innerHTML += createPlayerListItemHTML(player, isSelected, selectClasses, { isGamePage: true, isModal: true });
+    });
+
+    container.appendChild(ul);
+
+    const rows = ul.querySelectorAll('li[role="listitem"]');
+    rows.forEach(row => {
+        row.addEventListener('click', e => {
+            if (e.target.closest('.player-buttons')) return;
+            const playerId = row.id.replace('modal-', '');
+            toggleModalPlayerSelection(playerId);
+        });
     });
 }
 
@@ -424,11 +370,18 @@ function toggleModalPlayerSelection(playerId) {
     if (row) {
         const isSelected = tempModalSelections.includes(playerId);
         if (isSelected) {
-            addClass(row, 'selected-player');
+            addClass(row, 'bg-purple-100');
+            addClass(row, 'dark:bg-purple-900/30');
+            addClass(row, 'border-purple-500');
+            removeClass(row, 'hover:bg-purple-50');
+            removeClass(row, 'dark:hover:bg-purple-900/10');
         } else {
-            removeClass(row, 'selected-player');
+            removeClass(row, 'bg-purple-100');
+            removeClass(row, 'dark:bg-purple-900/30');
+            removeClass(row, 'border-purple-500');
+            addClass(row, 'hover:bg-purple-50');
+            addClass(row, 'dark:hover:bg-purple-900/10');
         }
-        row.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     }
 }
 

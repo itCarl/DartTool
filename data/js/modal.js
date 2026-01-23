@@ -1,119 +1,133 @@
 // ============================================================================
-// MODAL UTILITIES
+// MODAL MANAGEMENT
 // ============================================================================
+// Handles dialog modal opening, closing, and interactions
 
 /**
- * Opens a modal by removing the 'hidden' class and preventing body scroll
- * @param {string|HTMLElement} modalId - Modal element or ID/selector
+ * Toggle dialog modal visibility
+ * @param {string} selector - CSS selector for the dialog element
+ * @returns {boolean} - Returns true if modal was found and toggled, false otherwise
  */
-function openModal(modalId) {
-    const modal = typeof modalId === 'string'
-        ? (modalId.startsWith('#') ? document.querySelector(modalId) : document.getElementById(modalId))
-        : modalId;
-
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Prevent background scroll
+function toggleModal(selector) {
+    const modal = document.querySelector(selector);
+    if (!modal) {
+        console.error(`Modal not found: ${selector}`);
+        return false;
     }
+
+    if (modal.open) {
+        closeModal(modal);
+    } else {
+        openModal(modal);
+    }
+
+    return true;
 }
 
 /**
- * Closes a modal by adding the 'hidden' class and restoring body scroll
- * @param {string|HTMLElement} modalId - Modal element or ID/selector
+ * Open a modal
+ * @param {HTMLDialogElement} modal - The dialog element to open
  */
-function closeModal(modalId) {
-    const modal = typeof modalId === 'string'
-        ? (modalId.startsWith('#') ? document.querySelector(modalId) : document.getElementById(modalId))
-        : modalId;
-
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = ''; // Restore scroll
-    }
+function openModal(modal) {
+    if (!modal) return;
+    modal.showModal();
 }
 
 /**
- * Simple modal/dialog utility for toggling UI elements
- * Toggles modals, toasts, and other UI elements
- * @param {string|HTMLElement} target - Element or selector to toggle
- * @param {number} duration - Optional duration in ms for auto-hide (toasts)
+ * Close a modal
+ * @param {HTMLDialogElement} modal - The dialog element to close
  */
-window.ui = function(target, duration) {
-    if (typeof target === 'string') {
-        const element = target.startsWith('#') ? document.querySelector(target) : document.getElementById(target);
-        if (element) {
-            // Check if it's a modal (has fixed overlay structure)
-            if (element.classList.contains('fixed') && element.classList.contains('inset-0')) {
-                if (element.classList.contains('hidden')) {
-                    openModal(element);
-                } else {
-                    closeModal(element);
-                }
-            } else {
-                // Toggle visibility for non-modal elements (like toasts)
-                element.classList.toggle('hidden');
-                if (duration && !element.classList.contains('hidden')) {
-                    setTimeout(() => element.classList.add('hidden'), duration);
-                }
+function closeModal(modal) {
+    if (!modal) return;
+    modal.close();
+}
+
+/**
+ * Check if click event is outside the modal panel content
+ * @param {HTMLDialogElement} modal - The dialog element
+ * @param {MouseEvent} event - The click event
+ * @returns {boolean} - True if click is on backdrop (outside modal-panel)
+ */
+function isClickOnBackdrop(modal, event) {
+    const modalPanel = modal.querySelector('.modal-panel');
+    if (!modalPanel) {
+        // Fallback to checking dialog bounds if no modal-panel exists
+        const rect = modal.getBoundingClientRect();
+        return !(
+            rect.top <= event.clientY &&
+            event.clientY <= rect.top + rect.height &&
+            rect.left <= event.clientX &&
+            event.clientX <= rect.left + rect.width
+        );
+    }
+
+    // Check if click is outside the modal-panel element
+    return !modalPanel.contains(event.target);
+}
+
+/**
+ * Setup backdrop click handler for all dialog modals
+ */
+function setupModalBackdropClose() {
+    document.querySelectorAll('dialog').forEach(modal => {
+        modal.addEventListener('click', (event) => {
+            if (isClickOnBackdrop(modal, event)) {
+                closeModal(modal);
+            }
+        });
+    });
+}
+
+/**
+ * Setup close button handlers for all modals
+ */
+function setupModalCloseButtons() {
+    document.querySelectorAll('.modal-close').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const modal = button.closest('dialog');
+            if (modal) {
+                closeModal(modal);
+            }
+        });
+    });
+}
+
+/**
+ * Setup global Escape key handler to close open modals
+ */
+function setupModalEscapeKey() {
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            const openModal = document.querySelector('dialog[open]');
+            if (openModal) {
+                closeModal(openModal);
             }
         }
-    } else if (target instanceof HTMLElement) {
-        // Handle toast-like elements
-        target.classList.remove('hidden');
-        target.classList.add('toast-show');
-        if (duration) {
-            setTimeout(() => {
-                target.classList.remove('toast-show');
-                setTimeout(() => target.remove(), 300);
-            }, duration);
-        }
-    }
-};
+    });
+}
 
 /**
- * Initialize modal functionality on DOM ready
- * - Configures click-outside-to-close
- * - Sets up modal close buttons
- * - Enables ESC key to close modals
+ * Initialize the modal system
+ * Sets up all event handlers and behaviors for modals
  */
 function initModals() {
-    // Setup modal functionality
-    document.querySelectorAll('.fixed.inset-0').forEach(modal => {
-        // Close when clicking on the overlay (outside modal content)
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal(modal);
-            }
-        });
-
-        // Setup close buttons
-        modal.querySelectorAll('.modal-close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', () => {
-                closeModal(modal);
-            });
-        });
-    });
-
-    // Close modals on ESC key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            document.querySelectorAll('.fixed.inset-0:not(.hidden)').forEach(modal => {
-                closeModal(modal);
-            });
-        }
-    });
+    setupModalBackdropClose();
+    setupModalCloseButtons();
+    setupModalEscapeKey();
 }
 
-// Auto-initialize when DOM is ready
+// Expose modal functions globally
+window.ui = toggleModal; // Maintain backward compatibility
+window.toggleModal = toggleModal;
+window.openModal = openModal;
+window.closeModal = closeModal;
+
+// Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initModals);
 } else {
-    // DOM is already loaded
     initModals();
 }
 
-export {
-    openModal,
-    closeModal,
-    initModals
-};
+export { toggleModal, openModal, closeModal, initModals, toggleModal as ui };

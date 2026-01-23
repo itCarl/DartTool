@@ -1,13 +1,47 @@
 // ============================================================================
+// INPUT TOGGLE FUNCTIONALITY
+// ============================================================================
+
+let currentInputMode = 'dartboard'; // 'dartboard' or 'numpad'
+
+function initInputToggle() {
+    const toggleBtn = byId('inputToggleBtn');
+    const dartboardContainer = byId('dartboardContainer');
+    const numpad = byId('numpad');
+
+    if (toggleBtn && dartboardContainer && numpad) {
+        on(toggleBtn, 'click', () => {
+            if (currentInputMode === 'dartboard') {
+                // Switch to numpad
+                currentInputMode = 'numpad';
+                dartboardContainer.style.display = 'none';
+                numpad.style.display = 'grid';
+                toggleBtn.innerHTML = '<i class=\"fas fa-bullseye\"></i> <span>Switch to Dartboard</span>';
+            } else {
+                // Switch to dartboard
+                currentInputMode = 'dartboard';
+                dartboardContainer.style.display = 'block';
+                numpad.style.display = 'none';
+                toggleBtn.innerHTML = '<i class=\"fas fa-keyboard\"></i> <span>Switch to Numpad</span>';
+            }
+        });
+    }
+}
+
+// ============================================================================
 // GAME LOGIC AND FUNCTIONS
 // ============================================================================
 
 import { byId, hide, show, addClass, removeClass, on, isPage, showStatus } from './utils.js';
 import { sendMessage } from './network.js';
+import { playerManagerUpdates } from './players.js';
+import { gameModeFactory } from './gamemodes/GameModeFactory.js';
+import { initMagnify } from './libs/magnify.js';
 
 let currentGameMode = 'X01';
 let currentGameModePoints = 301;
 let latestGameSnapshot = null;
+let currentGameModeHandler = null;
 
 function showGameInfo() {
     hide('viewSetup');
@@ -15,99 +49,21 @@ function showGameInfo() {
 }
 
 function updateGameInfo(gameData) {
-    const infoMsg = byId('infoMsg');
-    if (!infoMsg || !gameData) return;
+    // Get the appropriate handler for the current game mode
+    const gameMode = gameData?.mode || currentGameMode;
+    const modeHandler = gameModeFactory.getGameMode(gameMode);
 
-    const status = gameData.status || 'unknown';
-    const currentPlayer = gameData.players?.find(p => p.id === gameData.currentPlayerId);
-    const playerName = currentPlayer?.name || 'Unknown';
-    const winner = (gameData.players || []).find(p => p.winPos === 1);
-    const winnerName = winner?.name || playerName;
-    const points = gameData.points || 301;
-
-    let statusText = '';
-    switch(status) {
-        case 'initialised':
-            statusText = `Game Ready - ${points} Points`;
-            break;
-        case 'running':
-            statusText = `${playerName}'s Turn - ${points} Points Remaining`;
-            break;
-        case 'done':
-            statusText = `Game Over - Winner: ${winnerName}`;
-            break;
-        case 'aborted':
-            statusText = 'Game Aborted';
-            break;
-        default:
-            statusText = 'Game Status: ' + status;
-    }
-
-    infoMsg.textContent = statusText;
+    // Delegate to the game mode-specific handler
+    modeHandler.updateGameInfo(gameData);
 }
 
 function populatePlayers(data) {
-    const list = byId('activePlayerList');
-    if (!list) return;
+    // Get the appropriate handler for the current game mode
+    const gameMode = data?.mode || currentGameMode;
+    const modeHandler = gameModeFactory.getGameMode(gameMode);
 
-    list.innerHTML = '';
-    data.players.forEach((player) => {
-        const item = document.createElement('article');
-        item.id = player.id;
-        addClass(item, 'playerCard');
-
-        const remainingPoints = player.remainingPoints !== undefined ? player.remainingPoints : 0;
-        const totalThrows = player.throws !== undefined ? player.throws.reduce((partialSum, a) => partialSum + a.points, 0) : 0;
-        const roundThrow = player.throws.length;
-        const isCurrentPlayer = data.currentPlayerId === player.id;
-
-        const throws = player.throws || [];
-        const lastThrows = throws.slice(-3);
-
-        let throwsHTML = '';
-        for (let i = 0; i < 3; i++) {
-            const throwData = lastThrows[i];
-            const throwPoints = throwData ? throwData.points : 0;
-            const opacity = i < roundThrow ? '1' : '0.3';
-            throwsHTML += `<div style="opacity: ${opacity};">
-                <span class="s4 center-align">${throwPoints}</span>
-            </div>`;
-        }
-
-        item.innerHTML = `
-            <div class="grid no-space" style="${isCurrentPlayer ? 'outline: 3px solid gold;' : ''}">
-                <div class="s4 center-align">
-                    <h4 class="currentPoints" style="padding:.25rem;"><b>${remainingPoints}</b></h4>
-                    <div style="padding:.5rem;">${player.name}</div>
-                </div>
-                <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
-                    <div class="throwGroup">
-                        ${throwsHTML}
-                    </div>
-                    <div class="s4 center-align" style="display: flex;flex-direction:column;flex:3;">
-                        <h6>${totalThrows}</h6>
-                    </div>
-                </div>
-                <div class="s4 center-align" style="display: flex;flex-direction:column;align-items: stretch;height: 100%;">
-                    <div class="details" style="flex: 1;">
-                        <div class="s6">
-                            <i class="fa-brands fa-dart-lang"></i>
-                        </div>
-                        <div class="s6">
-                            <span class="numOfThrows">${totalThrows}</span>
-                        </div>
-                    </div>
-                    <div class="s4 center-align" style="flex: 1;">
-                        <div>
-                            &Oslash;
-                            <span class="averagePoints">${player.averagePoints ?? 0}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        list.appendChild(item);
-    });
+    // Delegate to the game mode-specific handler
+    modeHandler.populatePlayers(data);
 }
 
 function initGameModeSelection() {
@@ -211,41 +167,33 @@ function selectGameMode(mode, points = 0) {
 
 function updateGameModeDisplay() {
     const displayEl = byId('selectedGameModeText');
-    const x01Options = byId('x01Options');
-    const cricketOptions = byId('cricketOptions');
-    const aroundTheClockOptions = byId('aroundTheClockOptions');
-    const golfOptions = byId('golfOptions');
-    const tennisOptions = byId('tennisOptions');
-    const highscoreOptions = byId('highscoreOptions');
 
-    if (x01Options) x01Options.style.display = 'none';
-    if (cricketOptions) cricketOptions.style.display = 'none';
-    if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'none';
-    if (golfOptions) golfOptions.style.display = 'none';
-    if (tennisOptions) tennisOptions.style.display = 'none';
-    if (highscoreOptions) highscoreOptions.style.display = 'none';
+    // Hide all options first
+    gameModeFactory.hideAllOptions();
 
+    // Get the handler for the current game mode
+    const modeHandler = gameModeFactory.getGameMode(currentGameMode);
+    currentGameModeHandler = modeHandler;
+
+    // Show the options for this game mode
+    modeHandler.showOptions();
+
+    // Update display text
     if (currentGameMode === 'X01') {
         if (displayEl) displayEl.textContent = `${currentGameModePoints} Points`;
-        if (x01Options) x01Options.style.display = 'block';
 
         const x01Select = byId('x01PointsSelect');
         if (x01Select) x01Select.value = currentGameModePoints.toString();
     } else if (currentGameMode === 'Cricket') {
         if (displayEl) displayEl.textContent = 'Cricket';
-        if (cricketOptions) cricketOptions.style.display = 'block';
     } else if (currentGameMode === 'AroundTheClock') {
         if (displayEl) displayEl.textContent = 'Around the Clock';
-        if (aroundTheClockOptions) aroundTheClockOptions.style.display = 'block';
     } else if (currentGameMode === 'Golf') {
         if (displayEl) displayEl.textContent = 'Golf';
-        if (golfOptions) golfOptions.style.display = 'block';
     } else if (currentGameMode === 'Tennis') {
         if (displayEl) displayEl.textContent = 'Tennis';
-        if (tennisOptions) tennisOptions.style.display = 'block';
     } else if (currentGameMode === 'Highscore') {
         if (displayEl) displayEl.textContent = 'Highscore';
-        if (highscoreOptions) highscoreOptions.style.display = 'block';
     }
 }
 
@@ -275,7 +223,8 @@ function initGamePage(selectedPlayerList) {
         on(startGame, 'click', e => {
             e.preventDefault();
 
-            if (!selectedPlayerList || selectedPlayerList.length === 0) {
+            const currentPlayerList = playerManagerUpdates.selectedPlayerList();
+            if (!currentPlayerList || currentPlayerList.length === 0) {
                 showStatus('Bitte wählen Sie mindestens einen Spieler aus', 'error');
                 return;
             }
@@ -289,6 +238,21 @@ function initGamePage(selectedPlayerList) {
             });
         });
     }
+
+    // Initialize input toggle button
+    initInputToggle();
+
+    // Initialize magnifying glass zoom feature for dartboard
+    // Wait for dartbot-dartboard custom element to be defined
+    customElements.whenDefined('dartbot-dartboard').then(() => {
+        initMagnify({
+            sourceElement: byId('dartboardContainer'),
+            canvasFinder: (el) => {
+                const dartboard = el.querySelector('dartbot-dartboard');
+                return dartboard?.shadowRoot?.querySelector('canvas');
+            }
+        });
+    });
 
     const numpad = byId('numpad');
     if (numpad) {
@@ -494,7 +458,8 @@ const gameUpdates = {
     showGameInfo,
     showGameState: (state) => {
         // Exported to message handler
-    }
+    },
+    getCurrentGameModeHandler: () => currentGameModeHandler
 };
 
 export {
@@ -511,7 +476,8 @@ export {
     exportGameAsJson,
     syncGameNow,
     startNewGame,
-    gameUpdates
+    gameUpdates,
+    gameModeFactory
 };
 
 // Make available globally for message handlers
