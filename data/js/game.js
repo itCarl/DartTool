@@ -2,6 +2,12 @@
 // INPUT TOGGLE FUNCTIONALITY
 // ============================================================================
 
+import { byId, hide, show, showGrid, showFlex, addClass, removeClass, on, isPage, showStatus } from './utils.js';
+import { sendMessage } from './network.js';
+import { playerManagerUpdates } from './players.js';
+import { gameModeFactory } from './gamemodes/GameModeFactory.js';
+import { Magnify } from './libs/magnify.js';
+
 let currentInputMode = 'dartboard'; // 'dartboard' or 'numpad'
 
 function initInputToggle() {
@@ -14,29 +20,19 @@ function initInputToggle() {
             if (currentInputMode === 'dartboard') {
                 // Switch to numpad
                 currentInputMode = 'numpad';
-                dartboardContainer.style.display = 'none';
-                numpad.style.display = 'grid';
+                hide('dartboardContainer');
+                showGrid('numpad');
                 toggleBtn.innerHTML = '<i class=\"fas fa-bullseye\"></i> <span>Switch to Dartboard</span>';
             } else {
                 // Switch to dartboard
                 currentInputMode = 'dartboard';
                 dartboardContainer.style.display = 'block';
-                numpad.style.display = 'none';
+                hide('numpad');
                 toggleBtn.innerHTML = '<i class=\"fas fa-keyboard\"></i> <span>Switch to Numpad</span>';
             }
         });
     }
 }
-
-// ============================================================================
-// GAME LOGIC AND FUNCTIONS
-// ============================================================================
-
-import { byId, hide, show, addClass, removeClass, on, isPage, showStatus } from './utils.js';
-import { sendMessage } from './network.js';
-import { playerManagerUpdates } from './players.js';
-import { gameModeFactory } from './gamemodes/GameModeFactory.js';
-import { initMagnify } from './libs/magnify.js';
 
 let currentGameMode = 'X01';
 let currentGameModePoints = 301;
@@ -45,7 +41,7 @@ let currentGameModeHandler = null;
 
 function showGameInfo() {
     hide('viewSetup');
-    show('viewGame');
+    showFlex('viewGame');
 }
 
 function updateGameInfo(gameData) {
@@ -241,17 +237,69 @@ function initGamePage(selectedPlayerList) {
 
     // Initialize input toggle button
     initInputToggle();
+    const board = document.querySelector('dartbot-dartboard');
+    let dartboardMagnifier = null;
+
+    // Handler for dartboard hits
+    board.addEventListener('dartboard-pointerup', e => {
+        console.log('Dartboard event:', e);
+        const { radius, angle } = e.detail.polar ?? null;
+        const { ring, sector } = e.detail ?? null;
+
+        const hit = { radius, angle };
+        board.hits = [...board.hits, hit];
+
+        let score = board.board.sectors[sector] ?? 0;
+        let multiplier = 0;
+
+        if(ring <= 1) {
+            score = 25;
+        }
+
+        else if(ring === 0 || ring === 5) {
+            multiplier = 2;
+        } else if(ring === 2 || ring === 4) {
+            multiplier = 1;
+        } else if(ring === 3) {
+            multiplier = 3;
+        }
+
+        console.log(score, multiplier);
+
+        sendMessage({
+            cmd: 'dartThrow',
+            score: score,
+            multiplier: multiplier
+        });
+    });
+
+    const setupDartboardMagnifier = () => {
+        if (dartboardMagnifier) return;
+
+        const dartboardContainer = byId('dartboardContainer');
+        const dartboardElement = dartboardContainer?.querySelector('dartbot-dartboard');
+        const canvas = dartboardElement?.shadowRoot?.querySelector('canvas');
+
+        if (!canvas) {
+            console.warn('Canvas not found in dartboard');
+            return;
+        }
+
+        dartboardMagnifier = new Magnify(canvas, {
+            zoom: 3,
+            size: 180,
+            crosshairColor: '#ff8c00',
+            borderColor: '#111'
+        });
+
+        dartboardMagnifier.show();
+
+        console.log('Dartboard event listeners attached');
+    };
 
     // Initialize magnifying glass zoom feature for dartboard
-    // Wait for dartbot-dartboard custom element to be defined
     customElements.whenDefined('dartbot-dartboard').then(() => {
-        initMagnify({
-            sourceElement: byId('dartboardContainer'),
-            canvasFinder: (el) => {
-                const dartboard = el.querySelector('dartbot-dartboard');
-                return dartboard?.shadowRoot?.querySelector('canvas');
-            }
-        });
+        requestAnimationFrame(setupDartboardMagnifier);
     });
 
     const numpad = byId('numpad');

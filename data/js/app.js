@@ -6,11 +6,10 @@
 
 import '@dartbot/dartboard/dartboard.js';
 
-// Import modal initialization
 import './modal.js';
 
 import {
-    d, byId, on, hide, show, addClass, removeClass, isPage, showStatus, formatUptime
+    d, byId, on, hide, show, showGrid, showFlex, addClass, removeClass, isPage, showStatus, formatUptime
 } from './utils.js';
 
 import {
@@ -209,25 +208,6 @@ window.gameMessageHandlers = [handleGameMessage];
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
-
-on(window, 'load', onLoad);
-
-function onLoad(event) {
-    // Setup dartboard visualization
-    const board = document.querySelector('dartbot-dartboard');
-    if (board) {
-        board.hits = [
-            { radius: 147, angle: 0.2595 },
-            { radius: 149, angle: 0.1368 },
-        ];
-
-        board.addEventListener('dartboard-click', (event) => {
-            const { radius, angle } = event.detail.polar;
-            const hit = { radius, angle };
-            board.hits = [...board.hits, hit];
-        });
-    }
-}
 
 on(document, 'DOMContentLoaded', () => {
     // Check device availability on all pages before showing content

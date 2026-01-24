@@ -10,7 +10,7 @@
     "scripts": {
         "check:fs": "node scripts/fs-size.js",
         "clean": "rimraf dist",
-        "dev": "vite dev",
+        "dev": "vite dev --host",
         "prod": "vite build",
         "preview": "vite preview"
     },

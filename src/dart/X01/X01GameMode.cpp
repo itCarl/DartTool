@@ -230,14 +230,24 @@ void X01GameMode::serializeForDisplay(JsonObject& obj)
         JsonObject player = jsonPlayers.add<JsonObject>();
         player["id"] = p.getId();
         player["name"] = p.getName();
-        player["remainingPoints"] = points - p.getPoints();  // Points needed to reach target
+        player["remainingPoints"] = points - p.getPoints();
         player["averagePoints"] = p.getThrowCount() > 0 ? p.getPoints() / p.getThrowCount() : 0;
-        player["winPos"] = p.hasWon() ? 1 : 0;  // Simple win indicator
+        player["winPos"] = p.hasWon() ? 1 : 0;
 
-        // Include throws from last turn for current round display
         JsonArray throwsArray = player["throws"].to<JsonArray>();
         if (p.getTurnCount() > 0) {
-            std::vector<Throw> lastTurnThrows = p.getThrowsFromTurn(turn);
+            bool isCurrentPlayer = p.getId() == getCurrentPlayer().getId();
+            // std::vector<Throw> lastTurnThrows = p.getThrowsFromTurn(isCurrentPlayer || turn == 0 ? turn : turn - 1);
+
+            std::vector<Throw> currentTurnThrows = p.getThrowsFromTurn(turn);
+            std::vector<Throw> lastTurnThrows;
+
+            if (isCurrentPlayer || turn == 0 || currentTurnThrows.size() > 0) {
+                lastTurnThrows = currentTurnThrows;
+            } else if (turn > 0) {
+                lastTurnThrows = p.getThrowsFromTurn(turn - 1);
+            }
+
             for (const Throw& t : lastTurnThrows) {
                 JsonObject throwObj = throwsArray.add<JsonObject>();
                 throwObj["points"] = t.getPoints();

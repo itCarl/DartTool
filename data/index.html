@@ -36,9 +36,9 @@
     </div>
 
     <header class="dark:bg-gray-700 w-full">
-        <nav class="container mx-auto py-3 px-2 flex items-center justify-center relative">
-            <div class="text-center">
-                <img src="/assets/favicon.png" width="110px" alt="Dart-Tool" class="mx-auto">
+        <nav class="container mx-auto h-12 py-2 px-2 flex items-center justify-center relative">
+            <div class="h-full flex items-center">
+                <img src="/assets/favicon.png" alt="Dart-Tool" class="h-[90%] object-contain">
             </div>
             <a href="/settings" class="absolute right-2 p-2 rounded-md hover:bg-gray-600 transition-colors">
                 <i class="fas fa-gear text-xl"></i>
@@ -46,8 +46,8 @@
         </nav>
     </header>
 
-    <main class="container max-w-5xl w-full px-4 pb-14 mx-auto">
-        <div id="viewSetup" class="mt-4">
+    <main class="container max-w-5xl w-full mx-auto">
+        <div id="viewSetup" class="mt-2 px-4">
             <div class="text-right mb-4">
                 <button id="openPlayerSelectionBtn" onclick="window.toggleModal('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer rounded">
                     <i class="fa-solid fa-users"></i>
@@ -163,21 +163,19 @@
             </div>
         </div>
 
-        <div id="viewGame">
-            <div id="activePlayerList" class="mt-4">
+        <div id="viewGame" class="mt-2 w-full flex flex-col min-h-[calc(100dvh-3.5rem)]">
+            <div id="activePlayerList" class="px-4 overflow-y-auto max-h-[40vh]">
             </div>
-            <div id="io">
+            <div id="io" class="mt-auto">
                 <div id="infoMsg" style="padding: 1rem; font-weight: bold; text-align: center;">
                     Loading game...
                 </div>
-                <div class="mb-4 text-center">
-                    <button id="inputToggleBtn" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center gap-2">
-                        <i class="fas fa-keyboard"></i>
-                        <span>Switch to Numpad</span>
-                    </button>
-                </div>
                 <div id="dartboardContainer">
-                    <dartbot-dartboard></dartbot-dartboard>
+                    <div class="flex justify-center w-full">
+                        <div class="w-full md:w-1/2">
+                            <dartbot-dartboard></dartbot-dartboard>
+                        </div>
+                    </div>
                 </div>
                 <div id="numpad" style="display:none"></div>
                 <div id="doneActions" class="mt-4 flex flex-col gap-4" style="display:none;">

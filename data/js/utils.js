@@ -9,7 +9,9 @@ const byId = id => d.getElementById(id);
 const upt = (id, val) => { const el = byId(id); if(el?.innerHTML?.trim() != val && el) el.innerHTML = val };
 const onClick = (id, cb) => { const el = byId(id); if(el) el.addEventListener('click', cb); };
 const hide = (id) => { const el = byId(id); if(el) el.style.display = 'none'; };
-const show = (id) => { const el = byId(id); if(el) el.style.display = (id === 'numpad' ? 'grid' : 'block'); };
+const show = (id) => { const el = byId(id); if(el) el.style.display = (id === 'numpad' ? 'grid' : id=== 'viewGame' ? 'flex': 'block'); };
+const showGrid = (id) => { const el = byId(id); if(el) el.style.display = 'grid'; };
+const showFlex = (id) => { const el = byId(id); if(el) el.style.display = 'flex'; };
 const addClass = (el, cls) => el?.classList.add(cls);
 const removeClass = (el, cls) => el?.classList.remove(cls);
 const hasClass = (el, cls) => el?.classList.contains(cls);
@@ -106,6 +108,8 @@ export {
     onClick,
     hide,
     show,
+    showGrid,
+    showFlex,
     addClass,
     removeClass,
     hasClass,
