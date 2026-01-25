@@ -80,7 +80,10 @@ DT_GLOBAL char clientSSID[33] _INIT(CLIENT_SSID);
 DT_GLOBAL char clientPass[65] _INIT(CLIENT_PASS);
 
 DT_GLOBAL char apSSID[33] _INIT("DartTool");
-// DT_GLOBAL char apPass[65]  _INIT(DEFAULT_AP_PASS);
+DT_GLOBAL char apPass[65] _INIT("");
+DT_GLOBAL uint8_t apChannel _INIT(1);
+DT_GLOBAL bool apHidden _INIT(false);
+DT_GLOBAL char apOpens[33] _INIT("noConnectionAfterBoot");
 
 DT_GLOBAL AsyncWebServer server _INIT_N(((80)));
 DT_GLOBAL AsyncWebSocket ws _INIT_N((("/ws")));

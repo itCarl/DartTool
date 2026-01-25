@@ -141,7 +141,7 @@ DartGameStatus AroundTheClockGameMode::stringToStatus(String statusString)
     else                                   return DartGameStatus::unknown;
 }
 
-DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t multiplier)
+DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t multiplier, double angle, double radius)
 {
     DartThrowResult result;
     multiplier = multiplier == 0 ? 1 : multiplier;
@@ -176,6 +176,8 @@ DartThrowResult AroundTheClockGameMode::processDartThrow(uint8_t value, uint8_t 
     Throw dartThrow;
     dartThrow.setValue(value);
     dartThrow.setField(multiplier);
+    dartThrow.setAngle(angle);
+    dartThrow.setRadius(radius);
 
     if (!currentPlayer.addThrowToTurn(turn, dartThrow)) {
         result.success = false;

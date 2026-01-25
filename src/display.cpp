@@ -170,13 +170,13 @@ void printCenteredAnimated(uint8_t y, String text)
     printCenteredAnimated(y, text, ANIMATION_DELAY_CHAR_WRITE);
 }
 
-void printSpaceBetween(String left, String right)
+void printSpaceBetween(String left, String right, uint8_t row)
 {
     static String leftOld = "";
     static String rightOld = "";
 
     if (leftOld == left && rightOld == right) return; // No update needed
-    // if (leftOld != left && rightOld != right) clearRow(0);
+    // if (leftOld != left && rightOld != right) clearRow(row);
 
     uint8_t leftLength = left.length();
     uint8_t rightLength = right.length();
@@ -184,20 +184,20 @@ void printSpaceBetween(String left, String right)
     uint8_t offset = leftLength + spaceBetween;
 
     if (spaceBetween < 0) {
-        LCD.home();
+        LCD.setCursor(0, row);
         LCD.print("Text too long");
         return;
     }
 
     if(leftOld != left) {
-        LCD.home();
+        LCD.setCursor(0, row);
         LCD.print(left);
-        clearRowSegment(0, leftLength, offset - 1); // Clear space between
+        clearRowSegment(row, leftLength, offset - 1); // Clear space between
         leftOld = left;
     }
 
     if(rightOld != right) {
-        LCD.setCursor(offset, 0);
+        LCD.setCursor(offset, row);
         LCD.print(right);
         rightOld = right;
     }
@@ -222,6 +222,20 @@ void printCentered(String text, uint8_t row)
     for (int i = padding + text.length(); i < 20; i++) {
         LCD.print(' ');
     }
+}
+
+String truncateWithEllipsis(String text, uint8_t maxLength)
+{
+    if (text.length() <= maxLength) {
+        return text;
+    }
+
+    if (maxLength <= 1) {
+        return text.substring(0, maxLength);
+    }
+
+    // Reserve space for ellipsis
+    return text.substring(0, maxLength - 1) + ".";
 }
 
     const char* bigDigitsTop[] = {
@@ -311,24 +325,9 @@ void displayGameState(DartGame& game)
 
     // Get current player
     Player& currentPlayer = game.getPlayerAt(game.getCurrentPlayerIndex());
-    uint8_t throwCount = game.getThrowCounter();
 
-    // Row 0: Player name + throw count (COMMON)
-    String playerName = currentPlayer.getName();
-    if (playerName.length() > 13) {
-        playerName = playerName.substring(0, 12) + ".";
-    }
-    String throwInfo = "(" + String(throwCount) + "/3)";
-    printSpaceBetween(playerName, throwInfo);
 
-    // Rows 1-2: Game mode specific display
     game.displayGameInfo();
-
-    // Row 3: Turn and player count (COMMON)
-    clearRow(3);
-    String turnInfo = "Turn: " + String(game.getTurn() + 1);
-    String playerInfo = "P" + String(game.getCurrentPlayerIndex() + 1) + "/" + String(game.getPlayerCount());
-    printSpaceBetween(turnInfo, playerInfo);
 }
 
 /*

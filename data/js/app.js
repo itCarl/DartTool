@@ -25,7 +25,7 @@ import {
 
 import {
     updateGameInfo, populatePlayers, initGamePage, startNewGame,
-    showGameInfo, gameUpdates
+    showGameInfo, gameUpdates, updateDartboardHitsFromGameState
 } from './game.js';
 
 import {
@@ -36,6 +36,8 @@ import {
 import {
     initDebugPage
 } from './debug.js';
+
+import { initTheme } from './theme.js';
 
 // ============================================================================
 // GLOBAL STATE MANAGEMENT
@@ -183,6 +185,7 @@ function handleGameMessage(data) {
             if (g && g.players) {
                 populatePlayers(g);
             }
+            updateDartboardHitsFromGameState(g);
 
         } else if(state == "playerWon") {
             hide('viewPlayerManagement');
@@ -195,6 +198,7 @@ function handleGameMessage(data) {
             if (g && g.players) {
                 populatePlayers(g);
             }
+            updateDartboardHitsFromGameState(g);
 
         } else if(state == "done") {
             console.log("Game is done");
@@ -210,6 +214,8 @@ window.gameMessageHandlers = [handleGameMessage];
 // ============================================================================
 
 on(document, 'DOMContentLoaded', () => {
+    initTheme();
+
     // Check device availability on all pages before showing content
     checkDeviceAvailability();
 

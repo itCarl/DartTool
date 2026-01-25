@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -9,175 +9,211 @@
 
     <meta name="description" content="A very cool little devices that is used for displaying and tracking a game of darts." />
 
-    <!-- Fonts -->
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css?family=Nunito" rel="stylesheet">
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <!-- Styles -->
-    <link rel="stylesheet" type="text/css" href="styles.css">
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/debug.js"></script>
 
+    <!-- Styles -->
+    <link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
-<body>
-    <!-- Device Status Overlay -->
-    <div id="deviceStatusOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-        <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center max-w-md mx-4">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mb-4"></div>
+<body class="min-h-screen bg-linear-to-br from-gray-900 via-gray-950 to-slate-900 text-white">
+    <div id="deviceStatusOverlay" class="fixed inset-0 bg-black/70 backdrop-blur flex items-center justify-center z-40">
+        <div class="bg-white/90 dark:bg-gray-900 rounded-xl p-8 text-center max-w-md mx-4 shadow-2xl border border-white/10">
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
             <h3 id="deviceStatusTitle" class="text-xl font-semibold mb-2">Daten werden abgerufen...</h3>
             <p id="deviceStatusMessage" class="text-gray-600 dark:text-gray-300">Bitte warten Sie während das Gerät initialisiert wird.</p>
         </div>
     </div>
 
-    <header class="bg-primary text-white shadow-md">
-        <nav class="container mx-auto px-4 py-4 flex items-center justify-between">
-            <button onclick="window.toggleModal('#navigation-drawer')" class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
-                <i class="fas fa-bars"></i>
-            </button>
-            <h1 class="text-2xl font-bold flex-1 text-center">New Game</h1>
+    <header class="dark:bg-gray-700 w-full">
+        <nav class="container mx-auto h-12 py-2 px-2 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <button data-toggle-dark-mode class="p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors" aria-label="Toggle dark mode">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <img src="/assets/favicon.png" width="100px" alt="Dart-Tool">
+                <a href="/debug" class="p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open debug page">
+                    <i class="fas fa-bug text-xl"></i>
+                </a>
+            </div>
+            <div class="h-full flex items-center">
+                <img src="/assets/favicon.png" alt="Dart-Tool" class="h-[90%] object-contain">
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/settings" class="p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open settings">
+                    <i class="fas fa-gear text-xl"></i>
+                </a>
             </div>
         </nav>
     </header>
 
-    <!-- Laser Control -->
-    <div class="container mx-auto px-4 py-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Laser Kontrolle</h2>
-            </header>
-
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center gap-2" id="laserOn">
-                    <i>lightbulb</i>
-                    <span>Laser EIN</span>
-                </button>
-                <button class="px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="laserOff">
-                    <i>lightbulb_outline</i>
-                    <span>Laser AUS</span>
-                </button>
-            </div>
-
-            <p class="text-sm text-gray-600 dark:text-gray-400">Status: <strong id="laserStatus">AUS</strong></p>
-        </div>
-    </div>
-
-    <main class="container mx-auto px-4 py-4">
-        <!-- Distance to Ground -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Distance to ground</h2>
-            </header>
-
-            <div class="grid grid-cols-2 gap-4 mb-4">
+    <main class="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+        <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+            <header class="mb-4 flex items-start justify-between gap-2">
                 <div>
-                    <label for="height" class="block text-sm font-medium mb-2">Höhe (cm)</label>
-                    <input type="number" id="height" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
+                    <h2 class="text-lg font-semibold">Status</h2>
+                    <p class="text-sm text-gray-400">Letzte Aktionen und Antworten.</p>
                 </div>
-                <div>
-                    <label for="distance" class="block text-sm font-medium mb-2">Distanz (cm)</label>
-                    <input type="number" id="distance" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary">
-                </div>
-            </div>
+                <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Live</span>
+            </header>
+            <div id="statusDisplay" class="space-y-2 text-sm text-gray-200"></div>
+        </section>
 
-            <button class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="setDistance">
-                <i>check</i>
-                <span>Distanz setzen</span>
-            </button>
+        <div class="grid gap-6 lg:grid-cols-2">
+            <!-- Laser Control -->
+            <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+                <header class="mb-6 flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold">Laser Kontrolle</h2>
+                        <p class="text-sm text-gray-400">Schalte den Laser ein oder aus.</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Laser</span>
+                </header>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center gap-2" id="laserOn">
+                        <i>lightbulb</i>
+                        <span>Laser EIN</span>
+                    </button>
+                    <button class="px-4 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2" id="laserOff">
+                        <i>lightbulb_outline</i>
+                        <span>Laser AUS</span>
+                    </button>
+                </div>
+
+                <p class="text-sm text-gray-300">Status: <strong id="laserStatus">AUS</strong></p>
+            </section>
+
+            <!-- Distance to Ground -->
+            <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+                <header class="mb-6 flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold">Distance to ground</h2>
+                        <p class="text-sm text-gray-400">Kalibriere Höhe und Distanz.</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Setup</span>
+                </header>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="height" class="block text-sm font-medium mb-2 text-gray-200">Höhe (cm)</label>
+                        <input type="number" id="height" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="distance" class="block text-sm font-medium mb-2 text-gray-200">Distanz (cm)</label>
+                        <input type="number" id="distance" min="0" max="500" value="100" step="1" class="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+
+                <button class="w-full px-6 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2" id="setDistance">
+                    <i>check</i>
+                    <span>Distanz setzen</span>
+                </button>
+            </section>
         </div>
 
         <!-- Servo Position Control -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Servo Position</h2>
-                <p class="text-gray-600 dark:text-gray-400">Aktuelle Position: <strong id="currentServoPos">90°</strong></p>
+        <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+            <header class="mb-6 flex items-start justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">Servo Position</h2>
+                    <p class="text-sm text-gray-400">Feinjustierung des Servos.</p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Servo</span>
             </header>
 
             <div class="mb-4">
-                <label for="servoSlider" class="block text-sm font-medium mb-2">Position (0-180°)</label>
-                <input type="range" id="servoSlider" min="0" max="180" value="90" step="1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <label for="servoSlider" class="block text-sm font-medium mb-2 text-gray-200">Position (0-180°)</label>
+                <input type="range" id="servoSlider" min="0" max="180" value="90" step="1" class="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer">
             </div>
 
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4" id="servoSliderValue">Wert: 90°</p>
+            <p class="text-sm text-gray-300 mb-4" id="servoSliderValue">Wert: 90°</p>
 
-            <button class="w-full px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="setServoBtn">
+            <button class="w-full px-6 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2" id="setServoBtn">
                 <i>check</i>
                 <span>Position setzen</span>
             </button>
-        </div>
+        </section>
 
-        <!-- Preset Positions -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Vordefinierte Positionen</h2>
-            </header>
+        <div class="grid gap-6 lg:grid-cols-2">
+            <!-- Preset Positions -->
+            <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+                <header class="mb-6 flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold">Vordefinierte Positionen</h2>
+                        <p class="text-sm text-gray-400">Schnelle Servo-Presets.</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Presets</span>
+                </header>
 
-            <div class="grid grid-cols-5 gap-2">
-                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo0">
-                    <i>radio_button_checked</i>
-                    <span>0°</span>
-                </button>
-                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo45">
-                    <i>radio_button_checked</i>
-                    <span>45°</span>
-                </button>
-                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo90">
-                    <i>radio_button_checked</i>
-                    <span>90°</span>
-                </button>
-                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo135">
-                    <i>radio_button_checked</i>
-                    <span>135°</span>
-                </button>
-                <button class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo180">
-                    <i>radio_button_checked</i>
-                    <span>180°</span>
-                </button>
-            </div>
-        </div>
+                <div class="grid grid-cols-5 gap-2">
+                    <button class="px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo0">
+                        <i>radio_button_checked</i>
+                        <span>0°</span>
+                    </button>
+                    <button class="px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo45">
+                        <i>radio_button_checked</i>
+                        <span>45°</span>
+                    </button>
+                    <button class="px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo90">
+                        <i>radio_button_checked</i>
+                        <span>90°</span>
+                    </button>
+                    <button class="px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo135">
+                        <i>radio_button_checked</i>
+                        <span>135°</span>
+                    </button>
+                    <button class="px-3 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex flex-col items-center justify-center gap-1 text-sm" id="servo180">
+                        <i>radio_button_checked</i>
+                        <span>180°</span>
+                    </button>
+                </div>
+            </section>
 
-        <!-- Test Sequences -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Test Sequenzen</h2>
-            </header>
+            <!-- Test Sequences -->
+            <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+                <header class="mb-6 flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold">Test Sequenzen</h2>
+                        <p class="text-sm text-gray-400">Automatisierte Bewegungsabläufe.</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Tests</span>
+                </header>
 
-            <div class="grid grid-cols-3 gap-4 mb-4">
-                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq1">
-                    <i>play_arrow</i>
-                    <span>Sequenz 1</span>
-                </button>
-                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq2">
-                    <i>play_arrow</i>
-                    <span>Sequenz 2</span>
-                </button>
-                <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq3">
-                    <i>play_arrow</i>
-                    <span>Sequenz 3</span>
-                </button>
-            </div>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq1">
+                        <i>play_arrow</i>
+                        <span>Sequenz 1</span>
+                    </button>
+                    <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq2">
+                        <i>play_arrow</i>
+                        <span>Sequenz 2</span>
+                    </button>
+                    <button class="px-4 py-3 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex flex-col items-center justify-center gap-2" id="testSeq3">
+                        <i>play_arrow</i>
+                        <span>Sequenz 3</span>
+                    </button>
+                </div>
 
-            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 1: 0° → 180° → 0°</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 2: Langsame Bewegung 0° → 180°</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
+                <p class="text-sm text-gray-300">Sequenz 1: 0° → 180° → 0°</p>
+                <p class="text-sm text-gray-300">Sequenz 2: Langsame Bewegung 0° → 180°</p>
+                <p class="text-sm text-gray-300">Sequenz 3: Schnelle Oszillation 45° → 135°</p>
+            </section>
         </div>
 
         <!-- Init Sequence -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
-            <header class="mb-6">
-                <h2 class="text-2xl font-semibold mb-2">Initialisierung</h2>
+        <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6">
+            <header class="mb-6 flex items-start justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">Initialisierung</h2>
+                    <p class="text-sm text-gray-400">Führt die Standard-Initialisierungssequenz aus.</p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">System</span>
             </header>
 
-            <button class="w-full mb-4 px-6 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center justify-center gap-2" id="initServo">
+            <button class="w-full mb-4 px-6 py-3 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2" id="initServo">
                 <i>restart_alt</i>
                 <span>Servo initialisieren</span>
             </button>
 
-            <p class="text-sm text-gray-600 dark:text-gray-400">Führt die Standard-Initialisierungssequenz aus</p>
-        </div>
+            <p class="text-sm text-gray-300">Führt die Standard-Initialisierungssequenz aus</p>
+        </section>
     </main>
 
     <!-- Navigation Drawer (Side Modal) -->
@@ -221,6 +257,5 @@
             </nav>
         </div>
     </div>
-    <script src="app.js"></script>
 </body>
 </html>

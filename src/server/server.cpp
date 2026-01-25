@@ -240,6 +240,68 @@ void initServer()
         request->send(200, "application/json", response);
     });
 
+    server.on("/api/ap_settings", HTTP_GET, [](AsyncWebServerRequest *request) {
+        char ssid[33], password[65], opens[33];
+        uint8_t channel;
+        bool hidden;
+        getAPSettings(ssid, password, &channel, opens, &hidden);
+
+        JsonDocument doc;
+        doc["apSsid"] = ssid;
+        doc["apPassword"] = password;
+        doc["apChannel"] = channel;
+        doc["apOpens"] = opens;
+        doc["apHidden"] = hidden;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/ap_settings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+        if (index == 0) {
+            data[len] = '\0';
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, data);
+
+            if (error) {
+                DEBUG_PRINT("[API] JSON parsing error: ");
+                DEBUG_PRINTLN(error.c_str());
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"Invalid JSON\"}");
+                return;
+            }
+
+            const char* ssid = doc["apSsid"].as<const char*>();
+            const char* password = doc["apPassword"].as<const char*>();
+            uint8_t channel = doc["apChannel"] | 1;
+            const char* opens = doc["apOpens"].as<const char*>();
+            bool hidden = doc["apHidden"] | false;
+
+            if (!ssid || strlen(ssid) == 0) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"AP SSID is required\"}");
+                return;
+            }
+
+            if (password && strlen(password) > 0 && strlen(password) < 8) {
+                request->send(400, "application/json", "{\"success\": false, \"message\": \"AP password must be at least 8 characters\"}");
+                return;
+            }
+
+            // Save AP settings
+            saveAPSettings(ssid, password ? password : "", channel, opens ? opens : "noConnectionAfterBoot", hidden);
+
+            DEBUG_PRINTLN("[API] AP settings updated");
+
+            JsonDocument respDoc;
+            respDoc["success"] = true;
+            respDoc["message"] = "AP settings saved successfully";
+
+            String response;
+            serializeJson(respDoc, response);
+            request->send(200, "application/json", response);
+        }
+    });
+
     server.on("/api/settings", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         if (index == 0) {
             data[len] = '\0';
@@ -601,10 +663,6 @@ void initServer()
         request->send(LittleFS, "/style.css", "text/css");
     });
 
-    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(LittleFS, "/script.js", "text/javascript");
-    });
-
     server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LittleFS, "/app.js", "text/javascript");
     });
@@ -688,10 +746,8 @@ void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *da
             if(!sendResponse)
                 return;
 
-            // Debug: always attach full game snapshot to outgoing WS responses
-            // This keeps existing consumers intact while providing extra diagnostics data.
-            JsonObject gameFull = doc["gameFull"].to<JsonObject>();
-            game.serialize(gameFull);
+            // JsonObject gameFull = doc["gameFull"].to<JsonObject>();
+            // game.serialize(gameFull);
 
             serializeJson(doc, out);
             client->text(out);
@@ -1021,8 +1077,21 @@ bool handleDartThrow(JsonDocument& doc)
         multiplier = doc["multiplier"].as<uint8_t>();
     }
 
+    // Extract polar coordinates if provided
+    double angle = 0.0;
+    double radius = 0.0;
+    if (doc["polar"].is<JsonObject>()) {
+        JsonObject polar = doc["polar"].as<JsonObject>();
+        if (polar["angle"].is<double>()) {
+            angle = polar["angle"].as<double>();
+        }
+        if (polar["radius"].is<double>()) {
+            radius = polar["radius"].as<double>();
+        }
+    }
+
     // Delegate all game logic to DartGame
-    DartThrowResult result = game.processDartThrow(value, multiplier);
+    DartThrowResult result = game.processDartThrow(value, multiplier, angle, radius);
 
     // Prepare response from game result
     doc["msg"] = result.message;

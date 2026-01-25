@@ -42,6 +42,28 @@ void loadConfig()
         apSSID[32] = '\0';
     }
 
+    // Load AP settings from NVS
+    size_t apSsidLen = storage.getBytes("ap_ssid", (uint8_t*)NULL, 0);
+    if (apSsidLen > 0 && apSsidLen < 33) {
+        storage.getBytes("ap_ssid", (uint8_t*)apSSID, apSsidLen);
+        apSSID[apSsidLen] = '\0';
+    }
+
+    size_t apPassLen = storage.getBytes("ap_pass", (uint8_t*)NULL, 0);
+    if (apPassLen > 0 && apPassLen < 65) {
+        storage.getBytes("ap_pass", (uint8_t*)apPass, apPassLen);
+        apPass[apPassLen] = '\0';
+    }
+
+    apChannel = storage.getUChar("ap_channel", 1);
+    apHidden = storage.getBool("ap_hidden", false);
+
+    size_t apOpensLen = storage.getBytes("ap_opens", (uint8_t*)NULL, 0);
+    if (apOpensLen > 0 && apOpensLen < 33) {
+        storage.getBytes("ap_opens", (uint8_t*)apOpens, apOpensLen);
+        apOpens[apOpensLen] = '\0';
+    }
+
     // Load External Service settings
     size_t extHostLen = storage.getBytes("ext_host", (uint8_t*)NULL, 0);
     if (extHostLen > 0 && extHostLen < 129) {
@@ -200,6 +222,50 @@ void getWifiSettings(char* outSsid, char* outPassword, char* outHostname)
     outPassword[64] = '\0';
     strncpy(outHostname, apSSID, 32);
     outHostname[32] = '\0';
+}
+
+void saveAPSettings(const char* ssid, const char* password, uint8_t channel, const char* opens, bool hidden)
+{
+    storage.begin("cfg", false);
+
+    if (ssid && strlen(ssid) > 0 && strlen(ssid) < 33) {
+        storage.putBytes("ap_ssid", (const uint8_t*)ssid, strlen(ssid));
+        strncpy(apSSID, ssid, 32);
+        apSSID[32] = '\0';
+    }
+
+    if (password && strlen(password) < 65) {
+        storage.putBytes("ap_pass", (const uint8_t*)password, strlen(password));
+        strncpy(apPass, password, 64);
+        apPass[64] = '\0';
+    }
+
+    storage.putUChar("ap_channel", channel);
+    apChannel = channel;
+
+    if (opens && strlen(opens) > 0 && strlen(opens) < 33) {
+        storage.putBytes("ap_opens", (const uint8_t*)opens, strlen(opens));
+        strncpy(apOpens, opens, 32);
+        apOpens[32] = '\0';
+    }
+
+    storage.putBool("ap_hidden", hidden);
+    apHidden = hidden;
+
+    storage.end();
+    DEBUG_PRINTLN("[Storage] AP settings saved");
+}
+
+void getAPSettings(char* outSsid, char* outPassword, uint8_t* outChannel, char* outOpens, bool* outHidden)
+{
+    strncpy(outSsid, apSSID, 32);
+    outSsid[32] = '\0';
+    strncpy(outPassword, apPass, 64);
+    outPassword[64] = '\0';
+    *outChannel = apChannel;
+    strncpy(outOpens, apOpens, 32);
+    outOpens[32] = '\0';
+    *outHidden = apHidden;
 }
 
 void listDir(fs::FS &fs, const char * dirname, uint8_t levels)

@@ -64,7 +64,7 @@ DartGameStatus X01GameMode::stringToStatus(String statusString)
     else                            return DartGameStatus::unknown;
 }
 
-DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier)
+DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier, double angle, double radius)
 {
     DartThrowResult result;
     multiplier = (multiplier == 0) ? 1 : multiplier; // guard against zero
@@ -128,6 +128,9 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier)
     Throw dartThrow;
     dartThrow.setValue(dartValue);
     dartThrow.setField(dartMultiplier);
+    dartThrow.setAngle(angle);
+    dartThrow.setRadius(radius);
+
     if (!currentPlayer.addThrowToTurn(turn, dartThrow)) {
         result.success = false;
         result.message = "Unable to record throw for current turn";
@@ -170,7 +173,6 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier)
 
     // Check if this throw completes the player's turn (3 throws)
     if (isPlayerTurnComplete()) {
-        nextPlayer();
         result.message = "Dart throw recorded - Turn complete, advancing to next player";
         DEBUG_PRINT("[Game] ");
         DEBUG_PRINT(currentPlayer.getName());
@@ -182,6 +184,9 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier)
             if (i < players.size() - 1) DEBUG_PRINT(", ");
         }
         DEBUG_PRINTLN();
+
+        // Immediately advance to next player
+        nextPlayer();
     } else {
         result.message = "Dart throw recorded (" + String(throwCounter) + "/3)";
     }
@@ -251,6 +256,10 @@ void X01GameMode::serializeForDisplay(JsonObject& obj)
             for (const Throw& t : lastTurnThrows) {
                 JsonObject throwObj = throwsArray.add<JsonObject>();
                 throwObj["points"] = t.getPoints();
+                throwObj["value"] = t.getValue();
+                throwObj["field"] = t.getField();
+                throwObj["angle"] = t.getAngle();
+                throwObj["radius"] = t.getRadius();
             }
         }
     }
@@ -396,20 +405,46 @@ void X01GameMode::displayGameInfo()
     if (players.empty()) return;
 
     Player& currentPlayer = getCurrentPlayer();
-    uint16_t remainingPoints = currentPlayer.getPoints();
-    std::vector<Throw> throws = currentPlayer.getThrows();
+    uint16_t currentPlayerPointsLeft = points - currentPlayer.getPoints();
+    std::vector<Throw> currentTurnThrows = currentPlayer.getThrowsFromTurn(turn);
 
-    String pointsStr = String(remainingPoints);
+    // Row 0: Current player name and remaining points
+    String playerName = truncateWithEllipsis(currentPlayer.getName(), 13);
+    String pointsLeft = String(currentPlayerPointsLeft);
+    printSpaceBetween(playerName, pointsLeft, 0);
+
+    // Row 1: Current turn throws
     clearRow(1);
-    printCentered(pointsStr, 1);
-
-    // Row 2: Last throw info
-    clearRow(2);
-    if (throws.size() > 0) {
-        Throw lastThrow = throws.back();
-        String throwStr = lastThrow.toString() + " (" + String(lastThrow.getPoints()) + ")";
-        printCentered(throwStr, 2);
+    if (currentTurnThrows.size() > 0) {
+        String throwsStr = "";
+        for (size_t i = 0; i < currentTurnThrows.size(); i++) {
+            if (i > 0) throwsStr += " | ";
+            throwsStr += currentTurnThrows[i].toString();
+        }
+        printCentered(throwsStr, 1);
     } else {
-        printCentered("--", 2);
+        printCentered("--", 1);
+    }
+
+    // Row 2: Next player name and remaining points
+    clearRow(2);
+    if (players.size() > 1) {
+        uint8_t nextPlayerIndex = (currentPlayerIndex + 1) % players.size();
+        Player& nextPlayer = players[nextPlayerIndex];
+        uint16_t nextPlayerPointsLeft = points - nextPlayer.getPoints();
+        String nextPlayerName = truncateWithEllipsis(nextPlayer.getName(), 13);
+        String nextPointsLeft = String(nextPlayerPointsLeft);
+        printSpaceBetween(nextPlayerName, nextPointsLeft, 2);
+    }
+
+    // Row 3: Player after next and remaining points
+    clearRow(3);
+    if (players.size() > 2) {
+        uint8_t nextNextPlayerIndex = (currentPlayerIndex + 2) % players.size();
+        Player& nextNextPlayer = players[nextNextPlayerIndex];
+        uint16_t nextNextPlayerPointsLeft = points - nextNextPlayer.getPoints();
+        String nextNextPlayerName = truncateWithEllipsis(nextNextPlayer.getName(), 13);
+        String nextNextPointsLeft = String(nextNextPlayerPointsLeft);
+        printSpaceBetween(nextNextPlayerName, nextNextPointsLeft, 3);
     }
 }

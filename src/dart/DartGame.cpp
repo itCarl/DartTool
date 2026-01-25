@@ -204,7 +204,7 @@ uint16_t DartGame::getPlayerRemainingPoints(const String& playerId)
  * Process a dart throw
  * Delegated to active game mode
  */
-DartThrowResult DartGame::processDartThrow(uint8_t value, uint8_t multiplier)
+DartThrowResult DartGame::processDartThrow(uint8_t value, uint8_t multiplier, double angle, double radius)
 {
     if (!gameMode) {
         DartThrowResult result;
@@ -212,7 +212,7 @@ DartThrowResult DartGame::processDartThrow(uint8_t value, uint8_t multiplier)
         result.message = "No game mode set";
         return result;
     }
-    return gameMode->processDartThrow(value, multiplier);
+    return gameMode->processDartThrow(value, multiplier, angle, radius);
 }
 
 uint8_t DartGame::getCurrentPlayerIndex()

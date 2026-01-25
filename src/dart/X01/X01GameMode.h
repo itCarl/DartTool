@@ -40,7 +40,7 @@ class X01GameMode : public GameMode
         DartGameStatus stringToStatus(String status);
 
         // Core game logic
-        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1) override;
+        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1, double angle = 0.0, double radius = 0.0) override;
 
         // Serialization methods
         void serialize(JsonObject& obj) override;

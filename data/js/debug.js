@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { byId, on } from './utils.js';
-import { sendMessage } from './network.js';
+import { sendMessage, ws } from './network.js';
 
 // Servo command definitions
 const ServoCommands = {
@@ -52,7 +52,7 @@ const LaserCommands = {
 };
 
 function sendServoCommand(commandConfig, ...args) {
-    if (!window.ws || window.ws.readyState !== WebSocket.OPEN) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
         updateStatus('Nicht verbunden', 'error');
         return false;
     }
@@ -68,7 +68,7 @@ function sendServoCommand(commandConfig, ...args) {
 }
 
 function sendLaserCommand(commandConfig) {
-    if (!window.ws || window.ws.readyState !== WebSocket.OPEN) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
         updateStatus('Nicht verbunden', 'error');
         return false;
     }
@@ -99,17 +99,17 @@ function updateStatus(message, type = 'info') {
 
     const timestamp = new Date().toLocaleTimeString('de-DE');
 
-    let icon = 'info';
+    let prefix = '[info]';
     let color = '';
     if (type === 'success') {
-        icon = 'check_circle';
+        prefix = '[ok]';
         color = 'color: #4caf50;';
     } else if (type === 'error') {
-        icon = 'error';
+        prefix = '[err]';
         color = 'color: #f44336;';
     }
 
-    display.innerHTML = `<p class="small" style="${color}"><i style="font-size: 16px; vertical-align: middle; margin-right: 8px;">${icon}</i><strong>${timestamp}</strong>: ${message}</p>` + display.innerHTML;
+    display.innerHTML = `<p class="small" style="${color}"><strong>${prefix} ${timestamp}</strong>: ${message}</p>` + display.innerHTML;
 
     const messages = display.querySelectorAll('p');
     if (messages.length > 5) {

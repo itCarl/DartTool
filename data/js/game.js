@@ -7,13 +7,34 @@ import { sendMessage } from './network.js';
 import { playerManagerUpdates } from './players.js';
 import { gameModeFactory } from './gamemodes/GameModeFactory.js';
 import { Magnify } from './libs/magnify.js';
+import { getInputTypePreference } from './settings.js';
 
 let currentInputMode = 'dartboard'; // 'dartboard' or 'numpad'
 
 function initInputToggle() {
+    // Load saved input type preference from localStorage
+    const savedInputType = getInputTypePreference();
+    currentInputMode = savedInputType;
+
     const toggleBtn = byId('inputToggleBtn');
     const dartboardContainer = byId('dartboardContainer');
     const numpad = byId('numpad');
+    const infoMsg = byId('infoMsg');
+
+    // Apply the saved preference on initialization
+    if (dartboardContainer && numpad) {
+        if (currentInputMode === 'numpad') {
+            hide('dartboardContainer');
+            showGrid('numpad');
+            if (infoMsg) show('infoMsg');
+            if (toggleBtn) toggleBtn.innerHTML = '<i class=\"fas fa-bullseye\"></i> <span>Switch to Dartboard</span>';
+        } else {
+            dartboardContainer.style.display = 'block';
+            hide('numpad');
+            if (infoMsg) hide('infoMsg');
+            if (toggleBtn) toggleBtn.innerHTML = '<i class=\"fas fa-keyboard\"></i> <span>Switch to Numpad</span>';
+        }
+    }
 
     if (toggleBtn && dartboardContainer && numpad) {
         on(toggleBtn, 'click', () => {
@@ -22,12 +43,14 @@ function initInputToggle() {
                 currentInputMode = 'numpad';
                 hide('dartboardContainer');
                 showGrid('numpad');
+                if (infoMsg) show('infoMsg');
                 toggleBtn.innerHTML = '<i class=\"fas fa-bullseye\"></i> <span>Switch to Dartboard</span>';
             } else {
                 // Switch to dartboard
                 currentInputMode = 'dartboard';
                 dartboardContainer.style.display = 'block';
                 hide('numpad');
+                if (infoMsg) hide('infoMsg');
                 toggleBtn.innerHTML = '<i class=\"fas fa-keyboard\"></i> <span>Switch to Numpad</span>';
             }
         });
@@ -38,6 +61,82 @@ let currentGameMode = 'X01';
 let currentGameModePoints = 301;
 let latestGameSnapshot = null;
 let currentGameModeHandler = null;
+let lastDartboardPlayerId = null;
+let lastDartboardTurn = null;
+
+function updateDartboardHitsFromGameState(gameData, board) {
+    if (!board) {
+        board = document.querySelector('dartbot-dartboard');
+    }
+    if (!board) return;
+
+    const snapshot = latestGameSnapshot || gameData;
+    const currentPlayerId = snapshot?.currentPlayerId;
+    const currentTurn = snapshot?.turn;
+
+    // If player or turn changed, clear and repaint hits
+    if (currentPlayerId !== lastDartboardPlayerId || currentTurn !== lastDartboardTurn) {
+        lastDartboardPlayerId = currentPlayerId;
+        lastDartboardTurn = currentTurn;
+
+        board.hits = [];
+
+        if (!currentPlayerId || !snapshot?.players) return;
+
+        const player = snapshot.players.find(p => p.id === currentPlayerId);
+        if (!player || !player.throws) return;
+
+        // Extract throws for current turn
+        let throwsToDisplay = [];
+        if (player.turns && player.turns.length > 0) {
+            const currentTurnObj = player.turns.find(t => t.turnNumber === currentTurn);
+            if (currentTurnObj) {
+                throwsToDisplay = currentTurnObj.throws || [];
+            }
+        } else if (Array.isArray(player.throws)) {
+            // Fallback to all throws if turns structure not available
+            throwsToDisplay = player.throws.slice(-3);
+        }
+
+        // Convert throws to hits on dartboard
+        board.hits = throwsToDisplay.map((throwData, idx) => {
+            // If throw already has polar coordinates, use them
+            if (throwData.angle !== undefined && throwData.radius !== undefined) {
+                return { angle: throwData.angle, radius: throwData.radius };
+            }
+
+            // Otherwise, calculate from field/value
+            const value = throwData.value ?? 20;
+            const field = throwData.field ?? 1;
+            const sectors = board?.board?.sectors || [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+
+            let sectorIndex = 0;
+            if (value === 25) {
+                sectorIndex = 0; // Bull is at position 0
+            } else {
+                sectorIndex = sectors.indexOf(value);
+                if (sectorIndex === -1) sectorIndex = 0;
+            }
+
+            const angleStep = (Math.PI * 2) / sectors.length;
+            const angle = sectorIndex * angleStep + angleStep / 2;
+
+            // Radius based on ring/field
+            let radius = 0.66; // Default single
+            if (value === 25) {
+                radius = field >= 2 ? 0.06 : 0.1; // Inner or outer bull
+            } else if (field === 3) {
+                radius = 0.5; // Triple ring
+            } else if (field === 2) {
+                radius = 0.82; // Double ring
+            }
+
+            // Add slight jitter to differentiate multiple throws
+            const jitter = (idx % 3) * 0.005;
+            return { angle: angle + jitter, radius: radius + jitter };
+        });
+    }
+}
 
 function showGameInfo() {
     hide('viewSetup');
@@ -241,37 +340,40 @@ function initGamePage(selectedPlayerList) {
     let dartboardMagnifier = null;
 
     // Handler for dartboard hits
-    board.addEventListener('dartboard-pointerup', e => {
-        console.log('Dartboard event:', e);
-        const { radius, angle } = e.detail.polar ?? null;
-        const { ring, sector } = e.detail ?? null;
+    if (board) {
+        board.addEventListener('dartboard-pointerup', e => {
+            console.log('Dartboard event:', e);
+            const { radius, angle } = e.detail.polar ?? null;
+            const { ring, sector } = e.detail ?? null;
 
-        const hit = { radius, angle };
-        board.hits = [...board.hits, hit];
+            const hit = { radius, angle };
+            board.hits = [...board.hits, hit];
 
-        let score = board.board.sectors[sector] ?? 0;
-        let multiplier = 0;
+            let score = board.board.sectors[sector] ?? 0;
+            let multiplier = 0;
 
-        if(ring <= 1) {
-            score = 25;
-        }
+            if(ring <= 1) {
+                score = 25;
+            }
 
-        else if(ring === 0 || ring === 5) {
-            multiplier = 2;
-        } else if(ring === 2 || ring === 4) {
-            multiplier = 1;
-        } else if(ring === 3) {
-            multiplier = 3;
-        }
+            else if(ring === 0 || ring === 5) {
+                multiplier = 2;
+            } else if(ring === 2 || ring === 4) {
+                multiplier = 1;
+            } else if(ring === 3) {
+                multiplier = 3;
+            }
 
-        console.log(score, multiplier);
+            console.log(score, multiplier);
 
-        sendMessage({
-            cmd: 'dartThrow',
-            score: score,
-            multiplier: multiplier
+            sendMessage({
+                cmd: 'dartThrow',
+                score: score,
+                multiplier: multiplier,
+                polar: { angle, radius }
+            });
         });
-    });
+    }
 
     const setupDartboardMagnifier = () => {
         if (dartboardMagnifier) return;
@@ -504,6 +606,7 @@ const gameUpdates = {
     populatePlayers,
     setLatestGameSnapshot: (snap) => { latestGameSnapshot = snap; },
     showGameInfo,
+    updateDartboardHitsFromGameState,
     showGameState: (state) => {
         // Exported to message handler
     },
@@ -521,6 +624,7 @@ export {
     selectGameMode,
     updateGameModeDisplay,
     initGamePage,
+    updateDartboardHitsFromGameState,
     exportGameAsJson,
     syncGameNow,
     startNewGame,

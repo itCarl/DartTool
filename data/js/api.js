@@ -9,15 +9,10 @@ export const API_ENDPOINTS = {
     // Device/System endpoints
     PING: '/ping',
     SETTINGS: '/api/settings',
+    AP_SETTINGS: '/api/ap_settings',
     REBOOT: '/api/reboot',
 
-    // Data sync endpoints
-    DATASYNC_CONFIG: '/api/datasync/config',
-    DATASYNC_SYNC: '/api/datasync/sync',
-    DATASYNC_QUEUE: '/api/datasync/queue',
 
-    // External service endpoints
-    EXTERNAL_CONFIG: '/api/external/config',
 };
 
 /**

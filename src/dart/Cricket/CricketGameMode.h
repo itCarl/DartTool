@@ -46,7 +46,7 @@ class CricketGameMode : public GameMode
         String getStatusString() override;
         DartGameStatus stringToStatus(String status) override;
 
-        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1) override;
+        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1, double angle = 0.0, double radius = 0.0) override;
         bool undoLastThrow() override;
 
         void serialize(JsonObject& obj) override;

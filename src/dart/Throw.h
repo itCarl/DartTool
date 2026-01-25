@@ -11,6 +11,8 @@ class Throw
         uint8_t value;
         uint8_t field;
         String ring;
+        double angle = 0.0;  // Polar coordinate: angle in radians
+        double radius = 0.0; // Polar coordinate: radius (0.0 to 1.0+)
 
     public:
         Throw()
@@ -51,6 +53,26 @@ class Throw
         void setRing(String ring)
         {
             this->ring = ring;
+        }
+
+        double getAngle() const
+        {
+            return this->angle;
+        }
+
+        void setAngle(double angle)
+        {
+            this->angle = angle;
+        }
+
+        double getRadius() const
+        {
+            return this->radius;
+        }
+
+        void setRadius(double radius)
+        {
+            this->radius = radius;
         }
 
         String toString() const

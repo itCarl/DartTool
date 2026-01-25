@@ -1,5 +1,5 @@
 // ============================================================================
-// SETTINGS, DATA SYNC, AND MODE MANAGEMENT
+// SETTINGS
 // ============================================================================
 
 import { byId, on, showStatus, formatUptime, isPage } from './utils.js';
@@ -8,9 +8,6 @@ import { apiFetchJson, apiPostJson, apiPost } from './api.js';
 
 const host = 'http://192.168.178.53';
 let dartThrowQueue = [];
-let dataSyncEnabled = false;
-let operationMode = 'display';
-let externalHost = '';
 
 async function loadSettings() {
     try {
@@ -31,6 +28,28 @@ async function loadSettings() {
     } catch (error) {
         console.error('Error loading settings:', error);
         showStatus('Fehler beim Laden der Einstellungen', 'error');
+    }
+}
+
+async function loadAPSettings() {
+    try {
+        const data = await apiFetchJson('AP_SETTINGS');
+
+        const apSsidEl = byId('apSsid');
+        const apPasswordEl = byId('apPassword');
+        const apChannelEl = byId('apChannel');
+        const apOpensEl = byId('apOpens');
+        const apHiddenEl = byId('apHidden');
+
+        if (apSsidEl) apSsidEl.value = data.apSsid || 'DartTool-AP';
+        if (apPasswordEl) apPasswordEl.value = data.apPassword || '';
+        if (apChannelEl) apChannelEl.value = data.apChannel || '1';
+        if (apOpensEl) apOpensEl.value = data.apOpens || 'noConnectionAfterBoot';
+        if (apHiddenEl) apHiddenEl.checked = data.apHidden || false;
+
+    } catch (error) {
+        console.error('Error loading AP settings:', error);
+        showStatus('Fehler beim Laden der AP-Einstellungen', 'error');
     }
 }
 
@@ -71,6 +90,46 @@ function loadSystemInfo() {
     });
 }
 
+async function saveAPSettings(e) {
+    e.preventDefault();
+
+    const apSsid = byId('apSsid')?.value;
+    const apPassword = byId('apPassword')?.value;
+    const apChannel = byId('apChannel')?.value;
+    const apOpens = byId('apOpens')?.value;
+    const apHidden = byId('apHidden')?.checked;
+
+    if (!apSsid?.trim()) {
+        showStatus('AP SSID ist erforderlich', 'error');
+        return;
+    }
+
+    if (apPassword && apPassword.length < 8) {
+        showStatus('AP Passwort muss mindestens 8 Zeichen lang sein', 'error');
+        return;
+    }
+
+    try {
+        const data = await apiPostJson('AP_SETTINGS', {
+            apSsid: apSsid,
+            apPassword: apPassword,
+            apChannel: apChannel,
+            apOpens: apOpens,
+            apHidden: apHidden
+        });
+
+        if (data.success) {
+            showStatus('AP-Einstellungen erfolgreich gespeichert', 'success');
+            setTimeout(loadAPSettings, 2000);
+        } else {
+            showStatus('Fehler beim Speichern: ' + (data.message || 'Unbekannter Fehler'), 'error');
+        }
+    } catch (error) {
+        console.error('Error saving AP settings:', error);
+        showStatus('Fehler beim Speichern der AP-Einstellungen: ' + error.message, 'error');
+    }
+}
+
 async function rebootDevice() {
     if (confirm('Gerät wirklich neu starten?')) {
         try {
@@ -89,222 +148,83 @@ async function rebootDevice() {
     }
 }
 
-async function loadDataSyncSettings() {
-    try {
-        const data = await apiFetchJson('DATASYNC_CONFIG');
+// ============================================================================
+// INPUT TYPE SETTINGS
+// ============================================================================
 
-        const endpointEl = byId('syncEndpoint');
-        const toggleEl = byId('dataSyncToggle');
+const INPUT_TYPE_STORAGE_KEY = 'dartToolInputType';
+const DEFAULT_INPUT_TYPE = 'dartboard';
 
-        if (endpointEl) endpointEl.value = data.endpoint || '';
-        if (toggleEl) toggleEl.checked = !!data.enabled;
-
-        updateDataSyncUI();
-        updateQueueStatus();
-    } catch (error) {
-        console.error('Error loading data sync settings:', error);
+function getInputTypePreference() {
+    const saved = localStorage.getItem(INPUT_TYPE_STORAGE_KEY);
+    if (saved === 'dartboard' || saved === 'numpad') {
+        return saved;
     }
+    return DEFAULT_INPUT_TYPE;
 }
 
-function updateDataSyncUI() {
-    const toggle = byId('dataSyncToggle')?.checked;
-    const statusDiv = byId('dataSyncStatus');
-    const syncNowBtn = byId('syncNowBtn');
-
-    if (toggle) {
-        if (statusDiv) statusDiv.style.display = 'block';
-        if (syncNowBtn) syncNowBtn.style.display = 'block';
-    } else {
-        if (statusDiv) statusDiv.style.display = 'none';
-        if (syncNowBtn) syncNowBtn.style.display = 'none';
+function setInputTypePreference(inputType) {
+    if (inputType === 'dartboard' || inputType === 'numpad') {
+        localStorage.setItem(INPUT_TYPE_STORAGE_KEY, inputType);
+        return true;
     }
+    return false;
 }
 
-async function saveDataSyncSettings() {
-    const endpoint = byId('syncEndpoint')?.value;
-    const enabled = byId('dataSyncToggle')?.checked;
-
-    if (enabled && !endpoint?.trim()) {
-        showStatus('Sync Endpoint ist erforderlich wenn aktiviert', 'error');
-        return;
-    }
-
+function loadInputTypeSettings() {
     try {
-        const data = await apiPostJson('DATASYNC_CONFIG', {
-            url: endpoint,
-            enabled: enabled
+        const savedType = getInputTypePreference();
+        const radios = document.querySelectorAll('input[name="inputType"]');
+        radios.forEach(radio => {
+            radio.checked = radio.value === savedType;
         });
-
-        if (data.success) {
-            dataSyncEnabled = enabled;
-            showStatus('Data Sync Einstellungen gespeichert', 'success');
-        } else {
-            showStatus('Fehler beim Speichern: ' + (data.message || 'Unbekannter Fehler'), 'error');
-        }
     } catch (error) {
-        console.error('Error saving data sync settings:', error);
-        showStatus('Fehler beim Speichern der Einstellungen: ' + error.message, 'error');
+        console.error('Error loading input type settings:', error);
     }
 }
 
-async function syncNow() {
-    try {
-        const data = await apiPostJson('DATASYNC_SYNC');
+async function saveInputTypeSettings(e) {
+    e.preventDefault();
 
-        if (data.success) {
-            showStatus(`${data.count} Datsätze synchronisiert`, 'success');
-            updateQueueStatus();
-        } else {
-            showStatus('Fehler bei der Synchronisation: ' + (data.message || 'Unbekannter Fehler'), 'error');
-        }
-    } catch (error) {
-        console.error('Error syncing:', error);
-        showStatus('Fehler bei der Synchronisation: ' + error.message, 'error');
-    }
-}
-
-async function updateQueueStatus() {
-    try {
-        const data = await apiFetchJson('DATASYNC_QUEUE');
-        dartThrowQueue = data.queue || [];
-
-        const queueInfo = byId('queueInfo');
-        if (queueInfo) {
-            if (dartThrowQueue.length === 0) {
-                queueInfo.textContent = 'Warteschlange ist leer';
-            } else {
-                queueInfo.textContent = `${dartThrowQueue.length} Einträge in der Warteschlange`;
-            }
-        }
-    } catch (error) {
-        console.error('Error updating queue status:', error);
-    }
-}
-
-function loadOperationMode() {
-    sendMessage({
-        cmd: 'getModeConfig'
-    });
-}
-
-function updateModeUI() {
-    const displayModeSettings = byId('displayModeSettings');
-    const dataSyncSection = byId('dataSyncSection');
-    const modeDisplay = byId('modeDisplay')?.checked;
-
-    if (modeDisplay) {
-        if (displayModeSettings) displayModeSettings.style.display = 'block';
-        if (dataSyncSection) dataSyncSection.style.display = 'none';
-        operationMode = 'display';
-    } else {
-        if (displayModeSettings) displayModeSettings.style.display = 'none';
-        if (dataSyncSection) dataSyncSection.style.display = 'block';
-        operationMode = 'scoreboard';
-    }
-}
-
-function saveOperationMode() {
-    const mode = byId('modeDisplay')?.checked ? 'display' : 'scoreboard';
-    const gameEndpoint = byId('gameEndpoint')?.value;
-    const refreshInterval = parseInt(byId('refreshInterval')?.value) || 5;
-
-    if (mode === 'display' && !gameEndpoint?.trim()) {
-        showStatus('Game Endpoint ist erforderlich im Display Modus', 'error');
+    const selectedRadio = document.querySelector('input[name="inputType"]:checked');
+    if (!selectedRadio) {
+        showStatus('Bitte wählen Sie einen Input-Typ aus', 'error');
         return;
     }
 
-    sendMessage({
-        cmd: 'setModeConfig',
-        mode: mode,
-        serverApiUrl: gameEndpoint,
-        refreshInterval: refreshInterval
-    });
-}
-
-async function loadExternalHostSettings() {
+    const inputType = selectedRadio.value;
     try {
-        const data = await apiFetchJson('EXTERNAL_CONFIG');
-        externalHost = data.host || '';
-        const externalHostEl = byId('externalHost');
-        if (externalHostEl) externalHostEl.value = externalHost;
-
-        const tokenEl = byId('externalToken');
-        if (tokenEl) {
-            tokenEl.value = '';
-            if (data.hasToken) {
-                tokenEl.placeholder = '•••••• (gespeichert)';
-            }
-        }
-
-    } catch (error) {
-        console.error('Error loading external host settings:', error);
-    }
-}
-
-async function saveExternalHostSettings() {
-    const host_value = byId('externalHost')?.value?.trim();
-    const token_value = byId('externalToken')?.value?.trim();
-
-    if (!host_value) {
-        showStatus('Externer Host ist erforderlich', 'error');
-        return;
-    }
-
-    try {
-        const data = await apiPostJson('EXTERNAL_CONFIG',
-            Object.assign({ host: host_value }, (token_value ? { token: token_value } : {}))
-        );
-
-        if (data.success) {
-            externalHost = host_value;
-            showStatus('Externer Host gespeichert', 'success');
+        if (setInputTypePreference(inputType)) {
+            showStatus('Input-Einstellungen erfolgreich gespeichert', 'success');
         } else {
-            showStatus('Fehler beim Speichern: ' + (data.message || 'Unbekannter Fehler'), 'error');
+            showStatus('Ungültiger Input-Typ', 'error');
         }
     } catch (error) {
-        console.error('Error saving external host settings:', error);
-        showStatus('Fehler beim Speichern des Hosts: ' + error.message, 'error');
+        console.error('Error saving input type settings:', error);
+        showStatus('Fehler beim Speichern der Input-Einstellungen: ' + error.message, 'error');
     }
 }
+
+
 
 function initSettingsPage() {
     loadSettings();
-    loadDataSyncSettings();
-    loadExternalHostSettings();
-
-    const saveExternalHostBtn = byId('saveExternalHostBtn');
-    if (saveExternalHostBtn) {
-        on(saveExternalHostBtn, 'click', saveExternalHostSettings);
-    }
+    loadAPSettings();
+    loadInputTypeSettings();
 
     const form = byId('wifiSettingsForm');
     if (form) {
         on(form, 'submit', saveSettings);
     }
 
-    const modeScoreboardRadio = byId('modeScoreboard');
-    const modeDisplayRadio = byId('modeDisplay');
-    if (modeScoreboardRadio) on(modeScoreboardRadio, 'change', updateModeUI);
-    if (modeDisplayRadio) on(modeDisplayRadio, 'change', updateModeUI);
-
-    const saveModeSettingsBtn = byId('saveModeSettingsBtn');
-    if (saveModeSettingsBtn) {
-        on(saveModeSettingsBtn, 'click', saveOperationMode);
+    const apForm = byId('apSettingsForm');
+    if (apForm) {
+        on(apForm, 'submit', saveAPSettings);
     }
 
-    const dataSyncToggle = byId('dataSyncToggle');
-    if (dataSyncToggle) {
-        on(dataSyncToggle, 'change', updateDataSyncUI);
-    }
-
-    const saveSyncSettingsBtn = byId('saveSyncSettingsBtn');
-    if (saveSyncSettingsBtn) {
-        on(saveSyncSettingsBtn, 'click', saveDataSyncSettings);
-    }
-
-    const syncNowBtn = byId('syncNowBtn');
-    if (syncNowBtn) {
-        on(syncNowBtn, 'click', syncNow);
+    const inputTypeForm = byId('inputTypeSettingsForm');
+    if (inputTypeForm) {
+        on(inputTypeForm, 'submit', saveInputTypeSettings);
     }
 
     const rebootBtn = byId('rebootBtn');
@@ -318,27 +238,18 @@ function initSettingsPage() {
 export {
     host,
     dartThrowQueue,
-    dataSyncEnabled,
-    operationMode,
-    externalHost,
     loadSettings,
     saveSettings,
+    loadAPSettings,
+    saveAPSettings,
     loadSystemInfo,
     rebootDevice,
-    loadDataSyncSettings,
-    updateDataSyncUI,
-    saveDataSyncSettings,
-    syncNow,
-    updateQueueStatus,
-    loadOperationMode,
-    updateModeUI,
-    saveOperationMode,
-    loadExternalHostSettings,
-    saveExternalHostSettings,
+    getInputTypePreference,
+    setInputTypePreference,
+    loadInputTypeSettings,
+    saveInputTypeSettings,
     initSettingsPage
 };
 
-// Make syncNow globally available
-window.syncNow = syncNow;
-window.loadOperationMode = loadOperationMode;
+// Make functions globally available
 window.loadSystemInfo = loadSystemInfo;

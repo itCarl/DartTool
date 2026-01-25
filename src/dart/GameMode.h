@@ -78,7 +78,7 @@ class GameMode
 
         // Pure virtual methods - each game mode implements its own logic
         // Process a dart throw according to game mode rules
-        virtual DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1) = 0;
+        virtual DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1, double angle = 0.0, double radius = 0.0) = 0;
 
         // Game status management (must be implemented by each game mode)
         virtual DartGameStatus getStatus() = 0;

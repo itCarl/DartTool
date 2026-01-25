@@ -73,7 +73,7 @@ class DartGame
         uint16_t getPlayerRemainingPoints(const String& playerId);
 
         // Process a dart throw - delegated to active game mode
-        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1);
+        DartThrowResult processDartThrow(uint8_t value, uint8_t multiplier = 1, double angle = 0.0, double radius = 0.0);
 
         // Display game-specific info on LCD
         void displayGameInfo();

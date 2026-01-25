@@ -1,122 +1,177 @@
 // ============================================================================
-// THEME MANAGEMENT - Tailwind Dark Mode Toggle
+// THEME MANAGEMENT - Light/Dark/System Toggle
 // ============================================================================
 
-/**
- * Initialize dark mode based on user preference or system setting
- * Checks localStorage first, then falls back to system preference
- */
-function initDarkMode() {
-    const darkMode = localStorage.getItem('darkMode');
+const STORAGE_KEY = 'themePreference';
+let initialized = false;
 
-    if (darkMode === 'enabled') {
-        enableDarkMode();
-    } else if (darkMode === 'disabled') {
-        disableDarkMode();
-    } else {
-        // No preference set, use system preference
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            enableDarkMode();
-        } else {
-            disableDarkMode();
-        }
+const ThemeOption = {
+    LIGHT: 'light',
+    DARK: 'dark',
+    SYSTEM: 'system'
+};
+
+function migrateLegacyPreference() {
+    const legacy = localStorage.getItem('darkMode');
+    if (legacy === 'enabled' || legacy === 'disabled') {
+        const mapped = legacy === 'enabled' ? ThemeOption.DARK : ThemeOption.LIGHT;
+        localStorage.setItem(STORAGE_KEY, mapped);
+        localStorage.removeItem('darkMode');
     }
 }
 
-/**
- * Toggle dark mode on/off
- */
+function getThemePreference() {
+    migrateLegacyPreference();
+    const pref = localStorage.getItem(STORAGE_KEY);
+    if (pref === ThemeOption.LIGHT || pref === ThemeOption.DARK || pref === ThemeOption.SYSTEM) {
+        return pref;
+    }
+    return ThemeOption.SYSTEM;
+}
+
+function resolveTheme(pref) {
+    if (pref === ThemeOption.LIGHT) return ThemeOption.LIGHT;
+    if (pref === ThemeOption.DARK) return ThemeOption.DARK;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? ThemeOption.DARK : ThemeOption.LIGHT;
+}
+
+function applyTheme(pref) {
+    const resolved = resolveTheme(pref);
+    document.documentElement.classList.toggle('dark', resolved === ThemeOption.DARK);
+    updateDarkModeIcon(resolved === ThemeOption.DARK);
+    syncThemeControls(pref, resolved);
+}
+
+function setThemePreference(pref) {
+    const normalized = [ThemeOption.LIGHT, ThemeOption.DARK, ThemeOption.SYSTEM].includes(pref)
+        ? pref
+        : ThemeOption.SYSTEM;
+    localStorage.setItem(STORAGE_KEY, normalized);
+    applyTheme(normalized);
+}
+
 function toggleDarkMode() {
-    const isDark = document.documentElement.classList.contains('dark');
-
-    if (isDark) {
-        disableDarkMode();
-    } else {
-        enableDarkMode();
-    }
+    const pref = getThemePreference();
+    const resolved = resolveTheme(pref);
+    const next = resolved === ThemeOption.DARK ? ThemeOption.LIGHT : ThemeOption.DARK;
+    setThemePreference(next);
 }
 
-/**
- * Enable dark mode
- */
-function enableDarkMode() {
-    document.documentElement.classList.add('dark');
-    localStorage.setItem('darkMode', 'enabled');
-    updateDarkModeIcon(true);
-}
-
-/**
- * Disable dark mode
- */
-function disableDarkMode() {
-    document.documentElement.classList.remove('dark');
-    localStorage.setItem('darkMode', 'disabled');
-    updateDarkModeIcon(false);
-}
-
-/**
- * Update the icon in toggle buttons
- * @param {boolean} isDark - Whether dark mode is enabled
- */
 function updateDarkModeIcon(isDark) {
     document.querySelectorAll('[data-toggle-dark-mode]').forEach(button => {
         const icon = button.querySelector('i');
         if (icon) {
-            // Moon icon for light mode (click to enable dark)
-            // Sun icon for dark mode (click to disable dark)
             icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
         }
     });
 }
 
-/**
- * Setup dark mode toggle button event listeners
- */
+function syncThemeControls(pref, resolved) {
+    document.querySelectorAll('input[name="themePreference"]').forEach(input => {
+        input.checked = input.value === pref;
+    });
+
+    const isDarkResolved = resolved === ThemeOption.DARK;
+
+    const toggle = document.getElementById('themeToggle');
+    const knob = document.getElementById('toggleIcon');
+    const sunIcon = document.getElementById('sunIcon');
+    const moonIcon = document.getElementById('moonIcon');
+
+    if (toggle) {
+        toggle.classList.toggle('bg-gray-300', !isDarkResolved);
+        toggle.classList.toggle('bg-gray-600', isDarkResolved);
+        toggle.setAttribute('aria-pressed', isDarkResolved ? 'true' : 'false');
+    }
+
+    if (knob) {
+        knob.classList.toggle('translate-x-0', !isDarkResolved);
+        knob.classList.toggle('translate-x-6', isDarkResolved);
+    }
+
+    if (sunIcon) sunIcon.classList.toggle('hidden', isDarkResolved);
+    if (moonIcon) moonIcon.classList.toggle('hidden', !isDarkResolved);
+
+    const autoBtn = document.querySelector('[data-theme-auto]');
+    if (autoBtn) {
+        const isSystem = pref === ThemeOption.SYSTEM;
+        autoBtn.classList.toggle('bg-gray-900', isSystem);
+        autoBtn.classList.toggle('text-white', isSystem);
+        autoBtn.classList.toggle('border-gray-500', isSystem);
+        autoBtn.setAttribute('aria-pressed', isSystem ? 'true' : 'false');
+    }
+
+    const statusEl = document.querySelector('[data-theme-status]');
+    if (statusEl) {
+        let label = 'System (folgt deinem Gerät)';
+        if (pref === ThemeOption.LIGHT) label = 'Hell';
+        if (pref === ThemeOption.DARK) label = 'Dunkel';
+        const activeLabel = resolved === ThemeOption.DARK ? 'Dunkel' : 'Hell';
+        statusEl.textContent = `Aktuelle Einstellung: ${label} — aktive Darstellung: ${activeLabel}`;
+    }
+}
+
 function setupDarkModeToggles() {
     document.querySelectorAll('[data-toggle-dark-mode]').forEach(button => {
+        if (button.dataset.themeBound) return;
+        button.dataset.themeBound = 'true';
         button.addEventListener('click', toggleDarkMode);
     });
 }
 
-/**
- * Listen for system theme changes
- */
-function watchSystemTheme() {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    mediaQuery.addEventListener('change', (e) => {
-        // Only auto-switch if user hasn't set a preference
-        const darkMode = localStorage.getItem('darkMode');
-        if (!darkMode) {
-            if (e.matches) {
-                enableDarkMode();
-            } else {
-                disableDarkMode();
-            }
-        }
+function setupThemeOptions() {
+    document.querySelectorAll('input[name="themePreference"]').forEach(input => {
+        if (input.dataset.themeBound) return;
+        input.dataset.themeBound = 'true';
+        input.addEventListener('change', () => setThemePreference(input.value));
     });
+
+    const toggle = document.getElementById('themeToggle');
+    if (toggle && !toggle.dataset.themeBound) {
+        toggle.dataset.themeBound = 'true';
+        toggle.addEventListener('click', toggleDarkMode);
+    }
+
+    const autoBtn = document.querySelector('[data-theme-auto]');
+    if (autoBtn && !autoBtn.dataset.themeBound) {
+        autoBtn.dataset.themeBound = 'true';
+        autoBtn.addEventListener('click', () => setThemePreference(ThemeOption.SYSTEM));
+    }
 }
 
-// Initialize on DOM load
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initDarkMode();
-        setupDarkModeToggles();
-        watchSystemTheme();
-    });
-} else {
-    // DOM already loaded
-    initDarkMode();
+function watchSystemTheme() {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = e => {
+        const pref = getThemePreference();
+        if (pref === ThemeOption.SYSTEM) {
+            const resolved = e.matches ? ThemeOption.DARK : ThemeOption.LIGHT;
+            document.documentElement.classList.toggle('dark', resolved === ThemeOption.DARK);
+            updateDarkModeIcon(resolved === ThemeOption.DARK);
+            syncThemeControls(pref, resolved);
+        }
+    };
+
+    // Avoid double listeners
+    if (!mediaQuery._themeBound) {
+        mediaQuery.addEventListener('change', handler);
+        mediaQuery._themeBound = true;
+    }
+}
+
+function initTheme() {
+    const pref = getThemePreference();
+    applyTheme(pref);
+
+    if (initialized) return;
+    initialized = true;
     setupDarkModeToggles();
+    setupThemeOptions();
     watchSystemTheme();
 }
 
-// Export functions for use in other modules
 export {
-    initDarkMode,
-    toggleDarkMode,
-    enableDarkMode,
-    disableDarkMode,
-    setupDarkModeToggles,
-    watchSystemTheme
+    initTheme,
+    setThemePreference,
+    getThemePreference,
+    toggleDarkMode
 };
