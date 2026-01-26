@@ -342,7 +342,7 @@ function initGamePage(selectedPlayerList) {
     // Handler for dartboard hits
     if (board) {
         board.addEventListener('dartboard-pointerup', e => {
-            console.log('Dartboard event:', e);
+            // console.log('Dartboard event:', e);
             const { radius, angle } = e.detail.polar ?? null;
             const { ring, sector } = e.detail ?? null;
 
@@ -363,8 +363,6 @@ function initGamePage(selectedPlayerList) {
             } else if(ring === 3) {
                 multiplier = 3;
             }
-
-            console.log(score, multiplier);
 
             sendMessage({
                 cmd: 'dartThrow',
@@ -395,8 +393,6 @@ function initGamePage(selectedPlayerList) {
         });
 
         dartboardMagnifier.show();
-
-        console.log('Dartboard event listeners attached');
     };
 
     // Initialize magnifying glass zoom feature for dartboard

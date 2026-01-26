@@ -1,4 +1,5 @@
 #include "DartTool.h"
+#include "display_controller.h"
 
 void initLCD()
 {
@@ -271,6 +272,139 @@ void drawBigNumber(uint16_t number, uint8_t col, uint8_t row) {
   }
 }
 
+String padCenterRow(const String& text)
+{
+    String trimmed = truncateWithEllipsis(text, 20);
+    uint8_t paddingLeft = trimmed.length() < 20 ? (20 - trimmed.length()) / 2 : 0;
+
+    String row = "";
+    for (uint8_t i = 0; i < paddingLeft; i++) {
+        row += ' ';
+    }
+    row += trimmed;
+    while (row.length() < 20) {
+        row += ' ';
+    }
+    return row;
+}
+
+String padSpaceBetween(String left, String right)
+{
+    right = truncateWithEllipsis(right, 20);
+    if (left.length() + right.length() >= 20) {
+        uint8_t allowedLeft = right.length() >= 19 ? 1 : 20 - right.length() - 1;
+        left = truncateWithEllipsis(left, allowedLeft);
+    }
+
+    uint8_t spacer = 20 - (left.length() + right.length());
+    if (spacer == 0) spacer = 1;
+
+    String row = left;
+    for (uint8_t i = 0; i < spacer; i++) {
+        row += ' ';
+    }
+    row += right;
+    if (row.length() > 20) {
+        row = row.substring(0, 20);
+    }
+    return row;
+}
+
+void buildPlayerSelectionRows(const std::vector<Player>& players, String& row2, String& row3)
+{
+    auto makeRow = [](const String& leftSrc, const String& rightSrc) {
+        String left = leftSrc;
+        String right = rightSrc;
+
+        while (true) {
+            uint8_t spacer = (left.length() && right.length()) ? 1 : 0;
+            if (left.length() + right.length() + spacer <= 20) break;
+            if (left.length() >= right.length() && left.length() > 1) {
+                left.remove(left.length() - 1);
+            } else if (right.length() > 1) {
+                right.remove(right.length() - 1);
+            } else {
+                break;
+            }
+        }
+
+        auto addEllipsisIfTrimmed = [](const String& original, String current) {
+            if (original == current || current.length() < 2) return current;
+            current.remove(current.length() - 1);
+            current += '.';
+            return current;
+        };
+
+        left = addEllipsisIfTrimmed(leftSrc, left);
+        right = addEllipsisIfTrimmed(rightSrc, right);
+
+        uint8_t spacer = (left.length() && right.length()) ? 1 : 0;
+        if (left.length() + right.length() + spacer > 20 && left.length() > 1) {
+            uint8_t allowed = 20 - right.length() - spacer;
+            if (allowed < 1) allowed = 1;
+            left = truncateWithEllipsis(left, allowed);
+        }
+
+        return padSpaceBetween(left, right);
+    };
+
+    String p1 = players.size() >= 1 ? players[0].getName() : "";
+    String p2 = players.size() >= 2 ? players[1].getName() : "";
+    String p3 = players.size() >= 3 ? players[2].getName() : "";
+    String p4 = players.size() >= 4 ? players[3].getName() : "";
+
+    row2 = makeRow(p1, p2);
+    row3 = makeRow(p3, p4);
+}
+
+DisplayTransitionOptions defaultTransition(uint16_t delayMs = 120)
+{
+    DisplayTransitionOptions opts;
+    opts.type = DisplayTransitionType::DelayOnly;
+    opts.delayMs = delayMs;
+    return opts;
+}
+
+/*
+ * Public display formatting helpers
+ */
+String centerRow(const String& text)
+{
+    String trimmed = truncateWithEllipsis(text, 20);
+    uint8_t paddingLeft = trimmed.length() < 20 ? (20 - trimmed.length()) / 2 : 0;
+    String row = "";
+    for (uint8_t i = 0; i < paddingLeft; i++) {
+        row += ' ';
+    }
+    row += trimmed;
+    while (row.length() < 20) {
+        row += ' ';
+    }
+    return row;
+}
+
+String spaceBetweenRow(String left, String right)
+{
+    right = truncateWithEllipsis(right, 6);
+    if (left.length() + right.length() >= 20) {
+        uint8_t allowedLeft = right.length() >= 19 ? 1 : 20 - right.length() - 1;
+        left = truncateWithEllipsis(left, allowedLeft);
+    }
+
+    uint8_t spaces = 20 - (left.length() + right.length());
+    if (spaces == 0) spaces = 1;
+
+    String row = left;
+    for (uint8_t i = 0; i < spaces; i++) {
+        row += ' ';
+    }
+    row += right;
+    if (row.length() > 20) {
+        row = row.substring(0, 20);
+    }
+    return row;
+}
+
 /*
  * Display game state layout on 20x4 LCD
  *
@@ -282,50 +416,61 @@ void drawBigNumber(uint16_t number, uint8_t col, uint8_t row) {
  */
 void displayGameState(DartGame& game)
 {
-    LCD.clear();
+    DisplayState state;
+    state.clear();
 
-    if (game.getStatus() == DartGameStatus::unknown || game.getStatus() == DartGameStatus::initialised) {
-        printCentered("Ready to play!", 0);
+    DartGameStatus status = game.getStatus();
+
+    if (status == DartGameStatus::unknown || status == DartGameStatus::initialised) {
+        state.rows[0] = padCenterRow("Ready to play!");
         String gameMode = game.getGameModeName();
         if (gameMode == "X01") {
             gameMode = String(game.getGamePoints()) + " Points";
         }
+        state.rows[1] = padCenterRow(gameMode);
 
-        printCentered(gameMode, 1);
-
-        // Rows 2-3: Display selected players in order
         if (game.getPlayerCount() > 0) {
-            displaySelectedPlayers(game);
+            std::vector<Player> players;
+            size_t playerLimit = game.getPlayerCount() < 4 ? game.getPlayerCount() : 4;
+            players.reserve(playerLimit);
+            for (size_t i = 0; i < playerLimit; i++) {
+                players.push_back(game.getPlayerAt(i));
+            }
+            buildPlayerSelectionRows(players, state.rows[2], state.rows[3]);
         } else {
-            clearRow(2);
-            clearRow(3);
-            printCentered("Select players", 2);
+            state.rows[2] = padCenterRow("Select players");
+            state.rows[3] = padCenterRow("");
         }
+
+        display.setState(state, defaultTransition());
         return;
     }
 
-    if (game.getStatus() == DartGameStatus::playerWon) {
-        printCentered("Game Over!", 1);
-        Player& winner = game.getPlayerAt(0);
-        // Find actual winner
+    if (status == DartGameStatus::playerWon) {
+        state.rows[0] = padCenterRow("Game Over!");
+        Player* winner = nullptr;
         for (size_t i = 0; i < game.getPlayerCount(); i++) {
             if (game.getPlayerAt(i).hasWon()) {
-                winner = game.getPlayerAt(i);
+                winner = &game.getPlayerAt(i);
                 break;
             }
         }
-        printCentered(winner.getName() + " wins!", 2);
+
+        if (winner) {
+            state.rows[1] = padCenterRow(winner->getName() + " wins!");
+        } else {
+            state.rows[1] = padCenterRow("Winner unknown");
+        }
+
+        display.setState(state, defaultTransition(150));
         return;
     }
 
     if (game.getPlayerCount() == 0) {
-        printCentered("No players", 1);
+        state.rows[1] = padCenterRow("No players");
+        display.setState(state, defaultTransition());
         return;
     }
-
-    // Get current player
-    Player& currentPlayer = game.getPlayerAt(game.getCurrentPlayerIndex());
-
 
     game.displayGameInfo();
 }

@@ -38,7 +38,6 @@ export class X01GameMode extends GameMode {
             // Assume 38vh is reasonable for the player list area
             availableVh = Math.min(50, (window.innerHeight * 0.39) / window.innerHeight * 100);
         }
-        console.log(availableVh);
 
         let cardHeight;
         if (playerCount <= 2) {

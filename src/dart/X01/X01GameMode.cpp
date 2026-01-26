@@ -1,5 +1,6 @@
 #include "X01GameMode.h"
 #include "../../DartTool.h"
+#include "../../display_controller.h"
 
 X01GameMode::X01GameMode()
 {
@@ -405,46 +406,43 @@ void X01GameMode::displayGameInfo()
     if (players.empty()) return;
 
     Player& currentPlayer = getCurrentPlayer();
+    static int8_t lastPlayerIndex = -1;
+    bool playerChanged = (lastPlayerIndex != static_cast<int8_t>(currentPlayerIndex));
     uint16_t currentPlayerPointsLeft = points - currentPlayer.getPoints();
     std::vector<Throw> currentTurnThrows = currentPlayer.getThrowsFromTurn(turn);
 
-    // Row 0: Current player name and remaining points
-    String playerName = truncateWithEllipsis(currentPlayer.getName(), 13);
-    String pointsLeft = String(currentPlayerPointsLeft);
-    printSpaceBetween(playerName, pointsLeft, 0);
+    DisplayState state;
+    state.clear();
 
-    // Row 1: Current turn throws
-    clearRow(1);
-    if (currentTurnThrows.size() > 0) {
+    String playerName = truncateWithEllipsis(currentPlayer.getName(), 13);
+    state.rows[0] = spaceBetweenRow(playerName, String(currentPlayerPointsLeft));
+
+    if (!currentTurnThrows.empty()) {
         String throwsStr = "";
         for (size_t i = 0; i < currentTurnThrows.size(); i++) {
             if (i > 0) throwsStr += " | ";
             throwsStr += currentTurnThrows[i].toString();
         }
-        printCentered(throwsStr, 1);
+        state.rows[1] = centerRow(truncateWithEllipsis(throwsStr, 20));
     } else {
-        printCentered("--", 1);
+        state.rows[1] = centerRow("--");
     }
 
-    // Row 2: Next player name and remaining points
-    clearRow(2);
     if (players.size() > 1) {
         uint8_t nextPlayerIndex = (currentPlayerIndex + 1) % players.size();
         Player& nextPlayer = players[nextPlayerIndex];
         uint16_t nextPlayerPointsLeft = points - nextPlayer.getPoints();
         String nextPlayerName = truncateWithEllipsis(nextPlayer.getName(), 13);
-        String nextPointsLeft = String(nextPlayerPointsLeft);
-        printSpaceBetween(nextPlayerName, nextPointsLeft, 2);
+        state.rows[2] = spaceBetweenRow(nextPlayerName, String(nextPlayerPointsLeft));
     }
 
-    // Row 3: Player after next and remaining points
-    clearRow(3);
     if (players.size() > 2) {
         uint8_t nextNextPlayerIndex = (currentPlayerIndex + 2) % players.size();
         Player& nextNextPlayer = players[nextNextPlayerIndex];
         uint16_t nextNextPlayerPointsLeft = points - nextNextPlayer.getPoints();
         String nextNextPlayerName = truncateWithEllipsis(nextNextPlayer.getName(), 13);
-        String nextNextPointsLeft = String(nextNextPlayerPointsLeft);
-        printSpaceBetween(nextNextPlayerName, nextNextPointsLeft, 3);
+        state.rows[3] = spaceBetweenRow(nextNextPlayerName, String(nextNextPlayerPointsLeft));
     }
+
+    display.setState(state);
 }

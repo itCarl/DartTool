@@ -1,5 +1,6 @@
 #define DEFINE_GLOBAL_VARS
 #include "DartTool.h"
+#include "display_controller.h"
 
 DartTool::DartTool()
 {
@@ -61,7 +62,7 @@ void DartTool::setup()
 
 void DartTool::loop()
 {
-    delay(500);
+    display.update();
     yield();
     if(apActive) dnsServer.processNextRequest();
     ElegantOTA.loop();
@@ -91,6 +92,8 @@ void DartTool::loop()
         lastDisplayedMode = currentMode;
         lastDisplayedPoints = currentPoints;
     }
+
+    display.update();
 
     // Poll external service for game state updates
     // pollExternalGameState();

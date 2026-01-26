@@ -3,6 +3,7 @@
 #define FCNDeclare_h
 
 #include "DartTool.h"
+#include "display_controller.h"
 
 class DartGame;
 class Player;
@@ -26,6 +27,8 @@ void drawBigNumber(uint16_t number, uint8_t col, uint8_t row);
 void displayGameState(DartGame& game);
 void displaySelectedPlayers(const std::vector<Player>& players);
 void displaySelectedPlayers(DartGame& game);
+String centerRow(const String& text);
+String spaceBetweenRow(String left, String right);
 
 // storage.cpp
 void initStorage();
