@@ -51,6 +51,12 @@ class X01GameMode : public GameMode
         // Game mode identification
         String getGameModeName() override { return "X01"; }
         String getGameModeDescription() override { return "Classic X01 - Reduce your score to exactly zero"; }
+
+        // X01 is available for all game types
+        GameModeAvailability getAvailability() override {
+            return GameModeAvailability(true, true, true); // standard, team, tournament
+        }
+
         void displayGameInfo() override;
 };
 

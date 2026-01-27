@@ -12,8 +12,6 @@ const maxReconnectDelay = 30000;
 let reconnectTimeoutId = null;
 
 let deviceReady = false;
-const deviceCheckInterval = 2000;
-let deviceCheckTimeoutId = null;
 
 function initWebSocket() {
     if (ws && ws.readyState !== WebSocket.CLOSED) {
@@ -38,6 +36,8 @@ function initWebSocket() {
 function onOpen(event) {
     console.log('Connection opened');
     reconnectAttempts = 0;
+    deviceReady = true;
+    showMainContent();
 
     if(isPage('/data/index.html', '/', '/index')) {
         sendMessage({ cmd: "getAllPlayer" });
@@ -60,6 +60,8 @@ function onClose(event) {
     if(isPage('/data/debug.html', '/debug')) {
         window.updateStatus?.('Verbindung getrennt - Reconnect...', 'error');
     }
+    
+    deviceReady = false;
     hideMainContent();
 
     // Only reconnect if the close was unexpected (not clean)
@@ -77,14 +79,18 @@ function onError(event) {
 }
 
 function scheduleReconnect() {
-    // Clear any existing reconnect timeout
+    // Clear any existing reconnect timeout to prevent duplicate attempts
     if (reconnectTimeoutId) {
         clearTimeout(reconnectTimeoutId);
+        reconnectTimeoutId = null;
     }
 
     reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), maxReconnectDelay);
     console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
+    
+    updateDeviceStatus('Verbindung getrennt', `Erneuter Verbindungsversuch in ${Math.round(delay/1000)}s... (Versuch ${reconnectAttempts})`);
+    
     reconnectTimeoutId = setTimeout(initWebSocket, delay);
 }
 
@@ -113,22 +119,9 @@ function sendMessage(msg) {
 function checkDeviceAvailability() {
     console.log('Checking device availability...');
     updateDeviceStatus('Daten werden abgerufen...', 'Bitte warten Sie während das Gerät initialisiert wird.');
-
-    apiGet('PING', { timeout: 5000 })
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        })
-        .then(async () => {
-            console.log('Device is available');
-            deviceReady = true;
-            initWebSocket();
-            await sleep(500);
-            showMainContent();
-        })
-        .catch((error) => {
-            console.warn('Device not available, retrying...', error);
-            deviceCheckTimeoutId = setTimeout(checkDeviceAvailability, deviceCheckInterval);
-        });
+    
+    // Simply initialize the websocket - it will handle its own reconnection logic
+    initWebSocket();
 }
 
 function updateDeviceStatus(title, message) {
@@ -165,11 +158,6 @@ function hideMainContent() {
 
     if(mainContent) {
         mainContent.style.display = 'none';
-    }
-
-    deviceReady = false;
-    if(!deviceCheckTimeoutId) {
-        checkDeviceAvailability();
     }
 }
 

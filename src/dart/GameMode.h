@@ -5,9 +5,31 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <vector>
+#include <map>
 #include "Player.h"
 #include "Throw.h"
 #include "DartGameStatus.h"
+
+// Game type enum for Standard, Team, Tournament modes
+enum class GameType : uint8_t {
+    STANDARD = 0,
+    TEAM = 1,
+    TOURNAMENT = 2
+};
+
+// Structure to hold game mode availability flags
+struct GameModeAvailability {
+    bool standard;
+    bool team;
+    bool tournament;
+
+    // Default constructor
+    GameModeAvailability() : standard(true), team(false), tournament(false) {}
+
+    // Parameterized constructor
+    GameModeAvailability(bool std, bool tm, bool tourn)
+        : standard(std), team(tm), tournament(tourn) {}
+};
 
 // Result structure for dart throw processing
 struct DartThrowResult {
@@ -38,6 +60,8 @@ class GameMode
         uint16_t points = 301;           // starting points
         uint8_t turn = 0;                // current round/turn number
         std::vector<Player> players;
+        GameType gameType = GameType::STANDARD;  // Current game type
+        std::map<String, uint16_t> teamPoints;  // Team ID -> shared points (for team mode)
         static const uint8_t THROWS_PER_TURN = 3;
 
         void resetPlayersState();
@@ -65,6 +89,8 @@ class GameMode
         void setTurn(uint8_t t) { turn = t; }
         size_t getPlayerCount() { return players.size(); }
         Player& getPlayerAt(size_t index) { return players[index]; }
+        GameType getGameType() { return gameType; }
+        void setGameType(GameType type) { gameType = type; }
 
         // Throw management methods
         virtual bool addThrowToCurrentPlayer(const Throw& dartThrow);
@@ -92,9 +118,33 @@ class GameMode
         virtual void deserialize(const JsonObject& obj) = 0;
         virtual void deserializePartial(const JsonObject& obj) = 0;
 
+        // Helper method for child classes to add common fields to serializeForDisplay
+        void addCommonDisplayFields(JsonObject& obj) const {
+            obj["gameType"] = static_cast<uint8_t>(gameType);  // 0=STANDARD, 1=TEAM, 2=TOURNAMENT
+        }
+
         // Game mode identification
         virtual String getGameModeName() = 0;
         virtual String getGameModeDescription() = 0;
+
+        // Game mode availability for different game types
+        // Returns which game types (standard, team, tournament) this mode supports
+        virtual GameModeAvailability getAvailability() = 0;
+
+        // Check if this game mode is available for a specific game type
+        bool isAvailableFor(GameType type) {
+            GameModeAvailability avail = getAvailability();
+            switch (type) {
+                case GameType::STANDARD:
+                    return avail.standard;
+                case GameType::TEAM:
+                    return avail.team;
+                case GameType::TOURNAMENT:
+                    return avail.tournament;
+                default:
+                    return false;
+            }
+        }
 
         // Display method for game-specific LCD content (rows 1-2)
         // Row 0 and Row 3 are handled by common display logic

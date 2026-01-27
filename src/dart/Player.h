@@ -22,6 +22,8 @@ class Player
     protected:
         String id;
         String name;
+        String teamId;  // Team identifier for team mode
+        String teamColor;  // Team color (hex code) for display
         uint16_t points = 0;
         uint8_t winPos = 0;
         std::vector<Turn> turns;
@@ -168,6 +170,8 @@ class Player
         void serialize(JsonObject& obj) {
             obj["id"] = this->id;
             obj["name"] = this->name;
+            obj["teamId"] = this->teamId;
+            obj["teamColor"] = this->teamColor;
             obj["winPos"] = this->winPos;
             obj["points"] = this->getPoints();
             obj["totalThrows"] = this->getThrowCount();
@@ -186,6 +190,11 @@ class Player
                     throwObj["points"] = turn.throws[i].getPoints();
                 }
             }
+        }
+
+        void serializePersistentStorage(JsonObject& obj) {
+            obj["id"] = this->id;
+            obj["name"] = this->name;
         }
 
         static Player deserialize(const JsonObject& obj) {
@@ -216,6 +225,26 @@ class Player
         String getName() const
         {
             return name;
+        }
+
+        void setTeamId(const String& team)
+        {
+            this->teamId = team;
+        }
+
+        String getTeamId() const
+        {
+            return teamId;
+        }
+
+        void setTeamColor(const String& color)
+        {
+            this->teamColor = color;
+        }
+
+        String getTeamColor() const
+        {
+            return teamColor;
         }
 };
 

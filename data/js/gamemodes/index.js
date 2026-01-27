@@ -7,4 +7,4 @@ export { GameMode } from './GameMode.js';
 export { X01GameMode } from './X01GameMode.js';
 export { CricketGameMode } from './CricketGameMode.js';
 export { AroundTheClockGameMode } from './AroundTheClockGameMode.js';
-export { gameModeFactory } from './GameModeFactory.js';
+export { gameModeFactory, GameModeFactory, GameModeAvailability, GameType } from './GameModeFactory.js';

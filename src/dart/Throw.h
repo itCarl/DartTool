@@ -83,7 +83,7 @@ class Throw
             } else if (field == 2) {
                 result = "D" + String(value);
             } else {
-                result = "S" + String(value);
+                result = String(value);
             }
             return result;
         }

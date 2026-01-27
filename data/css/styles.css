@@ -155,3 +155,83 @@
 .double { grid-area: double; }
 .triple { grid-area: triple; }
 .back { grid-area: back; }
+
+/* Game Type Tabs */
+.game-type-tab {
+    transition: all 0.2s ease;
+}
+
+.game-type-tab.active {
+    background-color: rgb(var(--color-primary, 147 51 234));
+    color: white;
+}
+
+.game-type-tab:not(.active):hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Team Cards */
+.team-card {
+    background-color: #1e293b;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #334155;
+    transition: all 0.2s ease;
+}
+
+.team-card:hover {
+    border-color: #6366f1;
+}
+
+.team-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #334155;
+}
+
+.team-card-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.team-card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.team-card-actions button {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.team-players-list {
+    min-height: 2rem;
+}
+
+.team-player-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background-color: #0f172a;
+    border-radius: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.team-player-item:last-child {
+    margin-bottom: 0;
+}
+
+.team-empty-message {
+    color: #6b7280;
+    font-size: 0.875rem;
+    text-align: center;
+    padding: 0.5rem;
+}

@@ -3,31 +3,14 @@
 #include "../web/CaptiveRequestHandler.h"
 #include "../web/GameMasterMiddleware.h"
 #include "../dart/GameModeFactory.h"
+#include "../dart/TeamManager.h"
 
-using WsCommandHandler = std::function<bool(JsonDocument&)>; //typedef bool (*WsCommandHandler)(JsonDocument& doc);
-struct CommandEntry {
-    const char* cmd;
-    WsCommandHandler handler;
-};
-
-bool handleGetGame(JsonDocument& doc);
-bool handleSetGameModeSelection(JsonDocument& doc);
-bool handleSelectPlayers(JsonDocument& doc);
-bool handleGetAllPlayer(JsonDocument& doc);
-bool handleAddPlayer(JsonDocument& doc);
-bool handleDeletePlayer(JsonDocument& doc);
-bool handleReset(JsonDocument& doc);
-bool handleSetServo(JsonDocument& doc);
-bool handleServoSequence(JsonDocument& doc);
-bool handleInitServo(JsonDocument& doc);
-bool handleSetServoByDistance(JsonDocument& doc);
-bool handleLaserControl(JsonDocument& doc);
-bool handleDartThrow(JsonDocument& doc);
-bool handleDartUndo(JsonDocument& doc);
-bool handleFetchExternalPlayers(JsonDocument& doc);
-bool handleGetModeConfig(JsonDocument& doc);
-bool handleSetModeConfig(JsonDocument& doc);
-bool handleGetSystemInfo(JsonDocument& doc);
+#include "server.h"
+#include "GameCommandHandlers.h"
+#include "HardwareCommandHandlers.h"
+#include "TeamCommandHandlers.h"
+#include "WebSocketHandlers.h"
+#include "../external/ExternalService.h"
 
 static String resolveGameModeType(const char* gameModeParam, uint16_t& points)
 {
@@ -176,9 +159,32 @@ CommandEntry commandTable[] = {
     { "getModeConfig", handleGetModeConfig },
     { "setModeConfig", handleSetModeConfig },
     { "getSystemInfo", handleGetSystemInfo },
+    { "createTeam", handleCreateTeam },
+    { "deleteTeam", handleDeleteTeam },
+    { "renameTeam", handleRenameTeam },
+    { "assignPlayerToTeam", handleAssignPlayerToTeam },
+    { "removePlayerFromTeam", handleRemovePlayerFromTeam },
+    { "setTeamPlayers", handleSetTeamPlayers },
+    { "getAllTeams", handleGetAllTeams },
+    { "startTeamGame", handleStartTeamGame },
     { nullptr, nullptr }
 };
 
+bool handleFileRead(AsyncWebServerRequest* request, String path)
+{
+    DEBUG_PRINT(F("WS FileRead: "));
+    DEBUG_PRINTLN(path);
+
+    DEBUG_PRINTLN(F("Exists."));
+    request->send(LittleFS, path, "text/html", request->hasArg(F("download")), processor);
+    return true;
+}
+
+bool captivePortal(AsyncWebServerRequest *request)
+{
+    if(!apActive) return false;
+    return true;
+}
 
 bool CP_FILTER(AsyncWebServerRequest *request)
 {
@@ -200,19 +206,16 @@ void initServer()
         captiveHandler->setFilter(CP_FILTER);
         server.addHandler(captiveHandler);
     }
-    // if(apActive) server.addHandler(new CaptiveRequestHandler()).setFilter(CP_FILTER);
 
     // add a global middleware to the server
     server.addMiddleware(new GameMasterMiddleware());
 
     // root route
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        // if(captivePortal(request)) return;
         handleFileRead(request, "/index.html");
-        // request->send(LittleFS, "/index.html", "text/html", request->hasArg(F("download")), processor);
     });
 
-    server.serveStatic("/", LittleFS, "/"); // /fs
+    server.serveStatic("/", LittleFS, "/");
 
     server.on("/settings", HTTP_GET, [](AsyncWebServerRequest *request) {
         if(handleFileRead(request, "/settings.html")) return;
@@ -341,7 +344,7 @@ void initServer()
             DEBUG_PRINTLN("[API] WiFi settings updated, reconnecting...");
 
             // Reconnect WiFi with new settings
-            WiFi.disconnect(true); // Disconnect and turn off WiFi
+            WiFi.disconnect(true);
             delay(1000);
             WiFi.mode(WIFI_STA);
             WiFi.setHostname(apSSID);
@@ -366,8 +369,8 @@ void initServer()
     // Data Sync API Endpoints
     server.on("/api/datasync/config", HTTP_GET, [](AsyncWebServerRequest *request) {
         JsonDocument doc;
-        doc["endpoint"] = "";  // Will be retrieved from storage
-        doc["enabled"] = false;  // Will be retrieved from storage
+        doc["endpoint"] = "";
+        doc["enabled"] = false;
 
         String response;
         serializeJson(doc, response);
@@ -390,7 +393,6 @@ void initServer()
             const char* endpoint = doc["url"].as<const char*>();
             bool enabled = doc["enabled"].as<bool>();
 
-            // TODO: Save to persistent storage
             DEBUG_PRINTLN("[API] Data Sync config updated");
 
             JsonDocument respDoc;
@@ -404,10 +406,9 @@ void initServer()
     });
 
     server.on("/api/datasync/sync", HTTP_POST, [](AsyncWebServerRequest *request) {
-        // TODO: Process queue and send to external endpoint
         JsonDocument doc;
         doc["success"] = true;
-        doc["count"] = 0;  // Number of synced items
+        doc["count"] = 0;
         doc["message"] = "Sync completed";
 
         String response;
@@ -416,10 +417,8 @@ void initServer()
     });
 
     server.on("/api/datasync/queue", HTTP_GET, [](AsyncWebServerRequest *request) {
-        // TODO: Return current queue items
         JsonDocument doc;
         JsonArray queue = doc["queue"].to<JsonArray>();
-        // queue items will be populated here
 
         String response;
         serializeJson(doc, response);
@@ -429,7 +428,6 @@ void initServer()
     server.on("/api/datasync/add", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         if (index == 0) {
             data[len] = '\0';
-            // TODO: Add dart throw to queue
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, data);
 
@@ -440,7 +438,6 @@ void initServer()
                 return;
             }
 
-            // Add to internal queue
             DEBUG_PRINTLN("[API] Dart throw added to queue");
 
             JsonDocument respDoc;
@@ -493,9 +490,7 @@ void initServer()
                 return;
             }
 
-            // Save to persistent storage
             saveModeConfig(mode, gameEndpoint ? gameEndpoint : "", refreshInterval > 0 ? refreshInterval : 5);
-            // TODO: If mode is display, start polling mechanism for external API
             DEBUG_PRINTLN("[API] Display mode updated and saved");
 
             JsonDocument respDoc;
@@ -509,11 +504,8 @@ void initServer()
     });
 
     server.on("/api/mode/poll", HTTP_GET, [](AsyncWebServerRequest *request) {
-        // TODO: Poll external API for game data when in display mode
-        // TODO: Return game state from external endpoint
         JsonDocument doc;
         doc["status"] = "unknown";
-        // Game data will be populated here from external API
 
         String response;
         serializeJson(doc, response);
@@ -546,14 +538,12 @@ void initServer()
                 return;
             }
 
-            // Update API token (optional)
             if (doc["token"].is<String>()) {
                 String token = doc["token"].as<String>();
                 ExternalService::instance().setApiToken(token);
                 DEBUG_PRINTLN("[API] External service token updated");
             }
 
-            // Update external service host
             if (doc["host"].is<String>()) {
                 String host = doc["host"].as<String>();
                 ExternalService::instance().setHost(host);
@@ -561,7 +551,6 @@ void initServer()
                 DEBUG_PRINTLN(host);
             }
 
-            // Update polling interval (in milliseconds)
             if (doc["interval"].is<unsigned long>()) {
                 unsigned long interval = doc["interval"].as<unsigned long>();
                 ExternalService::instance().setPollInterval(interval);
@@ -570,25 +559,21 @@ void initServer()
                 DEBUG_PRINTLN("ms");
             }
 
-            // Update polling enabled status
             if (doc["enabled"].is<bool>()) {
                 bool enabled = doc["enabled"].as<bool>();
                 ExternalService::instance().setEnabled(enabled);
                 DEBUG_PRINT("[API] External polling enabled: ");
                 DEBUG_PRINTLN(enabled ? "true" : "false");
 
-                // Reset poll timer when enabling/disabling
                 ExternalService::instance().resetPollTimer();
             }
 
-            // Persist configuration
             String curHost = ExternalService::instance().getHost();
             unsigned long curInterval = ExternalService::instance().getPollInterval();
             bool curEnabled = ExternalService::instance().isEnabled();
-            // We cannot read back the token value; persist last provided token if any, else keep existing by passing nullptr
             const char* tokenPtr = nullptr;
             if (doc["token"].is<String>()) {
-                tokenPtr = doc["token"].as<const char*>(); // may be empty string to clear
+                tokenPtr = doc["token"].as<const char*>();
             }
             saveExternalServiceConfig(curHost.c_str(), tokenPtr, curEnabled, curInterval);
 
@@ -604,14 +589,9 @@ void initServer()
         }
     });
 
-    // ============================================================================
     // COMMAND API ENDPOINT (WebSocket Fallback)
-    // ============================================================================
-    // This endpoint provides a REST API fallback when WebSocket is unavailable
-    // Accepts same JSON commands as WebSocket messages
     server.on("/api/command", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
         if (index == 0) {
-            // Do not write past provided buffer; parse with explicit length
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, data, len);
 
@@ -632,7 +612,7 @@ void initServer()
             DEBUG_PRINT("[API] Command received: ");
             DEBUG_PRINTLN(cmd);
 
-            // Process command through same command table as WebSocket
+            extern CommandEntry commandTable[];
             bool foundCmd = false;
             for (int i = 0; commandTable[i].cmd != nullptr; ++i) {
                 if (strcmp(cmd, commandTable[i].cmd) == 0) {
@@ -667,7 +647,6 @@ void initServer()
         request->send(LittleFS, "/app.js", "text/javascript");
     });
 
-    // health / availability check route
     server.on("/ping", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(200, "text/plain", "pong");
     });
@@ -680,515 +659,129 @@ void initServer()
         request->send(200, "text/plain", (String)ESP.getFreeHeap());
     });
 
-    // not found route
-    server.onNotFound([](AsyncWebServerRequest *request) {
-        // if(captivePortal(request)) return;
+    // FILESYSTEM API ENDPOINTS
+    server.on("/api/filesystem/list", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String path = "/";
+        if (request->hasParam("path")) {
+            path = request->getParam("path")->value();
+        }
 
+        JsonDocument doc;
+        JsonArray items = doc["items"].to<JsonArray>();
+
+        File root = LittleFS.open(path);
+        if (!root) {
+            doc["success"] = false;
+            doc["error"] = "Failed to open directory";
+            String response;
+            serializeJson(doc, response);
+            request->send(404, "application/json", response);
+            return;
+        }
+
+        if (!root.isDirectory()) {
+            root.close();
+            doc["success"] = false;
+            doc["error"] = "Not a directory";
+            String response;
+            serializeJson(doc, response);
+            request->send(400, "application/json", response);
+            return;
+        }
+
+        File file = root.openNextFile();
+        while (file) {
+            JsonObject item = items.add<JsonObject>();
+            item["name"] = String(file.name());
+            item["path"] = String(file.path());
+            item["isDirectory"] = file.isDirectory();
+            if (!file.isDirectory()) {
+                item["size"] = file.size();
+            }
+            file.close();
+            file = root.openNextFile();
+        }
+        root.close();
+
+        doc["success"] = true;
+        doc["path"] = path;
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/filesystem/read", HTTP_GET, [](AsyncWebServerRequest *request) {
+        if (!request->hasParam("path")) {
+            request->send(400, "application/json", "{\"success\": false, \"error\": \"Missing 'path' parameter\"}");
+            return;
+        }
+
+        String path = request->getParam("path")->value();
+
+        if (!LittleFS.exists(path)) {
+            JsonDocument doc;
+            doc["success"] = false;
+            doc["error"] = "File not found";
+            String response;
+            serializeJson(doc, response);
+            request->send(404, "application/json", response);
+            return;
+        }
+
+        File file = LittleFS.open(path, "r");
+        if (!file) {
+            JsonDocument doc;
+            doc["success"] = false;
+            doc["error"] = "Failed to open file";
+            String response;
+            serializeJson(doc, response);
+            request->send(500, "application/json", response);
+            return;
+        }
+
+        if (file.isDirectory()) {
+            file.close();
+            JsonDocument doc;
+            doc["success"] = false;
+            doc["error"] = "Path is a directory, not a file";
+            String response;
+            serializeJson(doc, response);
+            request->send(400, "application/json", response);
+            return;
+        }
+
+        String content = file.readString();
+        file.close();
+
+        JsonDocument doc;
+        doc["success"] = true;
+        doc["path"] = path;
+        doc["content"] = content;
+        doc["size"] = content.length();
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.on("/api/filesystem/stats", HTTP_GET, [](AsyncWebServerRequest *request) {
+        JsonDocument doc;
+        doc["success"] = true;
+        doc["total"] = (uint32_t)LittleFS.totalBytes();
+        doc["used"] = (uint32_t)LittleFS.usedBytes();
+        doc["free"] = (uint32_t)(LittleFS.totalBytes() - LittleFS.usedBytes());
+
+        String response;
+        serializeJson(doc, response);
+        request->send(200, "application/json", response);
+    });
+
+    server.onNotFound([](AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "Not found");
-        // request->redirect("/");
     });
 
     ElegantOTA.begin(&server);
     server.begin();
     DEBUG_PRINTLN("Web Server started");
 }
-
-void notify()
-{
-    JsonDocument doc;
-    String out;
-    // out.reserve(2048);
-
-    JsonObject meta = doc["meta"].to<JsonObject>();
-    meta["freeHeap"] = ESP.getFreeHeap();
-    meta["cc"] = ws.count();
-
-    serializeJson(doc, out);
-    ws.textAll(out);
-}
-
-void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *data, size_t len)
-{
-    AwsFrameInfo *info = (AwsFrameInfo*)arg;
-    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-        DEBUG_PRINTLN("[WS] Message incoming.");
-
-        JsonDocument doc;
-        String out;
-        DeserializationError error = deserializeJson(doc, data, len);
-        bool sendResponse = false;
-
-        if (error) {
-            DEBUG_PRINT("[WS] json parsing error: ");
-            DEBUG_PRINTLN(error.c_str());
-            return;
-        }
-
-        const char* cmd = doc["cmd"];
-
-        if (cmd) {
-            DEBUG_PRINT("[WS] Command received: ");
-            DEBUG_PRINTLN(cmd);
-
-            bool foundCmd = false;
-            for (int i = 0; commandTable[i].cmd != nullptr; ++i) {
-                if (strcmp(cmd, commandTable[i].cmd) == 0) {
-                    sendResponse = commandTable[i].handler(doc);
-                    foundCmd = true;
-                }
-            }
-            if(!foundCmd) {
-                DEBUG_PRINTLN("[WS] Unknown command");
-                doc["msg"] = "Error: unknown command";
-                sendResponse = true;
-            }
-
-            if(!sendResponse)
-                return;
-
-            // JsonObject gameFull = doc["gameFull"].to<JsonObject>();
-            // game.serialize(gameFull);
-
-            serializeJson(doc, out);
-            client->text(out);
-            // ws.textAll(out);
-        }
-
-        // if(!sendResponse)
-        //     return;
-
-        // serializeJson(doc, out);
-        // ws.textAll(out);
-    }
-}
-
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-{
-    switch(type)
-    {
-        case WS_EVT_CONNECT:
-            DEBUG_PRINTF("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-            break;
-        case WS_EVT_DISCONNECT:
-            DEBUG_PRINTF("WebSocket client #%u disconnected\n", client->id());
-            break;
-        case WS_EVT_DATA:
-            handleWebSocketMessage(client, arg, data, len);
-            break;
-        case WS_EVT_PONG:
-        case WS_EVT_PING:
-        case WS_EVT_ERROR:
-            DEBUG_PRINTF("WebSocket client #%u Error\n", client->id());
-            break;
-    }
-}
-
-String processor(const String& var)
-{
-  // return "no data.";
-
-    if(var == "VERSION") {
-        return String(VERSION);
-    } else if(var == "BUILD_TIME") {
-        return String(BUILD_TIME);
-    }
-
-    return String();
-}
-
-bool captivePortal(AsyncWebServerRequest *request)
-{
-    if(!apActive) return false;
-
-    // AsyncWebServerResponse *response = request->beginResponse(302);
-    // response->addHeader(F("Location"), F("http://4.3.2.1"));
-    // request->send(response);
-    return true;
-}
-
-bool handleFileRead(AsyncWebServerRequest* request, String path)
-{
-    DEBUG_PRINT(F("WS FileRead: "));
-    DEBUG_PRINTLN(path);
-
-    // if(LittleFS.exists(path) || LittleFS.exists(path + ".gz")) {
-        DEBUG_PRINTLN(F("Exists."));
-        request->send(LittleFS, path, "text/html", request->hasArg(F("download")), processor);
-        // request->send(request->beginResponse(LittleFS, path, "text/html", request->hasArg(F("download")), {}));
-        return true;
-    // }
-    return false;
-}
-
-void cleanupWs()
-{
-    if (millis() - wsLastLiveTime > 5000) {
-        ws.cleanupClients(4);
-        wsLastLiveTime = millis();
-    }
-}
-
-bool handleGetGame(JsonDocument& doc)
-{
-    JsonObject resp = doc["game"].to<JsonObject>();
-    resp["status"] = game.getStatusString();
-    game.serializeForDisplay(resp);
-
-    return true;
-}
-
-bool handleSetGameModeSelection(JsonDocument& doc)
-{
-    const char* gameModeParam = doc["mode"].as<const char*>();
-    uint16_t points = doc["points"].is<uint16_t>() ? doc["points"].as<uint16_t>() : 501;
-
-    if (game.getStatus() == DartGameStatus::running) {
-        doc["cmd"] = "setGameModeResponse";
-        doc["success"] = false;
-        doc["msg"] = "Cannot change game mode while a game is running";
-        return true;
-    }
-
-    resetPlayersForNewGame();
-    std::vector<Player> existingPlayers = snapshotCurrentPlayers();
-    String gameModeType = resolveGameModeType(gameModeParam, points);
-
-    auto newGameMode = GameModeFactory::createGameMode(gameModeType, points);
-    if (!newGameMode) {
-        doc["cmd"] = "setGameModeResponse";
-        doc["success"] = false;
-        doc["msg"] = "Failed to create game mode: " + gameModeType;
-        DEBUG_PRINTLN("[Game] Failed to preview game mode");
-        return true;
-    }
-
-    game.setGameMode(std::move(newGameMode));
-
-    if (!existingPlayers.empty()) {
-        game.setPlayers(existingPlayers);
-    }
-
-    game.setStatus(DartGameStatus::initialised);
-
-    doc["cmd"] = "setGameModeResponse";
-    doc["success"] = true;
-    doc["mode"] = game.getGameModeName();
-    doc["points"] = game.getGamePoints();
-
-    return handleGetGame(doc);
-}
-
-bool handleSelectPlayers(JsonDocument& doc)
-{
-    if (!doc["playerIds"].is<JsonArray>()) {
-        doc["msg"] = "Missing or invalid 'playerIds' array.";
-        return true;
-    }
-
-    JsonArray selectedIds = doc["playerIds"].as<JsonArray>();
-    std::vector<String> idList;
-
-    // Convert JsonArray to vector<String>
-    for (String id : selectedIds) {
-        idList.push_back(id);
-    }
-
-    // Get all players with the selected IDs
-    std::vector<Player> selectedPlayers = PlayerManager::instance().getPlayersByIds(idList);
-
-    if (selectedPlayers.empty()) {
-        doc["msg"] = "No valid players found with provided IDs.";
-        // Clear display when no players selected
-        printCentered("No players selected", 2);
-        return true;
-    }
-
-    game.setPlayers(selectedPlayers);
-
-    // Display selected players on LCD
-    displaySelectedPlayers(selectedPlayers);
-
-    doc["msg"] = "Players selected successfully.";
-    return true;
-}
-
-bool handleGetAllPlayer(JsonDocument& doc)
-{
-    JsonArray players = doc["players"].to<JsonArray>();
-    PlayerManager::instance().serializeAllPlayers(players);
-
-    return true;
-}
-
-bool handleAddPlayer(JsonDocument& doc)
-{
-    const char* name = doc["name"];
-    if (!name || strlen(name) <= 0)
-        return false;
-
-    // Optional: accept ID from client (for external service sync)
-    const char* id = doc["id"];
-    String playerId = (id && strlen(id) > 0) ? String(id) : "";
-
-    PlayerManager::instance().addOrEditPlayer(name, playerId);
-    doc["msg"] = "Player added successfully";
-    return true;
-}
-
-bool handleDeletePlayer(JsonDocument& doc)
-{
-    const char* id = doc["id"];
-    if (!id || strlen(id) <= 0)
-        return false;
-
-    PlayerManager::instance().removePlayer(id);
-    doc["msg"] = "Player deleted successfully";
-    return true;
-}
-
-bool handleReset(JsonDocument& doc)
-{
-    DartTool::instance().reset();
-    return false;
-}
-
-bool handleSetServo(JsonDocument& doc)
-{
-    int position = doc["pos"].as<int>();
-
-    if (!servoIsValidPosition(position)) {
-        doc["msg"] = "Invalid position: must be 0-180";
-        doc["cmd"] = "servoResponse";
-        return true;
-    }
-
-    servoSetPosition(position);
-
-    doc["cmd"] = "servoResponse";
-    doc["pos"] = position;
-    doc["msg"] = "Servo position set";
-
-    return true;
-}
-
-bool handleServoSequence(JsonDocument& doc)
-{
-    int sequence = doc["seq"].as<int>();
-
-    switch(sequence) {
-        case 1:
-            servoSequence1();
-            break;
-        case 2:
-            servoSequence2();
-            break;
-        case 3:
-            servoSequence3();
-            break;
-        default:
-            doc["msg"] = "Unknown sequence number";
-            doc["cmd"] = "servoResponse";
-            return true;
-    }
-
-    doc["cmd"] = "servoResponse";
-    doc["seq"] = sequence;
-    doc["msg"] = "Sequence executed";
-
-    return true;
-}
-
-bool handleInitServo(JsonDocument& doc)
-{
-    servoInitSequence();
-
-    doc["cmd"] = "servoResponse";
-    doc["pos"] = 90;
-    doc["msg"] = "Servo initialized";
-
-    return true;
-}
-
-bool handleSetServoByDistance(JsonDocument& doc)
-{
-    double distance = doc["dis"].as<double>();
-    double height = doc["height"].as<double>();
-
-    // Use default height if not provided (assuming some default mounting height)
-    if (height == 0) {
-        height = 100.0; // Default height in cm, adjust as needed
-    }
-
-    // Calculate angle based on height and distance
-    int theta = servoAngleByDistance(height, distance);
-    int servoPos = round(theta + 40.5);
-
-    if (!servoIsValidPosition(servoPos)) {
-        doc["msg"] = "Calculated angle out of range (0-180)";
-        doc["cmd"] = "servoResponse";
-        doc["theta"] = theta;
-        doc["pos"] = servoPos;
-        return true;
-    }
-
-    servoSetPosition(servoPos);
-
-    doc["cmd"] = "servoResponse";
-    doc["theta"] = theta;
-    doc["pos"] = servoPos;
-    doc["distance"] = distance;
-    doc["height"] = height;
-    doc["msg"] = "Servo position set by distance";
-
-    return true;
-}
-
-bool handleLaserControl(JsonDocument& doc)
-{
-    String action = doc["action"].as<String>();
-
-    if (action == "on") {
-        laserOn();
-        doc["state"] = true;
-        doc["msg"] = "Laser ON";
-    } else if (action == "off") {
-        laserOff();
-        doc["state"] = false;
-        doc["msg"] = "Laser OFF";
-    } else if (action == "toggle") {
-        laserToggle();
-        doc["state"] = laserGetState();
-        doc["msg"] = laserGetState() ? "Laser ON" : "Laser OFF";
-    } else {
-        doc["msg"] = "Invalid action. Use 'on', 'off', or 'toggle'";
-        doc["state"] = laserGetState();
-        return true;
-    }
-
-    doc["cmd"] = "laserResponse";
-    return true;
-}
-bool handleDartThrow(JsonDocument& doc)
-{
-    // Validate score input
-    uint8_t value = doc["score"].as<uint8_t>();
-    uint8_t multiplier = 1;
-    if (doc["multiplier"].is<uint8_t>()) {
-        multiplier = doc["multiplier"].as<uint8_t>();
-    }
-
-    // Extract polar coordinates if provided
-    double angle = 0.0;
-    double radius = 0.0;
-    if (doc["polar"].is<JsonObject>()) {
-        JsonObject polar = doc["polar"].as<JsonObject>();
-        if (polar["angle"].is<double>()) {
-            angle = polar["angle"].as<double>();
-        }
-        if (polar["radius"].is<double>()) {
-            radius = polar["radius"].as<double>();
-        }
-    }
-
-    // Delegate all game logic to DartGame
-    DartThrowResult result = game.processDartThrow(value, multiplier, angle, radius);
-
-    // Prepare response from game result
-    doc["msg"] = result.message;
-    doc["cmd"] = "dartThrowResponse";
-    doc["success"] = result.success;
-
-    // Include throw details in response
-    if (result.success) {
-        doc["score"] = result.score;
-        doc["playerName"] = result.playerName;
-        doc["playerId"] = result.playerId;
-
-        if (result.hasWon) {
-            doc["winner"] = result.winner;
-            doc["winnerId"] = result.winnerId;
-        }
-    }
-
-    return handleGetGame(doc);
-}
-
-bool handleDartUndo(JsonDocument& doc)
-{
-    bool undone = game.undoLastThrow();
-
-    doc["cmd"] = "dartUndoResponse";
-    doc["success"] = undone;
-    doc["msg"] = undone ? "Last dart throw undone" : "No throw to undo";
-
-    return handleGetGame(doc);
-}
-
-bool handleFetchExternalPlayers(JsonDocument& doc)
-{
-    // Call the external player fetch function via ExternalService
-    bool success = ExternalService::instance().fetchPlayers();
-
-    if (success) {
-        doc["msg"] = "Players fetched from external service";
-        doc["status"] = "success";
-        // Return the updated player list
-        return handleGetAllPlayer(doc);
-    } else {
-        doc["msg"] = "Failed to fetch players from external service";
-        doc["status"] = "error";
-        return false;
-    }
-}
-
-bool handleGetModeConfig(JsonDocument& doc)
-{
-    char mode[33] = {0};
-    char gameEndpoint[257] = {0};
-    int refreshInterval = 5;
-
-    loadModeConfig(mode, gameEndpoint, refreshInterval);
-
-    doc["cmd"] = "getModeConfigResponse";
-    doc["mode"] = mode;
-    doc["gameEndpoint"] = gameEndpoint;
-    doc["refreshInterval"] = refreshInterval;
-    doc["success"] = true;
-
-    return true;
-}
-
-bool handleSetModeConfig(JsonDocument& doc)
-{
-    const char* mode = doc["mode"].as<const char*>();
-    const char* gameEndpoint = doc["serverApiUrl"].as<const char*>();
-    int refreshInterval = doc["refreshInterval"].as<int>();
-
-    if (!mode || strlen(mode) == 0) {
-        doc["cmd"] = "setModeConfigResponse";
-        doc["success"] = false;
-        doc["msg"] = "Mode is required";
-        return true;
-    }
-
-    // Save to persistent storage
-    saveModeConfig(mode, gameEndpoint ? gameEndpoint : "", refreshInterval > 0 ? refreshInterval : 5);
-
-    DEBUG_PRINTLN("[WS] Mode config saved via WebSocket");
-
-    doc["cmd"] = "setModeConfigResponse";
-    doc["success"] = true;
-    doc["msg"] = "Mode config saved";
-
-    return true;
-}
-
-bool handleGetSystemInfo(JsonDocument& doc)
-{
-    doc["cmd"] = "getSystemInfoResponse";
-    doc["heap"] = ESP.getFreeHeap();
-    doc["uptime"] = millis();
-
-    return true;
-}
-

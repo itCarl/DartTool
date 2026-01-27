@@ -4,6 +4,7 @@
 
 import { byId, on } from './utils.js';
 import { sendMessage, ws } from './network.js';
+import { host } from './settings.js';
 
 // Servo command definitions
 const ServoCommands = {
@@ -184,6 +185,227 @@ function initDebugPage() {
     if (laserOffBtn) {
         laserOffBtn.addEventListener('click', () => sendLaserCommand(LaserCommands.OFF));
     }
+
+    // Filesystem browser
+    const fsRefreshBtn = byId('fs-refresh');
+    const fsPathInput = byId('fs-path');
+    const fsList = byId('fs-list');
+    const fsContent = byId('fs-content');
+    const fsFileName = byId('fs-file-name');
+    const fsCopyBtn = byId('fs-copy');
+    const fsFileInfo = byId('fs-file-info');
+
+    async function loadFilesystem(path = '/') {
+        try {
+            updateStatus(`Loading filesystem: ${path}`, 'info');
+            const response = await fetch(`${host}/api/filesystem/list?path=${encodeURIComponent(path)}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                updateStatus(`Server error: ${response.status} ${response.statusText}`, 'error');
+                fsList.innerHTML = `<p class="text-sm text-red-400 p-2">Server error: ${response.status}</p>`;
+                return;
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const responseText = await response.text();
+                console.error('Response content-type:', contentType);
+                console.error('Response body:', responseText.substring(0, 500));
+                updateStatus(`Invalid response format. Content-Type: ${contentType || 'none'}`, 'error');
+                fsList.innerHTML = `<p class="text-sm text-red-400 p-2">Invalid response format. Check console for details.</p>`;
+                return;
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                updateStatus(`Error: ${data.error}`, 'error');
+                fsList.innerHTML = `<p class="text-sm text-red-400 p-2">${data.error}</p>`;
+                return;
+            }
+
+            if (data.items.length === 0) {
+                fsList.innerHTML = '<p class="text-sm text-gray-400 p-2">Empty directory</p>';
+                return;
+            }
+
+            // Sort: directories first, then files alphabetically
+            data.items.sort((a, b) => {
+                if (a.isDirectory && !b.isDirectory) return -1;
+                if (!a.isDirectory && b.isDirectory) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            fsList.innerHTML = data.items.map(item => {
+                const icon = item.isDirectory ? 'fa-folder' : 'fa-file';
+                const sizeText = item.isDirectory ? '' : `<span class="text-xs text-gray-500">(${formatBytes(item.size)})</span>`;
+                const clickHandler = item.isDirectory ? '' : `onclick="window.loadFileContent('${item.path}')"`;
+                return `
+                    <div class="flex items-center gap-2 px-2 py-1 hover:bg-white/10 rounded cursor-pointer transition-colors" ${clickHandler}>
+                        <i class="fas ${icon} text-primary w-4"></i>
+                        <span class="flex-1 text-sm truncate">${item.name}</span>
+                        ${sizeText}
+                    </div>
+                `;
+            }).join('');
+
+            updateStatus(`Loaded ${data.items.length} items from ${path}`, 'success');
+        } catch (error) {
+            updateStatus(`Failed to load filesystem: ${error.message}`, 'error');
+            fsList.innerHTML = `<p class="text-sm text-red-400 p-2">Failed to load: ${error.message}</p>`;
+        }
+    }
+
+    async function loadFileContent(path) {
+        try {
+            updateStatus(`Reading file: ${path}`, 'info');
+            const response = await fetch(`${host}/api/filesystem/read?path=${encodeURIComponent(path)}`);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                updateStatus(`Server error: ${response.status} ${response.statusText}`, 'error');
+                fsContent.innerHTML = `<code class="text-red-400">Server error: ${response.status}</code>`;
+                fsFileName.textContent = 'Error';
+                fsCopyBtn.classList.add('hidden');
+                fsFileInfo.classList.add('hidden');
+                return;
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                updateStatus('Invalid response format (expected JSON)', 'error');
+                fsContent.innerHTML = '<code class="text-red-400">Invalid response format</code>';
+                fsFileName.textContent = 'Error';
+                fsCopyBtn.classList.add('hidden');
+                fsFileInfo.classList.add('hidden');
+                return;
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                updateStatus(`Error: ${data.error}`, 'error');
+                fsContent.innerHTML = `<code class="text-red-400">${data.error}</code>`;
+                fsFileName.textContent = 'Error';
+                fsCopyBtn.classList.add('hidden');
+                fsFileInfo.classList.add('hidden');
+                return;
+            }
+
+            fsContent.innerHTML = `<code>${escapeHtml(tryFormatJSON(data.content))}</code>`;
+            fsFileName.textContent = path;
+            fsCopyBtn.classList.remove('hidden');
+            fsFileInfo.classList.remove('hidden');
+            fsFileInfo.textContent = `Size: ${formatBytes(data.size)} | Path: ${data.path}`;
+            updateStatus(`Loaded file: ${path} (${formatBytes(data.size)})`, 'success');
+        } catch (error) {
+            updateStatus(`Failed to read file: ${error.message}`, 'error');
+            fsContent.innerHTML = `<code class="text-red-400">Failed to load: ${error.message}</code>`;
+            fsFileName.textContent = 'Error';
+            fsCopyBtn.classList.add('hidden');
+            fsFileInfo.classList.add('hidden');
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function tryFormatJSON(content) {
+        try {
+            const parsed = JSON.parse(content);
+            return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            return content;
+        }
+    }
+
+    if (fsRefreshBtn) {
+        fsRefreshBtn.addEventListener('click', () => {
+            const path = fsPathInput?.value || '/';
+            loadFilesystem(path);
+        });
+    }
+
+    if (fsCopyBtn) {
+        fsCopyBtn.addEventListener('click', async () => {
+            const content = fsContent.textContent;
+            try {
+                await navigator.clipboard.writeText(content);
+                updateStatus('Content copied to clipboard', 'success');
+                fsCopyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => {
+                    fsCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                }, 2000);
+            } catch (error) {
+                updateStatus('Failed to copy to clipboard', 'error');
+            }
+        });
+    }
+
+    // Make loadFileContent globally accessible
+    window.loadFileContent = loadFileContent;
+
+    // Storage stats
+    const refreshStorageBtn = byId('refresh-storage');
+    const storageTotal = byId('storage-total');
+    const storageUsed = byId('storage-used');
+    const storageFree = byId('storage-free');
+    const storagePercentage = byId('storage-percentage');
+    const storageProgress = byId('storage-progress');
+
+    async function loadStorageStats() {
+        try {
+            updateStatus('Loading storage stats...', 'info');
+            const response = await fetch(`${host}/api/filesystem/stats`);
+
+            if (!response.ok) {
+                updateStatus(`Failed to load storage stats: ${response.status}`, 'error');
+                return;
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                updateStatus(`Error loading storage: ${data.error}`, 'error');
+                return;
+            }
+
+            // Update display
+            const total = data.total || 0;
+            const used = data.used || 0;
+            const free = data.free || 0;
+            const percentage = total > 0 ? Math.round((used / total) * 100) : 0;
+
+            if (storageTotal) storageTotal.textContent = formatBytes(total);
+            if (storageUsed) storageUsed.textContent = formatBytes(used);
+            if (storageFree) storageFree.textContent = formatBytes(free);
+            if (storagePercentage) storagePercentage.textContent = `${percentage}%`;
+            if (storageProgress) storageProgress.style.width = `${percentage}%`;
+
+            updateStatus(`Storage stats updated: ${percentage}% used`, 'success');
+        } catch (error) {
+            updateStatus(`Failed to load storage stats: ${error.message}`, 'error');
+        }
+    }
+
+    if (refreshStorageBtn) {
+        refreshStorageBtn.addEventListener('click', loadStorageStats);
+    }
+
+    // Load storage stats on initialization
+    loadStorageStats();
 }
 
 export {

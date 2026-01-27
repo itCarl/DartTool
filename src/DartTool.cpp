@@ -1,6 +1,5 @@
 #define DEFINE_GLOBAL_VARS
 #include "DartTool.h"
-#include "display_controller.h"
 
 DartTool::DartTool()
 {
@@ -20,7 +19,7 @@ void DartTool::setup()
     // initAdvance("File system");
     initStorage();
 
-    // initAdvance("GPIOs");
+    initAdvance("GPIOs");
     initPins();
 
     initAdvance("Display");
@@ -62,7 +61,6 @@ void DartTool::setup()
 
 void DartTool::loop()
 {
-    display.update();
     yield();
     if(apActive) dnsServer.processNextRequest();
     ElegantOTA.loop();
@@ -92,8 +90,6 @@ void DartTool::loop()
         lastDisplayedMode = currentMode;
         lastDisplayedPoints = currentPoints;
     }
-
-    display.update();
 
     // Poll external service for game state updates
     // pollExternalGameState();
@@ -150,18 +146,14 @@ void DartTool::reset()
 
 void DartTool::initPins()
 {
-    // pinMode(RELAY, OUTPUT);
-    // digitalWrite(RELAY, LOW);
-
     // Debug LED
-    // pinMode(DEBUG_LED, OUTPUT);
-    // digitalWrite(LED_BUILTIN, HIGH);
-    // delay(500);
-    // digitalWrite(DEBUG_LED, LOW);
-    // delay(500);
-    // digitalWrite(LED_BUILTIN, HIGH);
-    // delay(500);
-    // digitalWrite(DEBUG_LED, LOW);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(250);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(250);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(250);
+    digitalWrite(LED_BUILTIN, LOW);
 }
 
 void DartTool::initDistanceSensor()
@@ -198,7 +190,7 @@ void DartTool::initConnection()
         // printCentered(CLIENT_SSID, 1);
         // LCD.setCursor(0, 2);
         // LCD.print("IP-Address:");
-        delay(500);
+        delay(1000);
         initAdvanceDetails("IP-Address:", WiFi.localIP().toString());
         // printCentered(WiFi.localIP().toString(), 3);
         DEBUG_PRINTLN("WLAN connected");

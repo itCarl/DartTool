@@ -11,11 +11,11 @@ void laserInit() {
     laserState = false;
     laserInitialized = true;
 
-    laserOn();
-    delay(3000);
+    // laserOn();
+    // delay(3000);
     laserOff();
-    delay(1000);
-    laserOn();
+    // delay(1000);
+    // laserOn();
 
     DEBUG_PRINTLN("[Laser] Initialized");
 }

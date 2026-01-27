@@ -15,7 +15,7 @@
     <!-- Styles -->
     <link rel="stylesheet" type="text/css" href="css/styles.css">
 </head>
-<body>
+<body class="min-h-screen bg-linear-to-br from-gray-900 via-gray-950 to-slate-900 text-white">
     <!-- Device Status Overlay -->
     <div id="deviceStatusOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
         <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center max-w-md mx-4">
@@ -29,12 +29,12 @@
 
     <header class="dark:bg-gray-700 w-full">
         <nav class="container mx-auto h-12 py-2 px-2 flex items-center justify-center relative">
+            <a href="/" class="absolute left-2 p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open debug page">
+                <i class="fas fa-chevron-left text-xl"></i>
+            </a>
             <div class="h-full flex items-center">
                 <img src="/assets/favicon.png" alt="Dart-Tool" class="h-[90%] object-contain">
             </div>
-            <a href="/settings" class="absolute right-2 p-2 rounded-md hover:bg-gray-600 transition-colors">
-                <i class="fas fa-gear text-xl"></i>
-            </a>
         </nav>
     </header>
 

@@ -1,6 +1,5 @@
 #include "X01GameMode.h"
 #include "../../DartTool.h"
-#include "../../display_controller.h"
 
 X01GameMode::X01GameMode()
 {
@@ -105,11 +104,26 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier,
     result.playerName = currentPlayer.getName();
     result.playerId = currentPlayer.getId();
 
+    // Team mode: use shared team points
+    uint16_t teamRemainingPoints = points;
+    if (gameType == GameType::TEAM) {
+        String teamId = currentPlayer.getTeamId();
+        if (teamPoints.find(teamId) != teamPoints.end()) {
+            teamRemainingPoints = teamPoints[teamId];
+        }
+        currentScore = points - teamRemainingPoints;  // Total team score so far
+    }
+
     // X01 Logic: Check if throw would bust (exceed starting points)
     if (currentScore + dartPoints > points) {
         result.success = false;
         result.message = "Dart throw would exceed target - BUST";
-        result.pointsRemaining = points - currentScore;
+
+        if (gameType == GameType::TEAM) {
+            result.pointsRemaining = teamRemainingPoints;
+        } else {
+            result.pointsRemaining = points - currentScore;
+        }
 
         // Still count this as a throw in the turn, but don't add points
         throwCounter++;
@@ -141,10 +155,27 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier,
 
     // Calculate remaining points after throw
     uint16_t newScore = currentPlayer.getPoints();
-    result.pointsRemaining = points - newScore;
+
+    // Team mode: update shared team points
+    if (gameType == GameType::TEAM) {
+        String teamId = currentPlayer.getTeamId();
+        teamRemainingPoints -= dartPoints;
+        teamPoints[teamId] = teamRemainingPoints;
+        result.pointsRemaining = teamRemainingPoints;
+        newScore = points - teamRemainingPoints;  // Total team score
+    } else {
+        result.pointsRemaining = points - newScore;
+    }
 
     // X01 Win Condition: Exactly reach target points
-    if (newScore == points) {
+    bool hasWon = false;
+    if (gameType == GameType::TEAM) {
+        hasWon = (teamRemainingPoints == 0);
+    } else {
+        hasWon = (newScore == points);
+    }
+
+    if (hasWon) {
         // In standard X01, must finish on a double
         // For now, allow any finish. Uncomment below to enforce double-out rule:
         // if (dartThrow.getField() < 2) {
@@ -157,12 +188,19 @@ DartThrowResult X01GameMode::processDartThrow(uint8_t value, uint8_t multiplier,
         currentPlayer.setWinPos(1);  // Mark as winner
         status = DartGameStatus::playerWon;
         result.hasWon = true;
-        result.winner = currentPlayer.getName();
-        result.winnerId = currentPlayer.getId();
-        result.message = "Game Won! " + currentPlayer.getName() + " reached exactly " + String(points) + " points!";
+
+        if (gameType == GameType::TEAM) {
+            result.winner = "Team " + currentPlayer.getTeamId();
+            result.winnerId = currentPlayer.getTeamId();
+            result.message = "Game Won! Team " + currentPlayer.getTeamId() + " reached exactly " + String(points) + " points!";
+        } else {
+            result.winner = currentPlayer.getName();
+            result.winnerId = currentPlayer.getId();
+            result.message = "Game Won! " + currentPlayer.getName() + " reached exactly " + String(points) + " points!";
+        }
 
         winCount++;
-        DEBUG_PRINT("[Game] Player ");
+        DEBUG_PRINT("[Game] ");
         DEBUG_PRINT(result.winner);
         DEBUG_PRINT(" won the game with ");
         DEBUG_PRINT(turn);
@@ -222,6 +260,7 @@ void X01GameMode::serialize(JsonObject& obj)
 
 void X01GameMode::serializeForDisplay(JsonObject& obj)
 {
+    addCommonDisplayFields(obj);  // Add gameType and other common fields
     obj["status"] = getStatusString();
     obj["points"] = points;
     obj["turn"] = turn;
@@ -236,7 +275,21 @@ void X01GameMode::serializeForDisplay(JsonObject& obj)
         JsonObject player = jsonPlayers.add<JsonObject>();
         player["id"] = p.getId();
         player["name"] = p.getName();
-        player["remainingPoints"] = points - p.getPoints();
+        player["teamId"] = p.getTeamId();  // Include team ID for team mode display
+        player["teamColor"] = p.getTeamColor();  // Include team color for display
+
+        // For team mode, use shared team points; for standard mode, use individual points
+        uint16_t displayPoints = points;
+        if (gameType == GameType::TEAM) {
+            String teamId = p.getTeamId();
+            if (teamPoints.find(teamId) != teamPoints.end()) {
+                displayPoints = teamPoints.at(teamId);
+            }
+        } else {
+            displayPoints = points - p.getPoints();
+        }
+
+        player["remainingPoints"] = displayPoints;
         player["averagePoints"] = p.getThrowCount() > 0 ? p.getPoints() / p.getThrowCount() : 0;
         player["winPos"] = p.hasWon() ? 1 : 0;
 
@@ -408,14 +461,26 @@ void X01GameMode::displayGameInfo()
     Player& currentPlayer = getCurrentPlayer();
     static int8_t lastPlayerIndex = -1;
     bool playerChanged = (lastPlayerIndex != static_cast<int8_t>(currentPlayerIndex));
-    uint16_t currentPlayerPointsLeft = points - currentPlayer.getPoints();
+
+    // Update lastPlayerIndex to track current player
+    lastPlayerIndex = static_cast<int8_t>(currentPlayerIndex);
+
+    // In team mode, get shared team points; in standard mode, use individual points
+    uint16_t currentPlayerPointsLeft;
+    if (gameType == GameType::TEAM) {
+        String teamId = currentPlayer.getTeamId();
+        if (teamPoints.find(teamId) != teamPoints.end()) {
+            currentPlayerPointsLeft = teamPoints[teamId];
+        } else {
+            currentPlayerPointsLeft = points;
+        }
+    } else {
+        currentPlayerPointsLeft = points - currentPlayer.getPoints();
+    }
+
     std::vector<Throw> currentTurnThrows = currentPlayer.getThrowsFromTurn(turn);
 
-    DisplayState state;
-    state.clear();
-
-    String playerName = truncateWithEllipsis(currentPlayer.getName(), 13);
-    state.rows[0] = spaceBetweenRow(playerName, String(currentPlayerPointsLeft));
+    printSpaceBetween(truncateWithEllipsis(currentPlayer.getName(), 13), String(currentPlayerPointsLeft), 0);
 
     if (!currentTurnThrows.empty()) {
         String throwsStr = "";
@@ -423,26 +488,48 @@ void X01GameMode::displayGameInfo()
             if (i > 0) throwsStr += " | ";
             throwsStr += currentTurnThrows[i].toString();
         }
-        state.rows[1] = centerRow(truncateWithEllipsis(throwsStr, 20));
+        printCentered(truncateWithEllipsis(throwsStr, 20), 1);
     } else {
-        state.rows[1] = centerRow("--");
+        printCentered("--", 1);
     }
 
+    // Render row 2
     if (players.size() > 1) {
         uint8_t nextPlayerIndex = (currentPlayerIndex + 1) % players.size();
         Player& nextPlayer = players[nextPlayerIndex];
-        uint16_t nextPlayerPointsLeft = points - nextPlayer.getPoints();
-        String nextPlayerName = truncateWithEllipsis(nextPlayer.getName(), 13);
-        state.rows[2] = spaceBetweenRow(nextPlayerName, String(nextPlayerPointsLeft));
+
+        uint16_t nextPlayerPointsLeft;
+        if (gameType == GameType::TEAM) {
+            String teamId = nextPlayer.getTeamId();
+            if (teamPoints.find(teamId) != teamPoints.end()) {
+                nextPlayerPointsLeft = teamPoints[teamId];
+            } else {
+                nextPlayerPointsLeft = points;
+            }
+        } else {
+            nextPlayerPointsLeft = points - nextPlayer.getPoints();
+        }
+
+        printSpaceBetween(truncateWithEllipsis(nextPlayer.getName(), 13), String(nextPlayerPointsLeft), 2);
     }
 
+    // Render row 3
     if (players.size() > 2) {
         uint8_t nextNextPlayerIndex = (currentPlayerIndex + 2) % players.size();
         Player& nextNextPlayer = players[nextNextPlayerIndex];
-        uint16_t nextNextPlayerPointsLeft = points - nextNextPlayer.getPoints();
-        String nextNextPlayerName = truncateWithEllipsis(nextNextPlayer.getName(), 13);
-        state.rows[3] = spaceBetweenRow(nextNextPlayerName, String(nextNextPlayerPointsLeft));
-    }
 
-    display.setState(state);
+        uint16_t nextNextPlayerPointsLeft;
+        if (gameType == GameType::TEAM) {
+            String teamId = nextNextPlayer.getTeamId();
+            if (teamPoints.find(teamId) != teamPoints.end()) {
+                nextNextPlayerPointsLeft = teamPoints[teamId];
+            } else {
+                nextNextPlayerPointsLeft = points;
+            }
+        } else {
+            nextNextPlayerPointsLeft = points - nextNextPlayer.getPoints();
+        }
+
+        printSpaceBetween(truncateWithEllipsis(nextNextPlayer.getName(), 13), String(nextNextPlayerPointsLeft), 3);
+    }
 }

@@ -116,4 +116,16 @@ export class AroundTheClockGameMode extends GameMode {
 
         infoMsg.textContent = statusText;
     }
+
+    /**
+     * Get the availability flags for AroundTheClock game mode
+     * AroundTheClock is only available for standard game type
+     */
+    getAvailability() {
+        return {
+            standard: true,
+            team: false,
+            tournament: false
+        };
+    }
 }

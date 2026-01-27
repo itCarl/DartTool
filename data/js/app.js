@@ -39,11 +39,145 @@ import {
 
 import { initTheme } from './theme.js';
 
+import {
+    initTeamsPage,
+    renderTeamsList,
+    teamManagerUpdates,
+    populateTeamGameModeGrid
+} from './teams.js';
+
 // ============================================================================
 // GLOBAL STATE MANAGEMENT
 // ============================================================================
 
 let gameState = "unknown";
+let currentGameType = 'standard'; // 'standard', 'team', 'tournament'
+
+// ============================================================================
+// GAME TYPE TAB HANDLING
+// ============================================================================
+
+function initGameTypeTabs() {
+    const tabs = document.querySelectorAll('.game-type-tab');
+    tabs.forEach(tab => {
+        on(tab, 'click', () => {
+            const gameType = tab.dataset.gameType;
+            switchGameType(gameType);
+        });
+    });
+
+    // Restore saved game type from localStorage
+    restoreSavedGameType();
+}
+
+function restoreSavedGameType() {
+    try {
+        const savedGameType = localStorage.getItem('selectedGameType');
+        if (savedGameType && ['standard', 'team', 'tournament'].includes(savedGameType)) {
+            // Switch to saved game type without sending to backend yet (will be sent on connection)
+            currentGameType = savedGameType;
+
+            // Update UI
+            const tabs = document.querySelectorAll('.game-type-tab');
+            tabs.forEach(tab => {
+                if (tab.dataset.gameType === savedGameType) {
+                    tab.classList.add('active', 'bg-purple-600', 'text-white');
+                    tab.classList.remove('text-gray-300', 'hover:text-white', 'hover:bg-gray-700');
+                } else {
+                    tab.classList.remove('active', 'bg-purple-600', 'text-white');
+                    tab.classList.add('text-gray-300', 'hover:text-white', 'hover:bg-gray-700');
+                }
+            });
+
+            // Show/hide views
+            const viewStandard = byId('viewStandard');
+            const viewTeam = byId('viewTeam');
+            const viewTournament = byId('viewTournament');
+
+            if (viewStandard) viewStandard.style.display = savedGameType === 'standard' ? 'block' : 'none';
+            if (viewTeam) viewTeam.style.display = savedGameType === 'team' ? 'block' : 'none';
+            if (viewTournament) viewTournament.style.display = savedGameType === 'tournament' ? 'block' : 'none';
+
+            // Control button visibility based on game type
+            if (savedGameType === 'standard') {
+                show('openPlayerSelectionBtn');
+                hide('addTeamBtn');
+                hide('openTeamPlayerSelectionBtn');
+            } else if (savedGameType === 'team') {
+                hide('openPlayerSelectionBtn');
+                show('addTeamBtn');
+                hide('openTeamPlayerSelectionBtn');
+            } else {
+                hide('openPlayerSelectionBtn');
+                hide('addTeamBtn');
+                hide('openTeamPlayerSelectionBtn');
+            }
+
+            // Populate game mode grid for team view
+            if (savedGameType === 'team') {
+                populateTeamGameModeGrid();
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to restore game type from localStorage:', e);
+    }
+}
+
+function switchGameType(gameType) {
+    currentGameType = gameType;
+
+    // Save to localStorage
+    try {
+        localStorage.setItem('selectedGameType', gameType);
+    } catch (e) {
+        console.warn('Failed to save game type to localStorage:', e);
+    }
+
+    // Update tab UI
+    const tabs = document.querySelectorAll('.game-type-tab');
+    tabs.forEach(tab => {
+        if (tab.dataset.gameType === gameType) {
+            tab.classList.add('active', 'bg-purple-600', 'text-white');
+            tab.classList.remove('text-gray-300', 'hover:text-white', 'hover:bg-gray-700');
+        } else {
+            tab.classList.remove('active', 'bg-purple-600', 'text-white');
+            tab.classList.add('text-gray-300', 'hover:text-white', 'hover:bg-gray-700');
+        }
+    });
+
+    // Show/hide views
+    const viewStandard = byId('viewStandard');
+    const viewTeam = byId('viewTeam');
+    const viewTournament = byId('viewTournament');
+
+    if (viewStandard) viewStandard.style.display = gameType === 'standard' ? 'block' : 'none';
+    if (viewTeam) viewTeam.style.display = gameType === 'team' ? 'block' : 'none';
+    if (viewTournament) viewTournament.style.display = gameType === 'tournament' ? 'block' : 'none';
+
+    // Control button visibility based on game type
+    if (gameType === 'standard') {
+        show('openPlayerSelectionBtn');
+        hide('addTeamBtn');
+        hide('openTeamPlayerSelectionBtn');
+    } else if (gameType === 'team') {
+        hide('openPlayerSelectionBtn');
+        show('addTeamBtn');
+        hide('openTeamPlayerSelectionBtn');
+    } else {
+        hide('openPlayerSelectionBtn');
+        hide('addTeamBtn');
+        hide('openTeamPlayerSelectionBtn');
+    }
+
+    // Populate game mode grid for team view
+    if (gameType === 'team') {
+        populateTeamGameModeGrid();
+    }
+}
+
+function getCurrentGameType() {
+    return currentGameType;
+}
 
 // ============================================================================
 // MESSAGE HANDLERS - Unified message dispatcher
@@ -54,6 +188,56 @@ function handleGameMessage(data) {
     if (data.cmd === 'startGameResponse') {
         if (!data.success) {
             showStatus(data.msg || 'Cannot start game', 'error');
+        }
+        return;
+    }
+
+    // Handle start team game response
+    if (data.cmd === 'startTeamGameResponse') {
+        if (!data.success) {
+            showStatus(data.msg || 'Cannot start team game', 'error');
+        }
+        // Game view will be shown by the game state update
+        return;
+    }
+
+    // Handle team management responses
+    if (data.cmd === 'createTeamResponse') {
+        if (data.success && data.team) {
+            // Add the new team with backend-generated ID and color
+            const teams = teamManagerUpdates.teams();
+            teams.push(data.team);
+            renderTeamsList();
+            showStatus('Team created successfully', 'success');
+        } else {
+            showStatus(data.msg || 'Failed to create team', 'error');
+        }
+        return;
+    }
+
+    if (data.cmd === 'deleteTeamResponse') {
+        if (data.success) {
+            showStatus('Team deleted successfully', 'success');
+        } else {
+            showStatus(data.msg || 'Failed to delete team', 'error');
+        }
+        return;
+    }
+
+    if (data.cmd === 'renameTeamResponse') {
+        if (data.success) {
+            showStatus('Team renamed successfully', 'success');
+        } else {
+            showStatus(data.msg || 'Failed to rename team', 'error');
+        }
+        return;
+    }
+
+    if (data.cmd === 'getAllTeamsResponse') {
+        if (data.success && data.teams) {
+            const teams = teamManagerUpdates.teams();
+            teams.splice(0, teams.length, ...data.teams);
+            renderTeamsList();
         }
         return;
     }
@@ -228,6 +412,11 @@ on(document, 'DOMContentLoaded', () => {
         initAddPlayerModal();
         initPlayerSelectionModal();
         initGamePage(selectedPlayerList);
+        initGameTypeTabs();
+        initTeamsPage();
+
+        // Request teams from backend
+        sendMessage({ cmd: 'getAllTeams' });
     }
 
     if(isPage('/data/settings.html', '/settings')) {
@@ -253,8 +442,8 @@ function updateModeUI() {
     }
 }
 
-// export {
-//     sendMessage,
-//     handleGameMessage,
-//     updateModeUI
-// };
+export {
+    getCurrentGameType,
+    switchGameType,
+    initGameTypeTabs
+};

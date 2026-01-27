@@ -26,19 +26,12 @@
     </div>
 
     <header class="dark:bg-gray-700 w-full">
-        <nav class="container mx-auto h-12 py-2 px-2 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <a href="/debug" class="p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open debug page">
-                    <i class="fas fa-bug text-xl"></i>
-                </a>
-            </div>
+        <nav class="container mx-auto h-12 py-2 px-2 flex items-center justify-center relative">
+            <a href="/" class="absolute left-2 p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open debug page">
+                <i class="fas fa-chevron-left text-xl"></i>
+            </a>
             <div class="h-full flex items-center">
                 <img src="/assets/favicon.png" alt="Dart-Tool" class="h-[90%] object-contain">
-            </div>
-            <div class="flex items-center gap-2">
-                <a href="/settings" class="p-2 rounded-md hover:bg-gray-600 transition-colors" aria-label="Open settings">
-                    <i class="fas fa-gear text-xl"></i>
-                </a>
             </div>
         </nav>
     </header>
@@ -214,48 +207,93 @@
 
             <p class="text-sm text-gray-300">Führt die Standard-Initialisierungssequenz aus</p>
         </section>
-    </main>
 
-    <!-- Navigation Drawer (Side Modal) -->
-    <div id="navigation-drawer" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-        <div class="fixed left-0 top-0 h-full w-80 max-w-full bg-white dark:bg-gray-800 shadow-xl transform transition-all">
-            <nav class="flex flex-col h-full">
-                <header class="border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center justify-between p-4">
-                        <div class="flex-1 text-center">
-                            <img src="/assets/favicon.png" width="150px" alt="Dart-Tool" class="mx-auto">
-                        </div>
-                        <button class="modal-close p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
-                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
+        <!-- Filesystem Browser -->
+        <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6 lg:col-span-2">
+            <header class="mb-6 flex items-start justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">Storage Usage</h2>
+                    <p class="text-sm text-gray-400">Device filesystem storage statistics.</p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Storage</span>
+            </header>
+
+            <div class="space-y-4">
+                <!-- Storage Stats -->
+                <div class="grid gap-4 lg:grid-cols-3">
+                    <div class="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <p class="text-xs text-gray-400 mb-2">Total Storage</p>
+                        <p id="storage-total" class="text-lg font-semibold text-primary">-- MB</p>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <p class="text-xs text-gray-400 mb-2">Used Storage</p>
+                        <p id="storage-used" class="text-lg font-semibold text-orange-400">-- MB</p>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <p class="text-xs text-gray-400 mb-2">Free Storage</p>
+                        <p id="storage-free" class="text-lg font-semibold text-green-400">-- MB</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-gray-300">Storage Utilization</span>
+                        <span id="storage-percentage" class="text-sm font-semibold text-gray-300">0%</span>
+                    </div>
+                    <div class="h-3 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div id="storage-progress" class="h-full bg-gradient-to-r from-green-500 to-red-500 w-0 transition-all duration-500 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <button id="refresh-storage" class="w-full px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-refresh"></i>
+                    <span>Refresh Storage Stats</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Filesystem Browser -->
+        <section class="bg-white/5 border border-white/10 rounded-2xl shadow-lg p-6 lg:col-span-2">
+            <header class="mb-6 flex items-start justify-between gap-2">
+                <div>
+                    <h2 class="text-lg font-semibold">Filesystem Browser</h2>
+                    <p class="text-sm text-gray-400">Browse and view files on the device filesystem.</p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded bg-primary/20 text-primary font-semibold">Files</span>
+            </header>
+
+            <div class="grid lg:grid-cols-2 gap-4">
+                <!-- File List -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="fs-path" value="/" placeholder="Enter path..." class="flex-1 px-4 py-2 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary">
+                        <button id="fs-refresh" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-refresh"></i>
+                            <span>Load</span>
                         </button>
                     </div>
-                </header>
-                <a href="/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fa-solid fa-home"></i>
-                    <span class="flex-1">Menu</span>
-                </a>
-                <hr class="border-gray-200 dark:border-gray-700">
-                <a href="/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fa-solid fa-gamepad"></i>
-                    <span>New Game</span>
-                </a>
-                <a href="/players" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fa-solid fa-users"></i>
-                    <span>Players</span>
-                </a>
-                <a href="/settings" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fa-solid fa-gear"></i>
-                    <span>Settings</span>
-                </a>
-                <a href="/debug" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                    <i class="fa-solid fa-bug"></i>
-                    <span>Debug</span>
-                </a>
-                <hr class="border-gray-200 dark:border-gray-700">
-            </nav>
-        </div>
-    </div>
+                    <div id="fs-list" class="space-y-1 max-h-96 overflow-y-auto border border-white/10 rounded-lg bg-white/5 p-2">
+                        <p class="text-sm text-gray-400 text-center py-8">Click "Load" to browse filesystem</p>
+                    </div>
+                </div>
+
+                <!-- File Content -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-300">File Content</h3>
+                        <span id="fs-file-name" class="text-xs text-gray-400">No file selected</span>
+                    </div>
+                    <div class="relative">
+                        <pre id="fs-content" class="text-xs font-mono max-h-96 overflow-auto border border-white/10 rounded-lg bg-gray-900 p-4 text-gray-300 whitespace-pre-wrap"><code>Select a file to view its content</code></pre>
+                        <button id="fs-copy" class="absolute top-2 right-2 px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs rounded transition-all hidden">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <div id="fs-file-info" class="text-xs text-gray-400 hidden"></div>
+                </div>
+            </div>
+        </section>
+    </main>
 </body>
 </html>

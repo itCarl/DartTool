@@ -148,7 +148,7 @@ class PlayerManager
 
             for (Player& p : players) {
                 JsonObject obj = arr.add<JsonObject>();
-                p.serialize(obj);
+                p.serializePersistentStorage(obj);
             }
 
             File file = LittleFS.open("/players.json", "w");

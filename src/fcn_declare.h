@@ -3,7 +3,6 @@
 #define FCNDeclare_h
 
 #include "DartTool.h"
-#include "display_controller.h"
 
 class DartGame;
 class Player;

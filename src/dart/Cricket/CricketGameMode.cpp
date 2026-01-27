@@ -322,6 +322,7 @@ void CricketGameMode::serialize(JsonObject& obj)
 
 void CricketGameMode::serializeForDisplay(JsonObject& obj)
 {
+    addCommonDisplayFields(obj);  // Add gameType and other common fields
     obj["status"] = getStatusString();
     obj["turn"] = turn;
     obj["gameMode"] = getGameModeName();
@@ -339,16 +340,16 @@ void CricketGameMode::serializeForDisplay(JsonObject& obj)
         JsonObject playerObj = jsonPlayers.add<JsonObject>();
         playerObj["id"] = p.getId();
         playerObj["name"] = p.getName();
+        playerObj["teamId"] = p.getTeamId();  // Include team ID for team mode display
+        playerObj["teamColor"] = p.getTeamColor();  // Include team color for display
         initStateForPlayer(p.getId());
-        playerObj["score"] = playerState[p.getId()].score;
+        playerObj["cricketScore"] = playerState[p.getId()].score;
         playerObj["winPos"] = p.hasWon() ? 1 : 0;
 
-        JsonArray marksArray = playerObj["marks"].to<JsonArray>();
+        // Build cricketMarks as an object with target numbers as keys
+        JsonObject marksObj = playerObj["cricketMarks"].to<JsonObject>();
         for (uint8_t t : targets) {
-            JsonObject markObj = marksArray.add<JsonObject>();
-            markObj["target"] = t;
-            markObj["marks"] = playerState[p.getId()].marks[t];
-            markObj["closed"] = playerState[p.getId()].marks[t] >= 3;
+            marksObj[String(t)] = playerState[p.getId()].marks[t];
         }
     }
 }

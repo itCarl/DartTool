@@ -22,43 +22,51 @@ export class X01GameMode extends GameMode {
     /**
      * Render the player list for X01 game mode
      * Shows remaining points, last 3 throws, total throws, and average
+     * In team mode, groups players by team with color-coded backgrounds
      */
     populatePlayers(gameData) {
         const list = byId('activePlayerList');
         if (!list) return;
 
         const playerCount = gameData.players.length;
+        const isTeamMode = gameData.gameType === 1;  // 1 = GameType::TEAM
 
         // Calculate available height dynamically
-        // Get the actual available height from the list container
-        let availableVh = 38; // fallback to 38vh
-
+        let availableVh = 38;
         if (typeof window !== 'undefined') {
-            // Estimate based on viewport if container not yet laid out
-            // Assume 38vh is reasonable for the player list area
             availableVh = Math.min(50, (window.innerHeight * 0.39) / window.innerHeight * 100);
         }
 
         let cardHeight;
         if (playerCount <= 2) {
-            // 1-2 players: max height of 12vh per card
             cardHeight = '12vh';
         } else if (playerCount === 3 || playerCount === 4) {
-            // 3-4 players: divide available space equally
             const heightPerCard = Math.floor(availableVh / playerCount);
             cardHeight = `${heightPerCard}vh`;
         } else {
-            // 5+ players: calculate for 4 players, enable scrolling
             const heightPerCard = Math.floor(availableVh / 4);
             cardHeight = `${heightPerCard}vh`;
         }
 
-
         list.innerHTML = '';
+
+        let playerElements = [];
+
+        // Process players in the order they come from the backend
         gameData.players.forEach((player) => {
+            const teamColor = player.teamColor || null;
+
             const item = document.createElement('div');
             item.id = player.id;
-            item.classList.add('mb-2', 'grid', 'grid-cols-3', 'bg-black/70', 'w-full', 'text-center');
+            item.classList.add('mb-2', 'grid', 'grid-cols-3', 'w-full', 'text-center');
+
+            // Apply background color
+            if (isTeamMode && teamColor) {
+                // Use inline style for backend hex color with opacity (8-digit hex: #RRGGBBAA)
+                item.style.backgroundColor = `${teamColor}B3`; // B3 = 70% opacity (179/255)
+            } else {
+                item.classList.add('bg-black/70');
+            }
 
             const throws = player.throws || [];
             const lastThrows = throws.slice(-3);
@@ -87,8 +95,8 @@ export class X01GameMode extends GameMode {
             item.innerHTML = `
                 <div class="flex flex-col border-r border-neutral-500">
                     <div class="flex flex-1 items-center justify-center font-bold p-1" data-size="main">${remainingPoints}</div>
-                    <div class="border-t border-neutral-500 flex items-center justify-center py-0.5 px-1" >
-                        ${player.name}
+                    <div class="border-t border-neutral-500 flex items-center justify-center py-0.5 px-1 min-w-0" title="${player.name}">
+                        <span class="truncate text-center">${player.name}</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-3 grid-rows-2 border-r border-neutral-500">
@@ -109,13 +117,16 @@ export class X01GameMode extends GameMode {
                     </div>
                 </div>
             `;
-            list.appendChild(item);
+            playerElements.push(item);
         });
+
+        playerElements.forEach(el => list.appendChild(el));
     }
 
     /**
      * Update the game info display for X01 game mode
      * Shows current player, points remaining, and game status
+     * In team mode, shows team name and team shared points
      */
     updateGameInfo(gameData) {
         const infoMsg = byId('infoMsg');
@@ -124,6 +135,8 @@ export class X01GameMode extends GameMode {
         const status = gameData.status || 'unknown';
         const currentPlayer = this.getCurrentPlayer(gameData);
         const playerName = currentPlayer?.name || 'Unknown';
+        const isTeamMode = gameData.gameType === 1;  // 1 = GameType::TEAM
+        const teamId = currentPlayer?.teamId || '';
         const winner = this.getWinner(gameData);
         const winnerName = winner?.name || playerName;
         const points = gameData.points || 301;
@@ -135,7 +148,11 @@ export class X01GameMode extends GameMode {
                 break;
             case 'running':
                 const remainingPoints = currentPlayer?.remainingPoints ?? points;
-                statusText = `${playerName}'s Turn - ${remainingPoints} Points Remaining`;
+                if (isTeamMode && teamId) {
+                    statusText = `Team ${teamId} (${playerName})'s Turn - ${remainingPoints} Points Remaining`;
+                } else {
+                    statusText = `${playerName}'s Turn - ${remainingPoints} Points Remaining`;
+                }
                 break;
             case 'done':
                 statusText = `Game Over - Winner: ${winnerName}`;
@@ -148,5 +165,17 @@ export class X01GameMode extends GameMode {
         }
 
         infoMsg.textContent = statusText;
+    }
+
+    /**
+     * Get the availability flags for X01 game mode
+     * X01 is available for all game types
+     */
+    getAvailability() {
+        return {
+            standard: true,
+            team: true,
+            tournament: true
+        };
     }
 }

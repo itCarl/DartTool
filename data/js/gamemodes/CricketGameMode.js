@@ -29,6 +29,8 @@ export class CricketGameMode extends GameMode {
 
         list.innerHTML = '';
 
+        const isTeamMode = gameData.gameType === 1;  // 1 = GameType::TEAM
+
         // Cricket targets: 20, 19, 18, 17, 16, 15, Bull(25)
         const targets = [20, 19, 18, 17, 16, 15, 25];
 
@@ -39,6 +41,18 @@ export class CricketGameMode extends GameMode {
             const isCurrentPlayer = this.isCurrentPlayer(gameData, player);
             const cricketScore = player.cricketScore || 0;
             const cricketMarks = player.cricketMarks || {};
+
+            // Apply team color if in team mode
+            const teamColor = player.teamColor || null;
+
+            if (isCurrentPlayer) {
+                item.style.outline = '3px solid gold';
+            }
+
+            if (isTeamMode && teamColor) {
+                // Add background color with opacity (8-digit hex: #RRGGBBAA)
+                item.style.backgroundColor = `${teamColor}B3`; // B3 = 70% opacity (179/255)
+            }
 
             // Build marks display for each target
             let marksHTML = '<div class="cricket-marks">';
@@ -67,10 +81,10 @@ export class CricketGameMode extends GameMode {
             }
 
             item.innerHTML = `
-                <div class="grid no-space" style="${isCurrentPlayer ? 'outline: 3px solid gold;' : ''}">
+                <div class="grid no-space">
                     <div class="s4 center-align">
                         <h4 class="cricketScore" style="padding:.25rem;"><b>${cricketScore}</b></h4>
-                        <div style="padding:.5rem;">${player.name}</div>
+                        <div style="padding:.5rem;" class="truncate" title="${player.name}">${player.name}</div>
                     </div>
                     <div class="s4 center-align">
                         ${marksHTML}
@@ -133,5 +147,17 @@ export class CricketGameMode extends GameMode {
         }
 
         infoMsg.textContent = statusText;
+    }
+
+    /**
+     * Get the availability flags for Cricket game mode
+     * Cricket is available for standard and team game types
+     */
+    getAvailability() {
+        return {
+            standard: true,
+            team: true,
+            tournament: false
+        };
     }
 }

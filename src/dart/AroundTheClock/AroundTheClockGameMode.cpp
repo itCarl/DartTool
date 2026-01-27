@@ -269,6 +269,7 @@ void AroundTheClockGameMode::serialize(JsonObject& obj)
 
 void AroundTheClockGameMode::serializeForDisplay(JsonObject& obj)
 {
+    addCommonDisplayFields(obj);  // Add gameType and other common fields
     obj["status"] = getStatusString();
     obj["turn"] = turn;
     obj["gameMode"] = getGameModeName();

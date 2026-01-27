@@ -50,6 +50,12 @@ class AroundTheClockGameMode : public GameMode
 
         String getGameModeName() override { return "AroundTheClock"; }
         String getGameModeDescription() override { return "Around the Clock - Hit 1 through 20 then Bull"; }
+
+        // AroundTheClock is available for standard and team game types
+        GameModeAvailability getAvailability() override {
+            return GameModeAvailability(true, true, false); // standard, team, tournament
+        }
+
         void displayGameInfo() override;
 };
 

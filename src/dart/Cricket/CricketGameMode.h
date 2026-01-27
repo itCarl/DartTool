@@ -56,6 +56,12 @@ class CricketGameMode : public GameMode
 
         String getGameModeName() override { return "Cricket"; }
         String getGameModeDescription() override { return "Cricket - Close 15-20 and Bull to win"; }
+
+        // Cricket is available for standard and team game types
+        GameModeAvailability getAvailability() override {
+            return GameModeAvailability(true, true, false); // standard, team, tournament
+        }
+
         void displayGameInfo() override;
 };
 

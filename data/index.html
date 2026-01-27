@@ -48,8 +48,26 @@
 
     <main class="container max-w-5xl w-full mx-auto">
         <div id="viewSetup" class="mt-2 px-4">
-            <div class="text-right mb-4">
-                <button id="openPlayerSelectionBtn" onclick="window.toggleModal('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer rounded">
+            <!-- Game Type Tabs -->
+            <div id="gameTypeTabs" class="flex mb-4 bg-slate-950 rounded-lg p-1">
+                <button id="tabStandard" class="game-type-tab flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors bg-purple-600 text-white flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-game-type="standard">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Standard</span>
+                </button>
+                <button id="tabTeam" class="game-type-tab flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white hover:bg-gray-700 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-game-type="team">
+                    <i class="fa-solid fa-users-rectangle"></i>
+                    <span>Team</span>
+                </button>
+                <button id="tabTournament" class="game-type-tab flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white hover:bg-gray-700 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2" data-game-type="tournament">
+                    <i class="fa-solid fa-trophy"></i>
+                    <span>Tournament</span>
+                </button>
+            </div>
+
+            <!-- Standard View (current functionality) -->
+            <div id="viewStandard">
+                <div class="flex justify-end items-center gap-4 mb-4">
+                    <button id="openPlayerSelectionBtn" onclick="window.toggleModal('#playerSelectionModal')" class="text-white bg-linear-120 from-purple-500 to-orange-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer rounded">
                     <i class="fa-solid fa-users"></i>
                     <span>Select Players</span>
                 </button>
@@ -78,14 +96,6 @@
                         <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
                             <input type="radio" name="gamemode" class="gamemode-button hidden" value="AroundTheClock">
                             <span class="font-semibold">ATC</span>
-                        </label>
-                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
-                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Golf">
-                            <span class="font-semibold">Golf</span>
-                        </label>
-                        <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
-                            <input type="radio" name="gamemode" class="gamemode-button hidden" value="Tennis">
-                            <span class="font-semibold">Tennis</span>
                         </label>
                         <label class="gamemode-label py-5 bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors flex flex-col items-center justify-center cursor-pointer has-[:checked]:ring-2 has-[:checked]:ring-primary">
                             <input type="radio" name="gamemode" class="gamemode-button hidden" value="Highscore">
@@ -130,12 +140,6 @@
                             <input id="aroundTheClockBullCheckbox" type="checkbox" class="w-4 h-4 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 focus:ring-2 focus:ring-primary cursor-pointer">
                         </div>
                     </div>
-                    <div id="golfOptions" style="display: none;">
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">No options available for Golf mode</p>
-                    </div>
-                    <div id="tennisOptions" style="display: none;">
-                        <p class="text-gray-500 dark:text-gray-400 text-sm">No options available for Tennis mode</p>
-                    </div>
                     <div id="highscoreOptions" style="display: none;">
                         <div class="flex items-center gap-4">
                             <label class="font-medium whitespace-nowrap">Number of Rounds</label>
@@ -147,6 +151,85 @@
                     <i class="fa-solid fa-play"></i>
                     <span>Start Game</span>
                 </button>
+            </div>
+            </div>
+
+            <!-- Team View -->
+            <div id="viewTeam" style="display: none;">
+                <div class="flex justify-end items-center gap-4 mb-4">
+                    <button id="addTeamBtn" class="text-white bg-linear-120 from-green-500 to-teal-400 font-medium rounded-base text-sm px-4 py-2.5 text-center leading-5 cursor-pointer rounded">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add Team</span>
+                    </button>
+                </div>
+
+                <div class="bg-slate-950 shadow mb-3 p-2">
+                    <div id="teamsList" class="space-y-4">
+                        <p class="w-full p-4 text-center text-gray-400">
+                            Create teams by pressing the "Add Team" button, then assign players to each team.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 shadow mb-4 p-2">
+                    <fieldset id="teamGameModeGrid" class="grid grid-cols-3 gap-4 mb-6">
+                        <!-- Game modes will be populated by JavaScript based on availability -->
+                    </fieldset>
+                    <div id="teamGameOptions">
+                        <!-- X01 Options for Team Mode -->
+                        <div id="teamX01Options">
+                            <div class="flex items-center gap-4 mb-4">
+                                <label class="whitespace-nowrap">Points</label>
+                                <select id="teamX01PointsSelect" class="w-20 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                    <option value="201">201</option>
+                                    <option value="301">301</option>
+                                    <option value="401">401</option>
+                                    <option value="501" selected>501</option>
+                                    <option value="601">601</option>
+                                    <option value="801">801</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <label class="whitespace-nowrap">Check Out</label>
+                                <select id="teamX01CheckOutSelect" class="w-28 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                    <option value="any">Any</option>
+                                    <option value="double">Double</option>
+                                    <option value="master" selected>Master</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Cricket Options for Team Mode (hidden by default) -->
+                        <div id="teamCricketOptions" style="display: none;">
+                            <div class="flex items-center gap-4">
+                                <label class="font-medium whitespace-nowrap">Hits per Field</label>
+                                <select id="teamCricketHitsSelect" class="w-20 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary ml-auto">
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="startTeamGame" class="fixed bottom-0 left-0 right-0 px-6 py-3 bg-purple-900 text-white hover:bg-opacity-90 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Start Team Game</span>
+                </button>
+            </div>
+
+            <!-- Tournament View (Placeholder) -->
+            <div id="viewTournament" style="display: none;">
+                <div class="bg-slate-950 shadow mb-3 p-8 text-center">
+                    <i class="fa-solid fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                    <h2 class="text-2xl font-bold mb-2">Tournament Mode</h2>
+                    <p class="text-gray-400 mb-4">Tournament mode is coming soon!</p>
+                    <p class="text-sm text-gray-500">
+                        Create bracket-style tournaments with elimination rounds,<br>
+                        track standings, and crown the ultimate champion.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -225,6 +308,47 @@
                     </button>
                     <button id="addNewPlayer" onclick="window.toggleModal('#addPlayerModal')" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
                         Add New Player
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Add Team Modal -->
+    <dialog id="addTeamModal" class="text-white inset-0 size-auto max-h-none max-w-none bg-transparent backdrop:bg-black/50">
+        <div class="flex min-h-full items-center justify-center focus:outline-none">
+            <div class="modal-panel relative transform rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all w-full max-w-md p-4">
+                <h2 class="text-lg text-heading mb-3">Add Team</h2>
+                <div id="addTeamForm" class="space-y-4">
+                    <label class="block text-sm font-medium text-gray-200" for="teamName">Team Name</label>
+                    <input id="teamName" name="teamName" type="text" required
+                           class="w-full px-3 py-2 rounded-md bg-gray-900 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary"
+                           placeholder="Enter team name" />
+                    <div class="flex gap-2 pt-2">
+                        <button id="saveTeamBtn" type="button" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">Create Team</button>
+                        <button type="button" onclick="window.toggleModal ? window.toggleModal('#addTeamModal') : this.closest('dialog')?.close()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Team Player Assignment Modal -->
+    <dialog id="teamPlayerAssignmentModal" class="text-white inset-0 size-auto max-h-none max-w-none bg-transparent backdrop:bg-black/50">
+        <div class="flex min-h-full items-center justify-center focus:outline-none px-4">
+            <div class="modal-panel relative transform rounded-lg bg-gray-800 text-left shadow-xl outline -outline-offset-1 outline-white/10 transition-all w-full max-w-lg p-3">
+                <h2 id="teamPlayerAssignmentTitle" class="text-lg text-heading mb-2">
+                    Assign Players to Team
+                </h2>
+                <div id="teamPlayersList" class="overflow-y-auto max-h-[50vh]">
+                    <!-- populated by js -->
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button id="assignPlayersBtn" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                        Assign Players
+                    </button>
+                    <button type="button" onclick="window.toggleModal ? window.toggleModal('#teamPlayerAssignmentModal') : this.closest('dialog')?.close()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancel
                     </button>
                 </div>
             </div>

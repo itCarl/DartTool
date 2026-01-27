@@ -283,10 +283,6 @@ function updateGameModeDisplay() {
         if (displayEl) displayEl.textContent = 'Cricket';
     } else if (currentGameMode === 'AroundTheClock') {
         if (displayEl) displayEl.textContent = 'Around the Clock';
-    } else if (currentGameMode === 'Golf') {
-        if (displayEl) displayEl.textContent = 'Golf';
-    } else if (currentGameMode === 'Tennis') {
-        if (displayEl) displayEl.textContent = 'Tennis';
     } else if (currentGameMode === 'Highscore') {
         if (displayEl) displayEl.textContent = 'Highscore';
     }

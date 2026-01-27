@@ -103,4 +103,27 @@ export class GameMode {
     isCurrentPlayer(gameData, player) {
         return gameData.currentPlayerId === player.id;
     }
+
+    /**
+     * Get the availability flags for this game mode
+     * Subclasses can override this to specify which game types they support
+     * @returns {Object} Object with standard, team, tournament boolean flags
+     */
+    getAvailability() {
+        return {
+            standard: true,
+            team: false,
+            tournament: false
+        };
+    }
+
+    /**
+     * Check if this game mode is available for a specific game type
+     * @param {string} gameType - The game type to check ('standard', 'team', 'tournament')
+     * @returns {boolean} True if available for the specified game type
+     */
+    isAvailableFor(gameType) {
+        const availability = this.getAvailability();
+        return availability[gameType] === true;
+    }
 }

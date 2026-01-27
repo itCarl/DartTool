@@ -9,6 +9,42 @@ import { CricketGameMode } from './CricketGameMode.js';
 import { AroundTheClockGameMode } from './AroundTheClockGameMode.js';
 
 /**
+ * Game type constants
+ */
+export const GameType = {
+    STANDARD: 'standard',
+    TEAM: 'team',
+    TOURNAMENT: 'tournament'
+};
+
+/**
+ * Availability configuration for each game mode
+ * Defines which game types (standard, team, tournament) each game mode supports
+ */
+export const GameModeAvailability = {
+    'X01': {
+        standard: true,
+        team: true,
+        tournament: true
+    },
+    'Cricket': {
+        standard: true,
+        team: true,
+        tournament: false
+    },
+    'AroundTheClock': {
+        standard: true,
+        team: true,
+        tournament: false
+    },
+    'Highscore': {
+        standard: true,
+        team: true,
+        tournament: false
+    }
+};
+
+/**
  * Factory class for creating game modes
  * Maps game mode names to their corresponding classes
  */
@@ -19,8 +55,6 @@ export class GameModeFactory {
             'X01': X01GameMode,
             'Cricket': CricketGameMode,
             'AroundTheClock': AroundTheClockGameMode,
-            'Golf': X01GameMode, // Fallback to X01 handler for now
-            'Tennis': X01GameMode, // Fallback to X01 handler for now
             'Highscore': X01GameMode // Fallback to X01 handler for now
         };
 
@@ -81,6 +115,42 @@ export class GameModeFactory {
      */
     isSupported(gameMode) {
         return gameMode in this.gameModeMap;
+    }
+
+    /**
+     * Check if a game mode is available for a specific game type
+     * @param {string} gameMode - The game mode name
+     * @param {string} gameType - The game type ('standard', 'team', 'tournament')
+     * @returns {boolean} True if the game mode is available for the game type
+     */
+    isAvailableFor(gameMode, gameType) {
+        const availability = GameModeAvailability[gameMode];
+        if (!availability) return false;
+        return availability[gameType] === true;
+    }
+
+    /**
+     * Get all game modes available for a specific game type
+     * @param {string} gameType - The game type ('standard', 'team', 'tournament')
+     * @returns {string[]} Array of available game mode names
+     */
+    getAvailableGameModes(gameType) {
+        return Object.keys(this.gameModeMap).filter(gameMode =>
+            this.isAvailableFor(gameMode, gameType)
+        );
+    }
+
+    /**
+     * Get availability info for a specific game mode
+     * @param {string} gameMode - The game mode name
+     * @returns {Object} Availability object with standard, team, tournament flags
+     */
+    getAvailability(gameMode) {
+        return GameModeAvailability[gameMode] || {
+            standard: false,
+            team: false,
+            tournament: false
+        };
     }
 }
 

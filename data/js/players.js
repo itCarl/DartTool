@@ -20,7 +20,7 @@ function createPlayerListItemHTML(player, isSelected, selectClasses, options = {
     return `
         <li id="${playerId}" role="listitem" class="${isGamePage ? 'cursor-pointer transition-colors ' + selectClasses : ''}" aria-pressed="${isSelected}">
             <div class='max'>
-                <div>${escapeHtml(player.name)}</div>
+                <div class="truncate" title="${escapeHtml(player.name)}">${escapeHtml(player.name)}</div>
                 <small class="id-ellipsis" title="${escapeHtml(player.id)}">ID: ${escapeHtml(player.id)}</small>
             </div>
         </li>
@@ -110,13 +110,13 @@ function updateSelectedPlayersUI() {
         item.className = 'flex items-center gap-3 p-3 mb-2 bg-gray-100 dark:bg-gray-800 rounded-lg transition-all';
         item.dataset.playerId = playerId;
         item.innerHTML = `
-            <i class="fa-solid fa-user"></i>
-            <div class='max'>${player.name}</div>
+            <i class="fa-solid fa-user flex-shrink-0"></i>
+            <div class='max truncate' title="${player.name}">${player.name}</div>
             <span class="flex-1"></span>
-            <button class="circle transparent small remove-player-btn " data-player-id="${playerId}" >
+            <button class="circle transparent small remove-player-btn flex-shrink-0" data-player-id="${playerId}" >
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <i class="fa-solid fa-grip-vertical drag-handle cursor-move text-gray-400 ml-3"></i>
+            <i class="fa-solid fa-grip-vertical drag-handle cursor-move text-gray-400 ml-3 flex-shrink-0"></i>
         `;
         list.appendChild(item);
 

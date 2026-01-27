@@ -24,6 +24,8 @@
 #include "config.h"
 #include "dart/Player.h"
 #include "dart/PlayerManager.h"
+#include "dart/Team.h"
+#include "dart/TeamManager.h"
 #include "dart/DartGame.h"
 #include "external/ExternalService.h"
 
@@ -53,7 +55,7 @@
 #endif
 
 #ifndef ANIMATION_DELAY_CHAR_WRITE
-    #define ANIMATION_DELAY_CHAR_WRITE 75
+    #define ANIMATION_DELAY_CHAR_WRITE 60
 #endif
 
 #ifndef ANIMATION_DELAY_INIT

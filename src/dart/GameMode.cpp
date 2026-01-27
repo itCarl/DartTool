@@ -35,7 +35,78 @@ bool GameMode::isPlayerTurnComplete()
 
 void GameMode::setPlayers(std::vector<Player>& selectedPlayers)
 {
-    players = selectedPlayers;
+    // If in team mode, reorder players to alternate teams up-front
+    if (gameType == GameType::TEAM) {
+        std::vector<String> teamOrder;
+        std::map<String, std::vector<Player>> teamBuckets;
+
+        // Preserve first-seen team order and bucket players per team
+        for (const auto& player : selectedPlayers) {
+            String teamId = player.getTeamId();
+            if (teamId.isEmpty()) {
+                teamId = "__no_team__";  // fallback bucket
+            }
+            if (teamBuckets.find(teamId) == teamBuckets.end()) {
+                teamOrder.push_back(teamId);
+            }
+            teamBuckets[teamId].push_back(player);
+        }
+
+        // Find the maximum team size to determine how many rotations we need
+        size_t maxTeamSize = 0;
+        for (const auto& tid : teamOrder) {
+            if (teamBuckets[tid].size() > maxTeamSize) {
+                maxTeamSize = teamBuckets[tid].size();
+            }
+        }
+
+        // Dynamic round-robin: alternate between teams, each team cycles through its players
+        // For uneven teams, smaller teams will repeat their players
+        // Example: Team A (1 player), Team B (3 players)
+        // Result: A1, B1, A1, B2, A1, B3, A1, B1, ...
+        std::vector<Player> reordered;
+        std::map<String, size_t> teamPlayerIndex; // Track current player index for each team
+        
+        // Initialize player indices for each team
+        for (const auto& tid : teamOrder) {
+            teamPlayerIndex[tid] = 0;
+        }
+
+        // Create the player order by alternating teams
+        // Continue for enough cycles to ensure all players are included
+        size_t totalPlayers = selectedPlayers.size();
+        size_t teamIndex = 0;
+        
+        for (size_t i = 0; i < totalPlayers; i++) {
+            // Get current team in rotation
+            String currentTeamId = teamOrder[teamIndex % teamOrder.size()];
+            
+            // Get current player index for this team
+            size_t playerIdx = teamPlayerIndex[currentTeamId];
+            
+            // Add the player from this team
+            reordered.push_back(teamBuckets[currentTeamId][playerIdx]);
+            
+            // Advance to next player in this team (wrap around if needed)
+            teamPlayerIndex[currentTeamId] = (playerIdx + 1) % teamBuckets[currentTeamId].size();
+            
+            // Move to next team
+            teamIndex++;
+        }
+
+        players = reordered;
+
+        // Initialize team points
+        teamPoints.clear();
+        for (const auto& tid : teamOrder) {
+            if (!tid.isEmpty()) {
+                teamPoints[tid] = points;
+            }
+        }
+    } else {
+        players = selectedPlayers;
+    }
+
     currentPlayerIndex = 0;
 }
 
@@ -108,7 +179,19 @@ uint16_t GameMode::getPlayerRemainingPoints(const String& playerId)
 {
     for (const auto& player : players) {
         if (player.getId() == playerId) {
-            return points - player.getPoints();
+            // Team mode: use shared team points
+            if (gameType == GameType::TEAM) {
+                String teamId = player.getTeamId();
+                if (teamPoints.find(teamId) != teamPoints.end()) {
+                    return teamPoints[teamId];
+                }
+                // If team points not initialized, return starting points
+                return points;
+            }
+            // Standard mode: use individual player points
+            else {
+                return points - player.getPoints();
+            }
         }
     }
     return 0;
